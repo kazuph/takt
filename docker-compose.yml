@@ -1,0 +1,21 @@
+# TAKT - Docker Compose設定
+# 使い方:
+#   ビルド: docker compose build
+#   テスト: docker compose run --rm test
+#   lint:   docker compose run --rm lint
+
+services:
+  # テスト実行
+  test:
+    build: .
+    command: npm run test
+
+  # Lint実行
+  lint:
+    build: .
+    command: npm run lint
+
+  # ビルドのみ（テストをスキップ）
+  build:
+    build: .
+    command: npm run build

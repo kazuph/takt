@@ -1,0 +1,96 @@
+# MAGI System Workflow
+# A deliberation workflow modeled after Evangelion's MAGI system
+# Three personas (scientist, nurturer, pragmatist) analyze from different perspectives and vote
+
+name: magi
+description: MAGI Deliberation System - Analyze from 3 perspectives and decide by majority
+
+max_iterations: 5
+
+steps:
+  - name: melchior
+    agent: ~/.takt/agents/magi/melchior.md
+    instruction_template: |
+      # MAGI System Initiated
+
+      ## Matter for Deliberation
+      {task}
+
+      ## Instructions
+      You are MELCHIOR-1 of the MAGI System.
+      Analyze the above from the perspective of a scientist/engineer and render your judgment.
+
+      Your judgment must be one of:
+      - [MELCHIOR:APPROVE] - In favor
+      - [MELCHIOR:REJECT] - Against
+      - [MELCHIOR:CONDITIONAL] - Conditional approval
+    transitions:
+      - condition: always
+        next_step: balthasar
+
+  - name: balthasar
+    agent: ~/.takt/agents/magi/balthasar.md
+    instruction_template: |
+      # MAGI System Continuing
+
+      ## Matter for Deliberation
+      {task}
+
+      ## MELCHIOR-1's Judgment
+      {previous_response}
+
+      ## Instructions
+      You are BALTHASAR-2 of the MAGI System.
+      Analyze the above from the perspective of a nurturer and render your judgment.
+      Consider MELCHIOR's judgment as reference, but make your own independent assessment.
+
+      Your judgment must be one of:
+      - [BALTHASAR:APPROVE] - In favor
+      - [BALTHASAR:REJECT] - Against
+      - [BALTHASAR:CONDITIONAL] - Conditional approval
+    pass_previous_response: true
+    transitions:
+      - condition: always
+        next_step: casper
+
+  - name: casper
+    agent: ~/.takt/agents/magi/casper.md
+    instruction_template: |
+      # MAGI System Final Deliberation
+
+      ## Matter for Deliberation
+      {task}
+
+      ## Previous Judgments
+      {previous_response}
+
+      ## Instructions
+      You are CASPER-3 of the MAGI System.
+      Analyze the above from a practical/realistic perspective and render your judgment.
+
+      **Finally, tally the judgments from all three and provide the final conclusion.**
+
+      ### Final Conclusion (Required)
+      Determine the final judgment by majority vote:
+      - [MAGI:APPROVE] - Approved (2 or more in favor)
+      - [MAGI:REJECT] - Rejected (2 or more against)
+      - [MAGI:CONDITIONAL] - Conditional approval (majority conditional or split opinions)
+
+      **Final Conclusion Format Example:**
+      ```
+      ## MAGI System Final Judgment
+
+      | System | Judgment |
+      |--------|----------|
+      | MELCHIOR-1 | APPROVE |
+      | BALTHASAR-2 | CONDITIONAL |
+      | CASPER-3 | APPROVE |
+
+      **Conclusion: [MAGI:APPROVE]**
+
+      [Reasoning/Summary]
+      ```
+    pass_previous_response: true
+    transitions:
+      - condition: always
+        next_step: COMPLETE

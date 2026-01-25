@@ -1,0 +1,150 @@
+/**
+ * Session management utilities
+ */
+
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { AgentResponse, WorkflowState } from '../models/types.js';
+import { getProjectLogsDir, getGlobalLogsDir, ensureDir } from '../config/paths.js';
+
+/** Session log entry */
+export interface SessionLog {
+  task: string;
+  projectDir: string;
+  workflowName: string;
+  iterations: number;
+  startTime: string;
+  endTime?: string;
+  status: 'running' | 'completed' | 'aborted';
+  history: Array<{
+    step: string;
+    agent: string;
+    status: string;
+    timestamp: string;
+    content: string;
+  }>;
+}
+
+/** Generate a session ID */
+export function generateSessionId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `${timestamp}-${random}`;
+}
+
+/** Create a new session log */
+export function createSessionLog(
+  task: string,
+  projectDir: string,
+  workflowName: string
+): SessionLog {
+  return {
+    task,
+    projectDir,
+    workflowName,
+    iterations: 0,
+    startTime: new Date().toISOString(),
+    status: 'running',
+    history: [],
+  };
+}
+
+/** Add agent response to session log */
+export function addToSessionLog(
+  log: SessionLog,
+  stepName: string,
+  response: AgentResponse
+): void {
+  log.history.push({
+    step: stepName,
+    agent: response.agent,
+    status: response.status,
+    timestamp: response.timestamp.toISOString(),
+    content: response.content,
+  });
+  log.iterations++;
+}
+
+/** Finalize session log */
+export function finalizeSessionLog(
+  log: SessionLog,
+  status: 'completed' | 'aborted'
+): void {
+  log.status = status;
+  log.endTime = new Date().toISOString();
+}
+
+/** Save session log to file */
+export function saveSessionLog(
+  log: SessionLog,
+  sessionId: string,
+  projectDir?: string
+): string {
+  const logsDir = projectDir
+    ? getProjectLogsDir(projectDir)
+    : getGlobalLogsDir();
+  ensureDir(logsDir);
+
+  const filename = `${sessionId}.json`;
+  const filepath = join(logsDir, filename);
+
+  writeFileSync(filepath, JSON.stringify(log, null, 2), 'utf-8');
+  return filepath;
+}
+
+/** Load session log from file */
+export function loadSessionLog(filepath: string): SessionLog | null {
+  if (!existsSync(filepath)) {
+    return null;
+  }
+  const content = readFileSync(filepath, 'utf-8');
+  return JSON.parse(content) as SessionLog;
+}
+
+/** Load project context (CLAUDE.md files) */
+export function loadProjectContext(projectDir: string): string {
+  const contextParts: string[] = [];
+
+  // Check project root CLAUDE.md
+  const rootClaudeMd = join(projectDir, 'CLAUDE.md');
+  if (existsSync(rootClaudeMd)) {
+    contextParts.push(readFileSync(rootClaudeMd, 'utf-8'));
+  }
+
+  // Check .claude/CLAUDE.md
+  const dotClaudeMd = join(projectDir, '.claude', 'CLAUDE.md');
+  if (existsSync(dotClaudeMd)) {
+    contextParts.push(readFileSync(dotClaudeMd, 'utf-8'));
+  }
+
+  return contextParts.join('\n\n---\n\n');
+}
+
+/** Convert workflow state to session log */
+export function workflowStateToSessionLog(
+  state: WorkflowState,
+  task: string,
+  projectDir: string
+): SessionLog {
+  const log: SessionLog = {
+    task,
+    projectDir,
+    workflowName: state.workflowName,
+    iterations: state.iteration,
+    startTime: new Date().toISOString(),
+    status: state.status === 'running' ? 'running' : state.status === 'completed' ? 'completed' : 'aborted',
+    history: [],
+  };
+
+  for (const [stepName, response] of state.stepOutputs) {
+    log.history.push({
+      step: stepName,
+      agent: response.agent,
+      status: response.status,
+      timestamp: response.timestamp.toISOString(),
+      content: response.content,
+    });
+  }
+
+  return log;
+}

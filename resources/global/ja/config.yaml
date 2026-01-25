@@ -1,0 +1,19 @@
+# TAKT グローバル設定
+# takt のデフォルト設定ファイルです。
+
+# 言語設定 (en または ja)
+language: ja
+
+# 信頼済みディレクトリ - これらのディレクトリ内のプロジェクトは確認プロンプトをスキップします
+trusted_directories: []
+
+# デフォルトワークフロー - ワークフローが指定されていない場合に使用します
+default_workflow: default
+
+# ログレベル: debug, info, warn, error
+log_level: info
+
+# デバッグ設定 (オプション)
+# debug:
+#   enabled: false
+#   log_file: ~/.takt/logs/debug.log

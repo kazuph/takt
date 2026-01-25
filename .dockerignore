@@ -1,0 +1,42 @@
+# 依存関係（コンテナ内で再インストール）
+node_modules/
+
+# ビルド成果物（コンテナ内で再ビルド）
+dist/
+
+# Git関連
+.git/
+.gitignore
+
+# IDE設定
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS生成ファイル
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log
+npm-debug.log*
+
+# テストカバレッジ
+coverage/
+
+# 環境変数（秘匿情報）
+.env
+.env.local
+.env.*.local
+
+# TAKT設定（ユーザーデータ）
+.takt/
+
+# Claude設定
+.claude/
+
+# Docker関連（自己参照を避ける）
+Dockerfile
+docker-compose.yml
+.dockerignore

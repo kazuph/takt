@@ -1,0 +1,177 @@
+# Default TAKT Workflow
+# Coder -> Architect Review -> Security Review -> Supervisor Approval
+
+name: default
+description: Standard development workflow with code review
+
+max_iterations: 10
+
+steps:
+  - name: implement
+    agent: ~/.takt/agents/default/coder.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: implement
+
+      ## Original User Request (これは最新の指示ではなく、ワークフロー開始時の元の要求です)
+      {task}
+
+      ## Additional User Inputs (ワークフロー中に追加された情報)
+      {user_inputs}
+
+      ## Instructions
+      **重要**: 上記の「Original User Request」はワークフロー開始時の元の要求です。
+      イテレーション2回目以降の場合、すでにリサーチや調査は完了しているはずです。
+      セッションの会話履歴を確認し、前回の作業の続きから進めてください。
+
+      - イテレーション1: 要求を理解し、必要ならリサーチを行う
+      - イテレーション2以降: 前回の作業結果を踏まえて実装を進める
+
+      完了時は [CODER:DONE] を含めてください。
+      進行できない場合は [CODER:BLOCKED] を含めてください。
+    transitions:
+      - condition: done
+        next_step: review
+      - condition: blocked
+        next_step: implement
+
+  - name: review
+    agent: ~/.takt/agents/default/architect.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: review
+
+      ## Original User Request (ワークフロー開始時の元の要求)
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the changes and provide feedback. Include:
+      - [ARCHITECT:APPROVE] if the code is ready
+      - [ARCHITECT:REJECT] if changes are needed (list specific issues)
+    transitions:
+      - condition: approved
+        next_step: security_review
+      - condition: rejected
+        next_step: fix
+
+  - name: security_review
+    agent: ~/.takt/agents/default/security.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: security_review
+
+      ## Original User Request (ワークフロー開始時の元の要求)
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Perform security review on the changes. Check for vulnerabilities including:
+      - Injection attacks (SQL, Command, XSS)
+      - Authentication/Authorization issues
+      - Data exposure risks
+      - Cryptographic weaknesses
+
+      Include:
+      - [SECURITY:APPROVE] if no security issues found
+      - [SECURITY:REJECT] if vulnerabilities detected (list specific issues)
+    transitions:
+      - condition: approved
+        next_step: supervise
+      - condition: rejected
+        next_step: security_fix
+
+  - name: security_fix
+    agent: ~/.takt/agents/default/coder.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: security_fix
+
+      ## Security Review Feedback (これが最新の指示です - 優先して対応してください)
+      {previous_response}
+
+      ## Original User Request (ワークフロー開始時の元の要求 - 参考情報)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **重要**: セキュリティレビューで指摘された脆弱性を修正してください。
+      セキュリティの問題は最優先で対応が必要です。
+
+      完了時は [CODER:DONE] を含めてください。
+      進行できない場合は [CODER:BLOCKED] を含めてください。
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: security_review
+      - condition: blocked
+        next_step: security_fix
+
+  - name: fix
+    agent: ~/.takt/agents/default/coder.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: fix
+
+      ## Architect Feedback (これが最新の指示です - 優先して対応してください)
+      {previous_response}
+
+      ## Original User Request (ワークフロー開始時の元の要求 - 参考情報)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **重要**: Architectのフィードバックに対応してください。
+      「Original User Request」は参考情報であり、最新の指示ではありません。
+      セッションの会話履歴を確認し、Architectの指摘事項を修正してください。
+
+      完了時は [CODER:DONE] を含めてください。
+      進行できない場合は [CODER:BLOCKED] を含めてください。
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: review
+      - condition: blocked
+        next_step: fix
+
+  - name: supervise
+    agent: ~/.takt/agents/default/supervisor.md
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations}
+      - Step: supervise (final verification)
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Run tests, verify the build, and perform final approval.
+      - [SUPERVISOR:APPROVE] if ready to merge
+      - [SUPERVISOR:REJECT] if issues found
+    transitions:
+      - condition: approved
+        next_step: COMPLETE
+      - condition: rejected
+        next_step: fix

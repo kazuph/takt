@@ -1,0 +1,45 @@
+# Source files (use dist/ instead)
+src/
+
+# Test files
+*.test.ts
+*.test.js
+__tests__/
+coverage/
+
+# Development configuration
+.eslintrc*
+eslint.config.js
+tsconfig.json
+vitest.config.ts
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local development
+.takt/
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# Debugging scripts
+debug-*.mjs
+test-*.js
+
+# Git
+.git/
+.gitignore
+
+# Documentation (README and LICENSE are included)
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+CLAUDE.md
+
+# Lock files
+package-lock.json

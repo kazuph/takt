@@ -1,0 +1,112 @@
+# Research Workflow
+# A workflow that autonomously executes research tasks
+# Planner creates the plan, Digger executes, Supervisor verifies
+#
+# Flow:
+# plan -> dig -> supervise -> COMPLETE (approved)
+#                          -> plan (rejected: restart from planning)
+
+name: research
+description: Research workflow - autonomously executes research without asking questions
+
+max_iterations: 10
+
+steps:
+  - name: plan
+    agent: ~/.takt/agents/research/planner.md
+    instruction_template: |
+      ## Workflow Status
+      - Iteration: {iteration}/{max_iterations}
+      - Step: plan
+
+      ## Research Request
+      {task}
+
+      ## Supervisor Feedback (for re-planning)
+      {previous_response}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      Create a research plan for the above request.
+
+      **Important**: Do not ask the user questions.
+      - Make assumptions for unclear points and proceed
+      - If multiple interpretations exist, include all in the research scope
+      - If there is feedback from Supervisor, incorporate it into the plan
+
+      Output [PLANNER:DONE] when the plan is complete.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: dig
+      - condition: blocked
+        next_step: ABORT
+
+  - name: dig
+    agent: ~/.takt/agents/research/digger.md
+    instruction_template: |
+      ## Workflow Status
+      - Iteration: {iteration}/{max_iterations}
+      - Step: dig
+
+      ## Original Research Request
+      {task}
+
+      ## Research Plan
+      {previous_response}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      Execute the research according to the plan above.
+
+      **Important**: Do not ask the user questions.
+      - Research within the scope of what can be investigated
+      - Report items that could not be researched as "Unable to research"
+
+      Available tools:
+      - Web search
+      - GitHub search (gh command)
+      - Codebase search
+      - File reading
+
+      Output [DIGGER:DONE] when the research is complete.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: supervise
+      - condition: blocked
+        next_step: ABORT
+
+  - name: supervise
+    agent: ~/.takt/agents/research/supervisor.md
+    instruction_template: |
+      ## Workflow Status
+      - Iteration: {iteration}/{max_iterations}
+      - Step: supervise (research quality evaluation)
+
+      ## Original Research Request
+      {task}
+
+      ## Digger's Research Results
+      {previous_response}
+
+      ## Instructions
+      Evaluate the research results and determine if they adequately answer the original request.
+
+      **Evaluation Output**:
+      - [SUPERVISOR:APPROVE] - Research complete, results are sufficient
+      - [SUPERVISOR:REJECT] - Insufficient, restart from planning (specify what's missing)
+
+      **Important**: If there are issues, include specific instructions for the Planner.
+    pass_previous_response: true
+    transitions:
+      - condition: approved
+        next_step: COMPLETE
+      - condition: rejected
+        next_step: plan
+
+initial_step: plan

@@ -1,0 +1,96 @@
+# MAGI System Workflow
+# エヴァンゲリオンのMAGIシステムを模した合議制ワークフロー
+# 3つの人格（科学者・育成者・実務家）が異なる観点から分析・投票する
+
+name: magi
+description: MAGI合議システム - 3つの観点から分析し多数決で判定
+
+max_iterations: 5
+
+steps:
+  - name: melchior
+    agent: ~/.takt/agents/magi/melchior.md
+    instruction_template: |
+      # MAGI System 起動
+
+      ## 審議事項
+      {task}
+
+      ## 指示
+      あなたはMAGI System の MELCHIOR-1 です。
+      科学者・技術者の観点から上記を分析し、判定を下してください。
+
+      判定は以下のいずれか:
+      - [MELCHIOR:APPROVE] - 賛成
+      - [MELCHIOR:REJECT] - 反対
+      - [MELCHIOR:CONDITIONAL] - 条件付き賛成
+    transitions:
+      - condition: always
+        next_step: balthasar
+
+  - name: balthasar
+    agent: ~/.takt/agents/magi/balthasar.md
+    instruction_template: |
+      # MAGI System 継続
+
+      ## 審議事項
+      {task}
+
+      ## MELCHIOR-1 の判定
+      {previous_response}
+
+      ## 指示
+      あなたはMAGI System の BALTHASAR-2 です。
+      育成者の観点から上記を分析し、判定を下してください。
+      MELCHIORの判定は参考にしつつも、独自の観点で判断してください。
+
+      判定は以下のいずれか:
+      - [BALTHASAR:APPROVE] - 賛成
+      - [BALTHASAR:REJECT] - 反対
+      - [BALTHASAR:CONDITIONAL] - 条件付き賛成
+    pass_previous_response: true
+    transitions:
+      - condition: always
+        next_step: casper
+
+  - name: casper
+    agent: ~/.takt/agents/magi/casper.md
+    instruction_template: |
+      # MAGI System 最終審議
+
+      ## 審議事項
+      {task}
+
+      ## これまでの判定
+      {previous_response}
+
+      ## 指示
+      あなたはMAGI System の CASPER-3 です。
+      実務・現実の観点から上記を分析し、判定を下してください。
+
+      **最後に、3者の判定を集計し、最終結論を出してください。**
+
+      ### 最終結論（必須）
+      3者の多数決で最終判定を出す:
+      - [MAGI:APPROVE] - 承認（2票以上賛成）
+      - [MAGI:REJECT] - 却下（2票以上反対）
+      - [MAGI:CONDITIONAL] - 条件付き承認（条件付きが多数または意見が分かれた場合）
+
+      **最終結論のフォーマット例:**
+      ```
+      ## MAGI System 最終判定
+
+      | システム | 判定 |
+      |----------|------|
+      | MELCHIOR-1 | APPROVE |
+      | BALTHASAR-2 | CONDITIONAL |
+      | CASPER-3 | APPROVE |
+
+      **結論: [MAGI:APPROVE]**
+
+      [理由・まとめ]
+      ```
+    pass_previous_response: true
+    transitions:
+      - condition: always
+        next_step: COMPLETE

@@ -1,0 +1,42 @@
+/**
+ * Help display
+ */
+
+import { header, info } from '../utils/ui.js';
+import { getDebugLogFile } from '../utils/debug.js';
+
+/**
+ * Show help information
+ */
+export function showHelp(): void {
+  header('TAKT - Task Agent Koordination Tool');
+
+  console.log(`
+Usage:
+  takt {task}        Execute task with current workflow (new session)
+  takt -r {task}     Execute task, resuming previous agent sessions
+  takt /run-tasks    Run all pending tasks from .takt/tasks/
+  takt /switch       Switch workflow interactively
+  takt /clear        Clear agent conversation sessions
+  takt /help         Show this help
+
+Options:
+  -r, --resume       Resume previous session (continue agent conversations)
+
+Examples:
+  takt "Fix the bug in main.ts"         # Start fresh
+  takt -r "Continue the fix"            # Resume previous session
+  takt /switch
+  takt /run-tasks
+
+Configuration (.takt/config.yaml):
+  workflow: default    # Current workflow
+  verbose: true        # Enable verbose output
+`);
+
+  // Show debug log path if enabled
+  const debugLogFile = getDebugLogFile();
+  if (debugLogFile) {
+    info(`Debug log: ${debugLogFile}`);
+  }
+}

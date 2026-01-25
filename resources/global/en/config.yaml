@@ -1,0 +1,19 @@
+# TAKT Global Configuration
+# This file contains default settings for takt.
+
+# Language setting (en or ja)
+language: en
+
+# Trusted directories - projects in these directories skip confirmation prompts
+trusted_directories: []
+
+# Default workflow to use when no workflow is specified
+default_workflow: default
+
+# Log level: debug, info, warn, error
+log_level: info
+
+# Debug settings (optional)
+# debug:
+#   enabled: false
+#   log_file: ~/.takt/logs/debug.log
