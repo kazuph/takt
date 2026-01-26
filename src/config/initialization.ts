@@ -14,11 +14,13 @@ import {
   getGlobalAgentsDir,
   getGlobalWorkflowsDir,
   getGlobalLogsDir,
+  getProjectConfigDir,
   ensureDir,
 } from './paths.js';
 import {
   copyGlobalResourcesToDir,
   copyLanguageResourcesToDir,
+  copyProjectResourcesToDir,
 } from '../resources/index.js';
 import { setLanguage } from './globalConfig.js';
 
@@ -73,4 +75,15 @@ export async function initGlobalDirs(): Promise<void> {
     // Just copy base global resources (won't overwrite existing)
     copyGlobalResourcesToDir(getGlobalConfigDir());
   }
+}
+
+/**
+ * Initialize project-level .takt directory.
+ * Creates .takt/ and copies project resources (e.g., .gitignore).
+ * Only copies files that don't exist.
+ */
+export function initProjectDirs(projectDir: string): void {
+  const configDir = getProjectConfigDir(projectDir);
+  ensureDir(configDir);
+  copyProjectResourcesToDir(configDir);
 }

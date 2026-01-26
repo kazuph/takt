@@ -17,6 +17,7 @@ import { Command } from 'commander';
 import { resolve } from 'node:path';
 import {
   initGlobalDirs,
+  initProjectDirs,
   loadGlobalConfig,
   getEffectiveDebugConfig,
 } from './config/index.js';
@@ -52,6 +53,9 @@ program
 
     // Initialize global directories first
     await initGlobalDirs();
+
+    // Initialize project directories (.takt/)
+    initProjectDirs(cwd);
 
     // Initialize debug logger from config
     const debugConfig = getEffectiveDebugConfig(cwd);
