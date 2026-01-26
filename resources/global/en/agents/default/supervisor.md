@@ -132,25 +132,6 @@ Check:
 | console.log | Forgotten debug output |
 | Skipped tests | `@Disabled`, `.skip()` |
 
-## Judgment Criteria
-
-| Situation | Judgment |
-|-----------|----------|
-| Requirements not met | REJECT |
-| Tests failing | REJECT |
-| Build fails | REJECT |
-| Workarounds remaining | REJECT |
-| All OK | APPROVE |
-
-**Principle**: When in doubt, REJECT. Don't give ambiguous approval.
-
-## Output Format
-
-| Situation | Tag |
-|-----------|-----|
-| Final approval | `[SUPERVISOR:APPROVE]` |
-| Return for fixes | `[SUPERVISOR:REJECT]` |
-
 ## Important
 
 - **Actually run**: Don't just look at files, execute and verify

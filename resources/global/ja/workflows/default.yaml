@@ -18,6 +18,39 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 判断基準
+       
+      | 状況 | 判定 |
+      |------|------|
+      | 要件が明確で実装可能 | DONE |
+      | 要件が不明確、情報不足 | BLOCKED |
+       
+      ## 出力フォーマット
+         
+      | 状況 | タグ |
+      |------|------|
+      | 分析完了 | `[PLANNER:DONE]` |
+      | 情報不足 | `[PLANNER:BLOCKED]` |
+       
+      ### DONE時の出力構造
+       
+      ```
+      [PLANNER:DONE]
+      ```
+       
+      ### BLOCKED時の出力構造
+        
+      ```
+      [PLANNER:BLOCKED]
+      
+      確認事項:
+      - {質問1}
+      - {質問2}
+      ```
+      分析結果を以下のタグで出力してください：
+      - [PLANNER:DONE] 分析完了
+      - [PLANNER:BLOCKED] 情報不足（確認事項を記載）
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -67,9 +100,6 @@ steps:
       ## 確認事項（あれば）
       - {不明点や確認が必要な点}
       ```
-
-      完了したら [PLANNER:DONE] を出力。
-      要件が不明確な場合は [PLANNER:BLOCKED] を出力。
     pass_previous_response: true
     transitions:
       - condition: done
@@ -88,6 +118,46 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |      
+      ## 出力フォーマット
+      
+      作業完了時は必ず以下のタグを含めてください:
+        
+      | 状況 | タグ |
+      |------|------|
+      | 実装完了 | `[CODER:DONE]` |
+      | Architectの指摘を修正完了 | `[CODER:FIXED]` |
+      | 判断できない/情報不足 | `[CODER:BLOCKED]` |
+      
+      **重要**: 迷ったら `[BLOCKED]`。勝手に判断しない。
+      
+      ### 出力例
+        
+      **実装完了時:**
+      ```
+      実装完了しました。
+      - 作成: `src/auth/service.ts`, `tests/auth.test.ts`
+      - 変更: `src/routes.ts`
+        
+      [CODER:DONE]
+      ```
+        
+      **ブロック時:**
+      ```
+      [CODER:BLOCKED]
+      理由: DBスキーマが未定義のため実装できません
+      必要な情報: usersテーブルの構造
+      ```
+        
+      **修正完了時:**
+      ```
+      Architectの指摘3点を修正しました。
+      - 型定義を追加
+      - エラーハンドリングを修正
+      - テストケースを追加
+        
+      [CODER:FIXED]
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -140,9 +210,6 @@ steps:
       - **検討した選択肢**: {選択肢リスト}
       - **理由**: {選んだ理由}
       ```
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を出力し、planに戻ります。
     transitions:
       - condition: done
         next_step: review
@@ -157,6 +224,58 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 判定基準
+
+      | 状況 | 判定 |
+      |------|------|
+      | 構造に問題がある | REJECT |
+      | 設計原則違反がある | REJECT |
+      | セキュリティ問題がある | REJECT |
+      | テストが不十分 | REJECT |
+      | 改善すべき点がある（ブロッキングではないが対応すべき） | IMPROVE |
+      | 問題なし | APPROVE |
+
+      **IMPROVEの使い方:**
+      - 設計としては許容範囲だが、改善した方が良い点がある場合
+      - 次のステップに進む前に修正させたい軽微な問題
+      - 例: 命名の改善、小さなリファクタリング、コメント追加
+
+      ## ステータス出力形式
+
+      レビュー結果を以下のタグで出力してください：
+      - [ARCHITECT:APPROVE] 問題なし
+      - [ARCHITECT:IMPROVE] 軽微な改善必要
+      - [ARCHITECT:REJECT] 構造的な修正必要
+
+      ### 出力例
+
+      **REJECTの場合:**
+      ```
+      [ARCHITECT:REJECT]
+
+      ### 問題点
+
+      1. **ファイルサイズ超過**
+         - 場所: `src/services/user.ts` (523行)
+         - 問題: 単一ファイルに認証・権限・プロフィール管理が混在
+         - 修正案: 以下の3ファイルに分割
+           - `src/services/auth.ts` - 認証
+           - `src/services/permission.ts` - 権限
+           - `src/services/profile.ts` - プロフィール
+      ```
+
+      **APPROVEの場合:**
+      ```
+      [ARCHITECT:APPROVE]
+
+      ### 良い点
+      - モジュール分割が適切
+      - 単一責務が守られている
+
+      ### 改善提案（任意）
+      - `utils/` 内の共通処理は将来的に整理を検討
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -175,10 +294,7 @@ steps:
       ## Instructions
       **アーキテクチャと設計**のレビューに集中してください。AI特有の問題はレビューしないでください（次のステップで行います）。
 
-      変更をレビューしてフィードバックを提供してください:
-      - [ARCHITECT:APPROVE] 問題なしの場合
-      - [ARCHITECT:IMPROVE] 改善すべき点がある場合（軽微な修正）
-      - [ARCHITECT:REJECT] 構造的な変更が必要な場合（具体的な問題をリスト）
+      変更をレビューしてフィードバックを提供してください。
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
@@ -230,6 +346,46 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 出力フォーマット
+      
+      作業完了時は必ず以下のタグを含めてください:
+      
+      | 状況 | タグ |
+      |------|------|
+      | 実装完了 | `[CODER:DONE]` |
+      | Architectの指摘を修正完了 | `[CODER:FIXED]` |
+      | 判断できない/情報不足 | `[CODER:BLOCKED]` |
+      
+      **重要**: 迷ったら `[BLOCKED]`。勝手に判断しない。
+      
+      ### 出力例
+      
+      **実装完了時:**
+      ```
+      実装完了しました。
+      - 作成: `src/auth/service.ts`, `tests/auth.test.ts`
+      - 変更: `src/routes.ts`
+      
+      [CODER:DONE]
+      ```
+      
+      **ブロック時:**
+      ```
+      [CODER:BLOCKED]
+      理由: DBスキーマが未定義のため実装できません
+      必要な情報: usersテーブルの構造
+      ```
+      
+      **修正完了時:**
+      ```
+      Architectの指摘3点を修正しました。
+      - 型定義を追加
+      - エラーハンドリングを修正
+      - テストケースを追加
+      
+      [CODER:FIXED]
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -253,9 +409,6 @@ steps:
       - 小さなリファクタリング
       - コメントの追加・修正
       - コードの整理
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
     transitions:
       - condition: done
@@ -271,6 +424,32 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 判定基準
+      
+      | 状況 | 判定 |
+      |------|------|
+      | 仮定が間違っている（動作に影響） | REJECT |
+      | もっともらしいが間違っているコード | REJECT |
+      | コードベースの文脈に重大な不整合 | REJECT |
+      | スコープクリープ | APPROVE（警告を付記） |
+      | 軽微なスタイルの逸脱のみ | APPROVE |
+      | コードが文脈に合い動作する | APPROVE |
+      
+      **注意:** スコープクリープは警告として記載するが、それだけでREJECTしない。大きな変更が必要なタスクもある。
+      
+      ## 出力フォーマット
+      
+      | 状況 | タグ |
+      |------|------|
+      | AI特有の問題なし | `[AI_REVIEW:APPROVE]` |
+      | 問題あり | `[AI_REVIEW:REJECT]` |
+
+      ## ステータス出力形式
+
+      レビュー結果を以下のタグで出力してください：
+      - [AI_REVIEW:APPROVE] AI特有の問題なし
+      - [AI_REVIEW:REJECT] 問題あり
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -292,10 +471,6 @@ steps:
       - もっともらしいが間違っているパターン
       - 既存コードベースとの適合性
       - スコープクリープの検出
-
-      以下を含めてください:
-      - [AI_REVIEW:APPROVE] AI特有の問題が見つからない場合
-      - [AI_REVIEW:REJECT] 問題が検出された場合（具体的な問題をリスト）
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
@@ -344,6 +519,46 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 出力フォーマット
+      
+      作業完了時は必ず以下のタグを含めてください:
+      
+      | 状況 | タグ |
+      |------|------|
+      | 実装完了 | `[CODER:DONE]` |
+      | Architectの指摘を修正完了 | `[CODER:FIXED]` |
+      | 判断できない/情報不足 | `[CODER:BLOCKED]` |
+      
+      **重要**: 迷ったら `[BLOCKED]`。勝手に判断しない。
+      
+      ### 出力例
+      
+      **実装完了時:**
+      ```
+      実装完了しました。
+      - 作成: `src/auth/service.ts`, `tests/auth.test.ts`
+      - 変更: `src/routes.ts`
+      
+      [CODER:DONE]
+      ```
+      
+      **ブロック時:**
+      ```
+      [CODER:BLOCKED]
+      理由: DBスキーマが未定義のため実装できません
+      必要な情報: usersテーブルの構造
+      ```
+      
+      **修正完了時:**
+      ```
+      Architectの指摘3点を修正しました。
+      - 型定義を追加
+      - エラーハンドリングを修正
+      - テストケースを追加
+      
+      [CODER:FIXED]
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -365,9 +580,6 @@ steps:
       - もっともらしいが間違っている実装の修正
       - 既存コードベースのパターンとの整合
       - スコープクリープの除去
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
     transitions:
       - condition: done
@@ -383,6 +595,21 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 判定基準
+
+      | 状況 | 判定 |
+      |------|------|
+      | 重大な脆弱性（即REJECT） | REJECT |
+      | 中程度の脆弱性 | REJECT |
+      | 軽微な問題・警告のみ | APPROVE（警告を付記） |
+      | セキュリティ問題なし | APPROVE |
+
+      ## ステータス出力形式
+
+      レビュー結果を以下のタグで出力してください：
+      - [SECURITY:APPROVE] セキュリティ問題なし
+      - [SECURITY:REJECT] 脆弱性があり修正が必要（具体的な問題をリスト）
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -404,10 +631,6 @@ steps:
       - 認証・認可の問題
       - データ露出リスク
       - 暗号化の弱点
-
-      以下を含めてください:
-      - [SECURITY:APPROVE] セキュリティ問題がない場合
-      - [SECURITY:REJECT] 脆弱性が検出された場合（具体的な問題をリスト）
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
@@ -459,6 +682,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## ステータス出力形式
+
+      作業完了時は必ず以下のタグを含めてください：
+      - [CODER:DONE] セキュリティ修正完了
+      - [CODER:BLOCKED] 判断できない/情報不足
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -476,9 +705,6 @@ steps:
       ## Instructions
       **重要**: セキュリティレビューで指摘された脆弱性を修正してください。
       セキュリティの問題は最優先で対応が必要です。
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
     transitions:
       - condition: done
@@ -497,6 +723,46 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## 出力フォーマット
+      
+      作業完了時は必ず以下のタグを含めてください:
+      
+      | 状況 | タグ |
+      |------|------|
+      | 実装完了 | `[CODER:DONE]` |
+      | Architectの指摘を修正完了 | `[CODER:FIXED]` |
+      | 判断できない/情報不足 | `[CODER:BLOCKED]` |
+      
+      **重要**: 迷ったら `[BLOCKED]`。勝手に判断しない。
+      
+      ### 出力例
+      
+      **実装完了時:**
+      ```
+      実装完了しました。
+      - 作成: `src/auth/service.ts`, `tests/auth.test.ts`
+      - 変更: `src/routes.ts`
+      
+      [CODER:DONE]
+      ```
+      
+      **ブロック時:**
+      ```
+      [CODER:BLOCKED]
+      理由: DBスキーマが未定義のため実装できません
+      必要な情報: usersテーブルの構造
+      ```
+      
+      **修正完了時:**
+      ```
+      Architectの指摘3点を修正しました。
+      - 型定義を追加
+      - エラーハンドリングを修正
+      - テストケースを追加
+      
+      [CODER:FIXED]
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -515,9 +781,6 @@ steps:
       **重要**: Architectのフィードバックに対応してください。
       「Original User Request」は参考情報であり、最新の指示ではありません。
       セッションの会話履歴を確認し、Architectの指摘事項を修正してください。
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
     transitions:
       - condition: done
@@ -534,6 +797,24 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      
+      | 状況 | 判定 |
+      |------|------|
+      | 要求が満たされていない | REJECT |
+      | テストが失敗する | REJECT |
+      | ビルドが通らない | REJECT |
+      | その場しのぎが残っている | REJECT |
+      | すべて問題なし | APPROVE |
+      
+      **原則**: 疑わしきは REJECT。曖昧な承認はしない。
+      
+      ## 出力フォーマット
+      
+      | 状況 | タグ |
+      |------|------|
+      | 最終承認 | `[SUPERVISOR:APPROVE]` |
+      | 差し戻し | `[SUPERVISOR:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -619,10 +900,6 @@ steps:
       npm run build
       ```
       ```
-
-      出力:
-      - [SUPERVISOR:APPROVE] すべて完了、マージ可能
-      - [SUPERVISOR:REJECT] 問題あり（具体的な問題を記載）
     transitions:
       - condition: approved
         next_step: COMPLETE

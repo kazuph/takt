@@ -18,6 +18,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Output analysis results with the following tags:
+      - [PLANNER:DONE] Analysis complete
+      - [PLANNER:BLOCKED] Insufficient info (list clarifications needed)
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -67,9 +73,6 @@ steps:
       ## Clarifications Needed (if any)
       - {Unclear points or items requiring confirmation}
       ```
-
-      Output [PLANNER:DONE] when complete.
-      Output [PLANNER:BLOCKED] if requirements are unclear.
     pass_previous_response: true
     transitions:
       - condition: done
@@ -88,6 +91,14 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Always include these tags when work is complete:
+      - [CODER:DONE] Implementation complete
+      - [CODER:BLOCKED] Cannot decide/insufficient info
+
+      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -140,9 +151,6 @@ steps:
       - **Options Considered**: {List of options}
       - **Reason**: {Why this option was chosen}
       ```
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed (returns to plan).
     transitions:
       - condition: done
         next_step: review
@@ -157,6 +165,58 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Structural issues | REJECT |
+      | Design principle violations | REJECT |
+      | Security issues | REJECT |
+      | Insufficient tests | REJECT |
+      | Improvements needed (non-blocking but should be addressed) | IMPROVE |
+      | No issues | APPROVE |
+
+      **How to use IMPROVE:**
+      - Design is acceptable but there are points that could be better
+      - Minor issues you want fixed before proceeding to next step
+      - Examples: naming improvements, small refactoring, adding comments
+
+      ## Status Output Format
+
+      Output review results with the following tags:
+      - [ARCHITECT:APPROVE] No issues
+      - [ARCHITECT:IMPROVE] Minor improvements needed
+      - [ARCHITECT:REJECT] Structural changes required
+
+      ### Output Examples
+
+      **REJECT case:**
+      ```
+      [ARCHITECT:REJECT]
+
+      ### Issues
+
+      1. **File Size Exceeded**
+         - Location: `src/services/user.ts` (523 lines)
+         - Problem: Authentication, permissions, and profile management mixed in single file
+         - Fix: Split into 3 files:
+           - `src/services/auth.ts` - Authentication
+           - `src/services/permission.ts` - Permissions
+           - `src/services/profile.ts` - Profile
+      ```
+
+      **APPROVE case:**
+      ```
+      [ARCHITECT:APPROVE]
+
+      ### Positive Points
+      - Appropriate module organization
+      - Single responsibility maintained
+
+      ### Improvement Suggestions (Optional)
+      - Consider organizing shared utilities in `utils/` in the future
+      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -175,10 +235,7 @@ steps:
       ## Instructions
       Focus on **architecture and design** review. Do NOT review AI-specific issues (that's the next step).
 
-      Review the changes and provide feedback:
-      - [ARCHITECT:APPROVE] if no issues
-      - [ARCHITECT:IMPROVE] if minor improvements needed
-      - [ARCHITECT:REJECT] if structural changes are needed (list specific issues)
+      Review the changes and provide feedback.
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
@@ -230,6 +287,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Always include these tags when work is complete:
+      - [CODER:DONE] Improvements complete
+      - [CODER:BLOCKED] Cannot decide/insufficient info
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -254,8 +317,6 @@ steps:
       - Adding/fixing comments
       - Code organization
 
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed.
     pass_previous_response: true
     transitions:
       - condition: done
@@ -271,6 +332,25 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Incorrect assumptions (affecting behavior) | REJECT |
+      | Plausible-but-wrong code | REJECT |
+      | Significant context mismatch with codebase | REJECT |
+      | Scope creep | APPROVE (with warning noted) |
+      | Minor style deviations only | APPROVE |
+      | Code fits context and works | APPROVE |
+
+      **Note:** Scope creep is noted as a warning but doesn't warrant REJECT alone. Some tasks require large changes.
+
+      ## Status Output Format
+
+      Output review results with the following tags:
+      - [AI_REVIEW:APPROVE] No AI-specific issues
+      - [AI_REVIEW:REJECT] Issues found
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -292,10 +372,6 @@ steps:
       - Plausible but wrong patterns
       - Context fit with existing codebase
       - Scope creep detection
-
-      Include:
-      - [AI_REVIEW:APPROVE] if no AI-specific issues found
-      - [AI_REVIEW:REJECT] if issues detected (list specific problems)
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
@@ -344,6 +420,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Always include these tags when work is complete:
+      - [CODER:DONE] Fixes complete
+      - [CODER:BLOCKED] Cannot decide/insufficient info
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -366,8 +448,6 @@ steps:
       - Aligning with existing codebase patterns
       - Removing scope creep
 
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed.
     pass_previous_response: true
     transitions:
       - condition: done
@@ -383,6 +463,21 @@ steps:
       - Grep
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Critical vulnerability (Immediate REJECT) | REJECT |
+      | Medium severity vulnerability | REJECT |
+      | Minor issues/warnings only | APPROVE (note warnings) |
+      | No security issues | APPROVE |
+
+      ## Status Output Format
+
+      Output review results with the following tags:
+      - [SECURITY:APPROVE] No security issues
+      - [SECURITY:REJECT] Vulnerabilities require fixes
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -404,10 +499,6 @@ steps:
       - Authentication/Authorization issues
       - Data exposure risks
       - Cryptographic weaknesses
-
-      Include:
-      - [SECURITY:APPROVE] if no security issues found
-      - [SECURITY:REJECT] if vulnerabilities detected (list specific issues)
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
@@ -459,6 +550,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Always include these tags when work is complete:
+      - [CODER:DONE] Security fixes complete
+      - [CODER:BLOCKED] Cannot decide/insufficient info
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -477,8 +574,6 @@ steps:
       **Important**: Fix the vulnerabilities identified in the security review.
       Security issues require highest priority.
 
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed.
     pass_previous_response: true
     transitions:
       - condition: done
@@ -497,6 +592,12 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Status Output Format
+
+      Always include these tags when work is complete:
+      - [CODER:DONE] Fixes complete
+      - [CODER:BLOCKED] Cannot decide/insufficient info
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -516,8 +617,6 @@ steps:
       The "Original User Request" is reference information, not the latest instruction.
       Review the session conversation history and fix the issues raised by the Architect.
 
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed.
     pass_previous_response: true
     transitions:
       - condition: done
@@ -534,6 +633,24 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    status_rules: |
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Requirements not met | REJECT |
+      | Tests failing | REJECT |
+      | Build fails | REJECT |
+      | Workarounds remaining | REJECT |
+      | All OK | APPROVE |
+
+      **Principle**: When in doubt, REJECT. Don't give ambiguous approval.
+
+      ## Status Output Format
+
+      Output verification results with the following tags:
+      - [SUPERVISOR:APPROVE] if ready to merge
+      - [SUPERVISOR:REJECT] if issues found (specify the issues)
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}
@@ -619,10 +736,6 @@ steps:
       npm run build
       ```
       ```
-
-      Output:
-      - [SUPERVISOR:APPROVE] if ready to merge
-      - [SUPERVISOR:REJECT] if issues found (specify the issues)
     transitions:
       - condition: approved
         next_step: COMPLETE

@@ -170,22 +170,6 @@ if (!safePath.startsWith(path.resolve(baseDir))) {
 | A09 Logging Failures | Security logging |
 | A10 SSRF | Server-side requests |
 
-## Judgment Criteria
-
-| Situation | Judgment |
-|-----------|----------|
-| Critical vulnerability (Immediate REJECT) | REJECT |
-| Medium severity vulnerability | REJECT |
-| Minor issues/warnings only | APPROVE (note warnings) |
-| No security issues | APPROVE |
-
-## Output Format
-
-| Situation | Tag |
-|-----------|-----|
-| No security issues | `[SECURITY:APPROVE]` |
-| Vulnerabilities require fixes | `[SECURITY:REJECT]` |
-
 ## Important
 
 **Don't miss anything**: Security vulnerabilities get exploited in production. One oversight can lead to a critical incident.

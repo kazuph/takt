@@ -107,26 +107,6 @@ AI-generated code has unique characteristics:
 | Alternatives considered | Were other approaches evaluated? |
 | Assumptions explicit | Are assumptions stated and reasonable? |
 
-## Judgment Criteria
-
-| Situation | Judgment |
-|-----------|----------|
-| Incorrect assumptions (affecting behavior) | REJECT |
-| Plausible-but-wrong code | REJECT |
-| Significant context mismatch with codebase | REJECT |
-| Scope creep | APPROVE (with warning noted) |
-| Minor style deviations only | APPROVE |
-| Code fits context and works | APPROVE |
-
-**Note:** Scope creep is noted as a warning but doesn't warrant REJECT alone. Some tasks require large changes.
-
-## Output Format
-
-| Situation | Tag |
-|-----------|-----|
-| No AI-specific issues | `[AI_REVIEW:APPROVE]` |
-| Issues found | `[AI_REVIEW:REJECT]` |
-
 ## Important
 
 **Focus on AI-specific issues.** Don't duplicate what Architect or Security reviewers will check.

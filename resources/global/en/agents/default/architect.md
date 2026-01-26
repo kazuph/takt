@@ -268,66 +268,6 @@ Alternatives:
 
 **Point**: Rather than repeating "fix this again", step back and suggest a different path.
 
-## Judgment Criteria
-
-| Situation | Judgment |
-|-----------|----------|
-| Structural issues | REJECT |
-| Design principle violations | REJECT |
-| Security issues | REJECT |
-| Insufficient tests | REJECT |
-| Improvements needed (non-blocking but should be addressed) | IMPROVE |
-| No issues | APPROVE |
-
-**How to use IMPROVE:**
-- Design is acceptable but there are points that could be better
-- Minor issues you want fixed before proceeding to next step
-- Examples: naming improvements, small refactoring, adding comments
-
-## Output Format
-
-| Situation | Tag |
-|-----------|-----|
-| No issues | `[ARCHITECT:APPROVE]` |
-| Improvements needed (minor) | `[ARCHITECT:IMPROVE]` |
-| Issues require fixes | `[ARCHITECT:REJECT]` |
-
-### Output Examples
-
-**REJECT case:**
-
-```
-[ARCHITECT:REJECT]
-
-### Issues
-
-1. **File Size Exceeded**
-   - Location: `src/services/user.ts` (523 lines)
-   - Problem: Authentication, permissions, and profile management mixed in single file
-   - Fix: Split into 3 files:
-     - `src/services/auth.ts` - Authentication
-     - `src/services/permission.ts` - Permissions
-     - `src/services/profile.ts` - Profile
-
-2. **Fallback Value Overuse**
-   - Location: `src/api/handler.ts:42`
-   - Problem: `user.name ?? 'unknown'` hides errors
-   - Fix: Throw error when null
-```
-
-**APPROVE case:**
-
-```
-[ARCHITECT:APPROVE]
-
-### Positive Points
-- Appropriate module organization
-- Single responsibility maintained
-
-### Improvement Suggestions (Optional)
-- Consider organizing shared utilities in `utils/` in the future
-```
-
 ## Important
 
 **Be specific.** These are prohibited:

@@ -48,29 +48,6 @@ Determine the implementation direction:
 | Requirements are clear and implementable | DONE |
 | Requirements are unclear, insufficient info | BLOCKED |
 
-## Output Format
-
-| Situation | Tag |
-|-----------|-----|
-| Analysis complete | `[PLANNER:DONE]` |
-| Insufficient info | `[PLANNER:BLOCKED]` |
-
-### DONE Output Structure
-
-```
-[PLANNER:DONE]
-```
-
-### BLOCKED Output Structure
-
-```
-[PLANNER:BLOCKED]
-
-Clarifications needed:
-- {Question 1}
-- {Question 2}
-```
-
 ## Important
 
 **Keep analysis simple.** Overly detailed plans are unnecessary. Provide enough direction for Coder to proceed with implementation.

@@ -31,6 +31,8 @@ export interface RunAgentOptions {
   agentPath?: string;
   /** Allowed tools for this agent run */
   allowedTools?: string[];
+  /** Status output rules to inject into system prompt */
+  statusRules?: string;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
@@ -128,7 +130,13 @@ export async function runCustomAgent(
   }
 
   // Custom agent with prompt
-  const systemPrompt = loadAgentPrompt(agentConfig);
+  let systemPrompt = loadAgentPrompt(agentConfig);
+
+  // Inject status rules if provided
+  if (options.statusRules) {
+    systemPrompt = `${systemPrompt}\n\n${options.statusRules}`;
+  }
+
   const tools = allowedTools;
   const provider = resolveProvider(options.cwd, options, agentConfig);
   const model = resolveModel(options.cwd, options, agentConfig);
@@ -206,7 +214,13 @@ export async function runAgent(
     if (!existsSync(options.agentPath)) {
       throw new Error(`Agent file not found: ${options.agentPath}`);
     }
-    const systemPrompt = loadAgentPromptFromPath(options.agentPath);
+    let systemPrompt = loadAgentPromptFromPath(options.agentPath);
+
+    // Inject status rules if provided
+    if (options.statusRules) {
+      systemPrompt = `${systemPrompt}\n\n${options.statusRules}`;
+    }
+
     const tools = options.allowedTools;
     const provider = resolveProvider(options.cwd, options);
     const model = resolveModel(options.cwd, options);
