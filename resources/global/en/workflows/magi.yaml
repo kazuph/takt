@@ -1,6 +1,16 @@
 # MAGI System Workflow
 # A deliberation workflow modeled after Evangelion's MAGI system
 # Three personas (scientist, nurturer, pragmatist) analyze from different perspectives and vote
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: magi
 description: MAGI Deliberation System - Analyze from 3 perspectives and decide by majority

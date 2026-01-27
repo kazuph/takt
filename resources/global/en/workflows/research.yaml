@@ -5,6 +5,16 @@
 # Flow:
 # plan -> dig -> supervise -> COMPLETE (approved)
 #                          -> plan (rejected: restart from planning)
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: research
 description: Research workflow - autonomously executes research without asking questions
@@ -49,7 +59,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Status
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: plan
 
       ## Research Request
@@ -111,7 +122,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Status
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: dig
 
       ## Original Research Request
@@ -188,7 +200,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Status
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: supervise (research quality evaluation)
 
       ## Original Research Request

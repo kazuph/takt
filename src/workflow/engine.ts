@@ -22,6 +22,7 @@ import {
   createInitialState,
   addUserInput,
   getPreviousOutput,
+  incrementStepIteration,
 } from './state-manager.js';
 import { generateReportDir } from '../utils/session.js';
 
@@ -117,11 +118,12 @@ export class WorkflowEngine extends EventEmitter {
   }
 
   /** Build instruction from template */
-  private buildInstruction(step: WorkflowStep): string {
+  private buildInstruction(step: WorkflowStep, stepIteration: number): string {
     return buildInstructionFromTemplate(step, {
       task: this.task,
       iteration: this.state.iteration,
       maxIterations: this.config.maxIterations,
+      stepIteration,
       cwd: this.cwd,
       userInputs: this.state.userInputs,
       previousOutput: getPreviousOutput(this.state),
@@ -140,7 +142,9 @@ export class WorkflowEngine extends EventEmitter {
 
   /** Run a single step */
   private async runStep(step: WorkflowStep): Promise<AgentResponse> {
-    const instruction = this.buildInstruction(step);
+    // Increment step iteration counter before building instruction
+    const stepIteration = incrementStepIteration(this.state, step.name);
+    const instruction = this.buildInstruction(step, stepIteration);
     const sessionId = this.state.agentSessions.get(step.agent);
 
     const agentOptions: RunAgentOptions = {

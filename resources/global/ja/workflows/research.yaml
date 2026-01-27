@@ -5,6 +5,16 @@
 # フロー:
 # plan -> dig -> supervise -> COMPLETE (approved)
 #                          -> plan (rejected: 計画からやり直し)
+#
+# テンプレート変数:
+#   {iteration}      - ワークフロー全体のターン数（全エージェントで実行されたステップの合計）
+#   {max_iterations} - ワークフローの最大イテレーション数
+#   {step_iteration} - ステップごとのイテレーション数（このステップが何回実行されたか）
+#   {task}           - 元のユーザー要求
+#   {previous_response} - 前のステップの出力
+#   {git_diff}       - 現在のコミットされていない変更（git diff）
+#   {user_inputs}    - ワークフロー中に蓄積されたユーザー入力
+#   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
 name: research
 description: 調査ワークフロー - 質問せずに自律的に調査を実行
@@ -49,7 +59,8 @@ steps:
       ```
     instruction_template: |
       ## ワークフロー状況
-      - イテレーション: {iteration}/{max_iterations}
+      - イテレーション: {iteration}/{max_iterations}（ワークフロー全体）
+      - ステップ実行回数: {step_iteration}（このステップの実行回数）
       - ステップ: plan
 
       ## 調査依頼
@@ -111,7 +122,8 @@ steps:
       ```
     instruction_template: |
       ## ワークフロー状況
-      - イテレーション: {iteration}/{max_iterations}
+      - イテレーション: {iteration}/{max_iterations}（ワークフロー全体）
+      - ステップ実行回数: {step_iteration}（このステップの実行回数）
       - ステップ: dig
 
       ## 元の調査依頼
@@ -188,7 +200,8 @@ steps:
       ```
     instruction_template: |
       ## ワークフロー状況
-      - イテレーション: {iteration}/{max_iterations}
+      - イテレーション: {iteration}/{max_iterations}（ワークフロー全体）
+      - ステップ実行回数: {step_iteration}（このステップの実行回数）
       - ステップ: supervise (調査品質評価)
 
       ## 元の調査依頼

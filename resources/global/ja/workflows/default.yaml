@@ -1,5 +1,15 @@
 # Default TAKT Workflow
 # Plan -> Coder -> Architect Review -> AI Review -> Security Review -> Supervisor Approval
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: default
 description: Standard development workflow with planning and specialized reviews
@@ -55,7 +65,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: plan (タスク分析)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/00-plan.md
@@ -79,7 +90,7 @@ steps:
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **レポートフォーマット:**
       ```markdown
@@ -155,7 +166,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: implement
       - Report Directory: .takt/reports/{report_dir}/
       - Report Files:
@@ -174,7 +186,7 @@ steps:
 
       **レポート出力:** 上記の `Report Files` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **Scopeレポートフォーマット（実装開始時に作成）:**
       ```markdown
@@ -279,7 +291,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: review (アーキテクチャレビュー)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/03-architect-review.md
@@ -299,7 +312,7 @@ steps:
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **レポートフォーマット:**
       ```markdown
@@ -382,7 +395,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: improve
 
       ## Architect Feedback (これが最新の指示です - 優先して対応してください)
@@ -462,7 +476,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: ai_review (AI生成コードレビュー)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/04-ai-review.md
@@ -484,7 +499,7 @@ steps:
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **レポートフォーマット:**
       ```markdown
@@ -563,7 +578,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: ai_fix
 
       ## AI Review Feedback (これが最新の指示です - 優先して対応してください)
@@ -638,7 +654,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: security_review
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/05-security-review.md
@@ -660,7 +677,7 @@ steps:
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **レポートフォーマット:**
       ```markdown
@@ -742,7 +759,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: security_fix
 
       ## Security Review Feedback (これが最新の指示です - 優先して対応してください)
@@ -810,7 +828,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: fix
 
       ## Architect Feedback (これが最新の指示です - 優先して対応してください)
@@ -889,7 +908,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
+      - Step Iteration: {step_iteration}（このステップの実行回数）
       - Step: supervise (final verification)
       - Report Directory: .takt/reports/{report_dir}/
       - Report Files:
@@ -917,7 +937,7 @@ steps:
 
       **レポート出力:** 上記の `Report Files` に出力してください。
       - ファイルが存在しない場合: 新規作成
-      - ファイルが存在する場合: `## Iteration {iteration}` セクションを追記
+      - ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記
 
       **Validationレポートフォーマット:**
       ```markdown

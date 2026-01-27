@@ -14,10 +14,12 @@ import { getGitDiff } from '../agents/runner.js';
 export interface InstructionContext {
   /** The main task/prompt */
   task: string;
-  /** Current iteration number */
+  /** Current iteration number (workflow-wide turn count) */
   iteration: number;
   /** Maximum iterations allowed */
   maxIterations: number;
+  /** Current step's iteration number (how many times this step has been executed) */
+  stepIteration: number;
   /** Working directory */
   cwd: string;
   /** User inputs accumulated during workflow */
@@ -40,8 +42,9 @@ function escapeTemplateChars(str: string): string {
  *
  * Supported placeholders:
  * - {task} - The main task/prompt
- * - {iteration} - Current iteration number
+ * - {iteration} - Current iteration number (workflow-wide turn count)
  * - {max_iterations} - Maximum iterations allowed
+ * - {step_iteration} - Current step's iteration number (how many times this step has been executed)
  * - {previous_response} - Output from previous step (if passPreviousResponse is true)
  * - {git_diff} - Current git diff output
  * - {user_inputs} - Accumulated user inputs
@@ -56,9 +59,10 @@ export function buildInstruction(
   // Replace {task}
   instruction = instruction.replace(/\{task\}/g, escapeTemplateChars(context.task));
 
-  // Replace {iteration} and {max_iterations}
+  // Replace {iteration}, {max_iterations}, and {step_iteration}
   instruction = instruction.replace(/\{iteration\}/g, String(context.iteration));
   instruction = instruction.replace(/\{max_iterations\}/g, String(context.maxIterations));
+  instruction = instruction.replace(/\{step_iteration\}/g, String(context.stepIteration));
 
   // Replace {previous_response}
   if (step.passPreviousResponse) {

@@ -1,5 +1,15 @@
 # Default TAKT Workflow
 # Plan -> Coder -> Architect Review -> AI Review -> Security Review -> Supervisor Approval
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: default
 description: Standard development workflow with planning and specialized reviews
@@ -55,7 +65,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: plan (Task Analysis)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/00-plan.md
@@ -79,7 +90,7 @@ steps:
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Report format:**
       ```markdown
@@ -155,7 +166,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: implement
       - Report Directory: .takt/reports/{report_dir}/
       - Report Files:
@@ -174,7 +186,7 @@ steps:
 
       **Report output:** Output to the `Report Files` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Scope report format (create at implementation start):**
       ```markdown
@@ -279,7 +291,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: review (Architecture Review)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/03-architect-review.md
@@ -299,7 +312,7 @@ steps:
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Report format:**
       ```markdown
@@ -382,7 +395,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: improve
 
       ## Architect Feedback (This is the latest instruction - prioritize this)
@@ -463,7 +477,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: ai_review (AI-Generated Code Review)
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/04-ai-review.md
@@ -485,7 +500,7 @@ steps:
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Report format:**
       ```markdown
@@ -564,7 +579,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: ai_fix
 
       ## AI Review Feedback (This is the latest instruction - prioritize this)
@@ -640,7 +656,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: security_review
       - Report Directory: .takt/reports/{report_dir}/
       - Report File: .takt/reports/{report_dir}/05-security-review.md
@@ -662,7 +679,7 @@ steps:
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Report format:**
       ```markdown
@@ -744,7 +761,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: security_fix
 
       ## Security Review Feedback (This is the latest instruction - prioritize this)
@@ -813,7 +831,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: fix
 
       ## Architect Feedback (This is the latest instruction - prioritize this)
@@ -893,7 +912,8 @@ steps:
       ```
     instruction_template: |
       ## Workflow Context
-      - Iteration: {iteration}/{max_iterations}
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
       - Step: supervise (final verification)
       - Report Directory: .takt/reports/{report_dir}/
       - Report Files:
@@ -921,7 +941,7 @@ steps:
 
       **Report output:** Output to the `Report Files` specified above.
       - If file does not exist: Create new file
-      - If file exists: Append with `## Iteration {iteration}` section
+      - If file exists: Append with `## Iteration {step_iteration}` section
 
       **Validation report format:**
       ```markdown

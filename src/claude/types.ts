@@ -104,6 +104,8 @@ export interface ClaudeResult {
   sessionId?: string;
   error?: string;
   interrupted?: boolean;
+  /** All assistant text accumulated during execution (for status detection) */
+  fullContent?: string;
 }
 
 /** Extended result with query ID for concurrent execution */

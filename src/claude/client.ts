@@ -82,7 +82,7 @@ export function getBuiltinStatusPatterns(_agentType: string): Record<string, str
 
 /** Determine status from result */
 function determineStatus(
-  result: { success: boolean; interrupted?: boolean; content: string },
+  result: { success: boolean; interrupted?: boolean; content: string; fullContent?: string },
   patterns: Record<string, string>
 ): Status {
   if (!result.success) {
@@ -92,7 +92,10 @@ function determineStatus(
     }
     return 'blocked';
   }
-  return detectStatus(result.content, patterns);
+  // Use fullContent for status detection (contains all assistant messages)
+  // Fall back to content if fullContent is not available
+  const textForStatusDetection = result.fullContent || result.content;
+  return detectStatus(textForStatusDetection, patterns);
 }
 
 /** Call Claude with an agent prompt */

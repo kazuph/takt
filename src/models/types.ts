@@ -115,6 +115,8 @@ export interface WorkflowState {
   stepOutputs: Map<string, AgentResponse>;
   userInputs: string[];
   agentSessions: Map<string, string>;
+  /** Per-step iteration counters (how many times each step has been executed) */
+  stepIterations: Map<string, number>;
   status: 'running' | 'completed' | 'aborted';
 }
 

@@ -179,6 +179,7 @@ export async function executeClaudeQuery(
       success,
       content: finalContent.trim(),
       sessionId,
+      fullContent: accumulatedAssistantText.trim(),
     };
   } catch (error) {
     unregisterQuery(queryId);

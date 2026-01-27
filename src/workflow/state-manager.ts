@@ -39,8 +39,19 @@ export function createInitialState(
     stepOutputs: new Map(),
     userInputs,
     agentSessions,
+    stepIterations: new Map(),
     status: 'running',
   };
+}
+
+/**
+ * Increment the iteration counter for a step and return the new value.
+ */
+export function incrementStepIteration(state: WorkflowState, stepName: string): number {
+  const current = state.stepIterations.get(stepName) ?? 0;
+  const next = current + 1;
+  state.stepIterations.set(stepName, next);
+  return next;
 }
 
 /**
