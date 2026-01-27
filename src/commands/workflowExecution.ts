@@ -28,6 +28,24 @@ import { selectOption, promptInput } from '../prompt/index.js';
 
 const log = createLogger('workflow');
 
+/**
+ * Format elapsed time in human-readable format
+ */
+function formatElapsedTime(startTime: string, endTime: string): string {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  const elapsedMs = end - start;
+  const elapsedSec = elapsedMs / 1000;
+
+  if (elapsedSec < 60) {
+    return `${elapsedSec.toFixed(1)}s`;
+  }
+
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = Math.floor(elapsedSec % 60);
+  return `${minutes}m ${seconds}s`;
+}
+
 /** Result of workflow execution */
 export interface WorkflowExecutionResult {
   success: boolean;
@@ -167,7 +185,13 @@ export async function executeWorkflow(
     finalizeSessionLog(sessionLog, 'completed');
     // Save log to original cwd so user can find it easily
     const logPath = saveSessionLog(sessionLog, workflowSessionId, cwd);
-    success(`Workflow completed (${state.iteration} iterations)`);
+
+    const elapsed = sessionLog.endTime
+      ? formatElapsedTime(sessionLog.startTime, sessionLog.endTime)
+      : '';
+    const elapsedDisplay = elapsed ? `, ${elapsed}` : '';
+
+    success(`Workflow completed (${state.iteration} iterations${elapsedDisplay})`);
     info(`Session log: ${logPath}`);
     notifySuccess('TAKT', `ワークフロー完了 (${state.iteration} iterations)`);
   });
@@ -182,7 +206,13 @@ export async function executeWorkflow(
     finalizeSessionLog(sessionLog, 'aborted');
     // Save log to original cwd so user can find it easily
     const logPath = saveSessionLog(sessionLog, workflowSessionId, cwd);
-    error(`Workflow aborted after ${state.iteration} iterations: ${reason}`);
+
+    const elapsed = sessionLog.endTime
+      ? formatElapsedTime(sessionLog.startTime, sessionLog.endTime)
+      : '';
+    const elapsedDisplay = elapsed ? ` (${elapsed})` : '';
+
+    error(`Workflow aborted after ${state.iteration} iterations${elapsedDisplay}: ${reason}`);
     info(`Session log: ${logPath}`);
     notifyError('TAKT', `中断: ${reason}`);
   });
