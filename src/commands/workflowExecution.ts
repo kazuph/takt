@@ -5,7 +5,7 @@
 import { WorkflowEngine } from '../workflow/engine.js';
 import type { WorkflowConfig } from '../models/types.js';
 import type { IterationLimitRequest } from '../workflow/types.js';
-import { loadAgentSessions, updateAgentSession, clearAgentSessions } from '../config/paths.js';
+import { loadAgentSessions, updateAgentSession } from '../config/paths.js';
 import {
   header,
   info,
@@ -54,8 +54,6 @@ export interface WorkflowExecutionResult {
 
 /** Options for workflow execution */
 export interface WorkflowExecutionOptions {
-  /** Resume previous session instead of starting fresh */
-  resumeSession?: boolean;
   /** Header prefix for display */
   headerPrefix?: string;
 }
@@ -70,19 +68,13 @@ export async function executeWorkflow(
   options: WorkflowExecutionOptions = {}
 ): Promise<WorkflowExecutionResult> {
   const {
-    resumeSession = false,
     headerPrefix = 'Running Workflow:',
   } = options;
 
-  // Clear previous sessions if not resuming
-  if (!resumeSession) {
-    log.debug('Starting fresh session (clearing previous agent sessions)');
-    clearAgentSessions(cwd);
-  } else {
-    log.debug('Resuming previous session');
-  }
+  // Always continue from previous sessions (use /clear to reset)
+  log.debug('Continuing session (use /clear to reset)');
 
-  header(`${headerPrefix} ${workflowConfig.name}${resumeSession ? ' (resuming)' : ''}`);
+  header(`${headerPrefix} ${workflowConfig.name}`);
 
   const workflowSessionId = generateSessionId();
   const sessionLog = createSessionLog(task, cwd, workflowConfig.name);
@@ -170,6 +162,7 @@ export async function executeWorkflow(
       step: step.name,
       status: response.status,
       contentLength: response.content.length,
+      sessionId: response.sessionId,
     });
     if (displayRef.current) {
       displayRef.current.flush();
@@ -177,6 +170,9 @@ export async function executeWorkflow(
     }
     console.log();
     status('Status', response.status);
+    if (response.sessionId) {
+      status('Session', response.sessionId);
+    }
     addToSessionLog(sessionLog, step.name, response);
   });
 

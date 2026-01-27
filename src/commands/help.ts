@@ -13,19 +13,15 @@ export function showHelp(): void {
 
   console.log(`
 Usage:
-  takt {task}        Execute task with current workflow (new session)
-  takt -r {task}     Execute task, resuming previous agent sessions
+  takt {task}        Execute task with current workflow (continues session)
   takt /run-tasks    Run all pending tasks from .takt/tasks/
   takt /switch       Switch workflow interactively
-  takt /clear        Clear agent conversation sessions
+  takt /clear        Clear agent conversation sessions (reset to initial state)
   takt /help         Show this help
 
-Options:
-  -r, --resume       Resume previous session (continue agent conversations)
-
 Examples:
-  takt "Fix the bug in main.ts"         # Start fresh
-  takt -r "Continue the fix"            # Resume previous session
+  takt "Fix the bug in main.ts"         # Execute task (continues session)
+  takt /clear                           # Clear sessions, start fresh
   takt /switch
   takt /run-tasks
 

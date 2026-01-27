@@ -4,11 +4,10 @@
  * TAKT CLI - Task Agent Koordination Tool
  *
  * Usage:
- *   takt {task}       - Execute task with current workflow (new session)
- *   takt -r {task}    - Execute task, resuming previous session
+ *   takt {task}       - Execute task with current workflow (continues session)
  *   takt /run-tasks   - Run all pending tasks from .takt/tasks/
  *   takt /switch      - Switch workflow interactively
- *   takt /clear       - Clear agent conversation sessions
+ *   takt /clear       - Clear agent conversation sessions (reset to initial state)
  *   takt /help        - Show help
  *   takt /config      - Select permission mode interactively
  */
@@ -46,9 +45,7 @@ program
 
 program
   .argument('[task]', 'Task to execute or slash command')
-  .option('-r, --resume', 'Resume previous session (continue agent conversations)')
-  .action(async (task, options: { resume?: boolean }) => {
-    const resumeSession = options.resume ?? false;
+  .action(async (task) => {
     const cwd = resolve(process.cwd());
 
     // Initialize global directories first
@@ -150,8 +147,8 @@ program
         );
       }
 
-      log.info('Starting task execution', { task, workflow: selectedWorkflow, resumeSession });
-      const taskSuccess = await executeTask(task, cwd, selectedWorkflow, { resumeSession });
+      log.info('Starting task execution', { task, workflow: selectedWorkflow });
+      const taskSuccess = await executeTask(task, cwd, selectedWorkflow);
       if (!taskSuccess) {
         process.exit(1);
       }

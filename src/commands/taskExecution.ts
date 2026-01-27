@@ -18,23 +18,14 @@ import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
 
 const log = createLogger('task');
 
-/** Options for task execution */
-export interface ExecuteTaskOptions {
-  /** Resume previous session instead of starting fresh */
-  resumeSession?: boolean;
-}
-
 /**
  * Execute a single task with workflow
  */
 export async function executeTask(
   task: string,
   cwd: string,
-  workflowName: string = DEFAULT_WORKFLOW_NAME,
-  options: ExecuteTaskOptions = {}
+  workflowName: string = DEFAULT_WORKFLOW_NAME
 ): Promise<boolean> {
-  const { resumeSession = false } = options;
-
   const workflowConfig = loadWorkflow(workflowName);
 
   if (!workflowConfig) {
@@ -47,12 +38,9 @@ export async function executeTask(
   log.debug('Running workflow', {
     name: workflowConfig.name,
     steps: workflowConfig.steps.map(s => s.name),
-    resumeSession,
   });
 
-  const result = await executeWorkflow(workflowConfig, task, cwd, {
-    resumeSession,
-  });
+  const result = await executeWorkflow(workflowConfig, task, cwd);
   return result.success;
 }
 
