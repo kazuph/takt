@@ -15,12 +15,9 @@ import {
   success,
   status,
 } from '../utils/ui.js';
-import { createLogger } from '../utils/debug.js';
 import { getErrorMessage } from '../utils/error.js';
 import { executeTask, resolveTaskExecution } from './taskExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
-
-const log = createLogger('watch');
 
 /**
  * Watch for tasks and execute them as they appear.

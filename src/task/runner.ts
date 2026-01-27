@@ -15,7 +15,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { parseTaskFiles, parseTaskFile, isTaskFile, type ParsedTask } from './parser.js';
+import { parseTaskFiles, parseTaskFile, type ParsedTask } from './parser.js';
 import type { TaskFileData } from './schema.js';
 
 /** タスク情報 */

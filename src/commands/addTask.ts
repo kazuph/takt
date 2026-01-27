@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import { promptInput, confirm } from '../prompt/index.js';
-import { success, info, error } from '../utils/ui.js';
+import { success, info } from '../utils/ui.js';
 import { slugify } from '../utils/slug.js';
 import { createLogger } from '../utils/debug.js';
 import type { TaskFileData } from '../task/schema.js';
