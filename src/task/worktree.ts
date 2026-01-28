@@ -140,3 +140,144 @@ export function removeWorktree(projectDir: string, worktreePath: string): void {
     log.error('Failed to remove worktree', { path: worktreePath, error: String(err) });
   }
 }
+
+// --- Review-related types and helpers ---
+
+const TAKT_BRANCH_PREFIX = 'takt/';
+
+/** Parsed worktree entry from git worktree list */
+export interface WorktreeInfo {
+  path: string;
+  branch: string;
+  commit: string;
+}
+
+/** Worktree with review metadata */
+export interface WorktreeReviewItem {
+  info: WorktreeInfo;
+  filesChanged: number;
+  taskSlug: string;
+}
+
+/**
+ * Detect the default branch name (main or master).
+ * Falls back to 'main'.
+ */
+export function detectDefaultBranch(cwd: string): string {
+  try {
+    const ref = execFileSync(
+      'git', ['symbolic-ref', 'refs/remotes/origin/HEAD'],
+      { cwd, encoding: 'utf-8', stdio: 'pipe' },
+    ).trim();
+    // ref is like "refs/remotes/origin/main"
+    const parts = ref.split('/');
+    return parts[parts.length - 1] || 'main';
+  } catch {
+    // Fallback: check if 'main' or 'master' exists
+    try {
+      execFileSync('git', ['rev-parse', '--verify', 'main'], {
+        cwd, encoding: 'utf-8', stdio: 'pipe',
+      });
+      return 'main';
+    } catch {
+      try {
+        execFileSync('git', ['rev-parse', '--verify', 'master'], {
+          cwd, encoding: 'utf-8', stdio: 'pipe',
+        });
+        return 'master';
+      } catch {
+        return 'main';
+      }
+    }
+  }
+}
+
+/**
+ * Parse `git worktree list --porcelain` output into WorktreeInfo entries.
+ * Only includes worktrees on branches with the takt/ prefix.
+ */
+export function parseTaktWorktrees(porcelainOutput: string): WorktreeInfo[] {
+  const entries: WorktreeInfo[] = [];
+  const blocks = porcelainOutput.trim().split('\n\n');
+
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    let wtPath = '';
+    let commit = '';
+    let branch = '';
+
+    for (const line of lines) {
+      if (line.startsWith('worktree ')) {
+        wtPath = line.slice('worktree '.length);
+      } else if (line.startsWith('HEAD ')) {
+        commit = line.slice('HEAD '.length);
+      } else if (line.startsWith('branch ')) {
+        const ref = line.slice('branch '.length);
+        branch = ref.replace('refs/heads/', '');
+      }
+    }
+
+    if (wtPath && branch.startsWith(TAKT_BRANCH_PREFIX)) {
+      entries.push({ path: wtPath, branch, commit });
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * List all takt-managed worktrees.
+ */
+export function listTaktWorktrees(projectDir: string): WorktreeInfo[] {
+  try {
+    const output = execFileSync(
+      'git', ['worktree', 'list', '--porcelain'],
+      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' },
+    );
+    return parseTaktWorktrees(output);
+  } catch (err) {
+    log.error('Failed to list worktrees', { error: String(err) });
+    return [];
+  }
+}
+
+/**
+ * Get the number of files changed between the default branch and a given branch.
+ */
+export function getFilesChanged(cwd: string, defaultBranch: string, branch: string): number {
+  try {
+    const output = execFileSync(
+      'git', ['diff', '--numstat', `${defaultBranch}...${branch}`],
+      { cwd, encoding: 'utf-8', stdio: 'pipe' },
+    );
+    return output.trim().split('\n').filter(l => l.length > 0).length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Extract a human-readable task slug from a takt branch name.
+ * e.g. "takt/20260128T032800-fix-auth" → "fix-auth"
+ */
+export function extractTaskSlug(branch: string): string {
+  const name = branch.replace(TAKT_BRANCH_PREFIX, '');
+  // Remove timestamp prefix (format: YYYYMMDDTHHmmss- or similar)
+  const withoutTimestamp = name.replace(/^\d{8,}T?\d{0,6}-?/, '');
+  return withoutTimestamp || name;
+}
+
+/**
+ * Build review items from worktree list, enriching with diff stats.
+ */
+export function buildReviewItems(
+  projectDir: string,
+  worktrees: WorktreeInfo[],
+  defaultBranch: string,
+): WorktreeReviewItem[] {
+  return worktrees.map(wt => ({
+    info: wt,
+    filesChanged: getFilesChanged(projectDir, defaultBranch, wt.branch),
+    taskSlug: extractTaskSlug(wt.branch),
+  }));
+}
