@@ -170,9 +170,10 @@ describe('buildReviewItems', () => {
 });
 
 describe('ReviewAction type', () => {
-  it('should include try, merge, delete (no skip)', () => {
-    const actions: ReviewAction[] = ['try', 'merge', 'delete'];
-    expect(actions).toHaveLength(3);
+  it('should include instruct, try, merge, delete (no skip)', () => {
+    const actions: ReviewAction[] = ['instruct', 'try', 'merge', 'delete'];
+    expect(actions).toHaveLength(4);
+    expect(actions).toContain('instruct');
     expect(actions).toContain('try');
     expect(actions).not.toContain('skip');
   });
