@@ -6,7 +6,7 @@
  */
 
 import { join } from 'node:path';
-import type { WorkflowStep, AgentResponse } from '../models/types.js';
+import type { WorkflowStep, AgentResponse, Language } from '../models/types.js';
 import { getGitDiff } from '../agents/runner.js';
 
 /**
@@ -31,6 +31,8 @@ export interface InstructionContext {
   previousOutput?: AgentResponse;
   /** Report directory path */
   reportDir?: string;
+  /** Language for metadata rendering. Defaults to 'en'. */
+  language?: Language;
 }
 
 /** Execution environment metadata prepended to agent instructions */
@@ -39,6 +41,8 @@ export interface ExecutionMetadata {
   readonly workingDirectory: string;
   /** Project root where .takt/ lives. Present only in worktree mode. */
   readonly projectRoot?: string;
+  /** Language for metadata rendering */
+  readonly language: Language;
 }
 
 /**
@@ -54,27 +58,50 @@ export function buildExecutionMetadata(context: InstructionContext): ExecutionMe
   return {
     workingDirectory: context.cwd,
     ...(isWorktree ? { projectRoot } : {}),
+    language: context.language ?? 'en',
   };
 }
+
+/** Localized strings for execution metadata rendering */
+const METADATA_STRINGS = {
+  en: {
+    heading: '## Execution Context',
+    workingDirectory: 'Working Directory',
+    projectRoot: 'Project Root',
+    mode: 'Mode: worktree (source edits in Working Directory, reports in Project Root)',
+    note: 'Note: This section is metadata. Follow the language used in the rest of the prompt.',
+  },
+  ja: {
+    heading: '## 実行コンテキスト',
+    workingDirectory: '作業ディレクトリ',
+    projectRoot: 'プロジェクトルート',
+    mode: 'モード: worktree（ソース編集は作業ディレクトリ、レポートはプロジェクトルート）',
+    note: '',
+  },
+} as const;
 
 /**
  * Render execution metadata as a markdown string.
  *
  * Pure function: ExecutionMetadata → string.
- * Always includes `## Execution Context` + `Working Directory`.
- * Adds `Project Root` and `Mode` only in worktree mode (when projectRoot is present).
+ * Always includes heading + Working Directory.
+ * Adds Project Root and Mode only in worktree mode (when projectRoot is present).
+ * Language determines the output language; 'en' includes a note about language consistency.
  */
 export function renderExecutionMetadata(metadata: ExecutionMetadata): string {
+  const strings = METADATA_STRINGS[metadata.language];
   const lines = [
-    '## Execution Context',
-    `- Working Directory: ${metadata.workingDirectory}`,
+    strings.heading,
+    `- ${strings.workingDirectory}: ${metadata.workingDirectory}`,
   ];
   if (metadata.projectRoot !== undefined) {
-    lines.push(`- Project Root: ${metadata.projectRoot}`);
-    lines.push('- Mode: worktree (source edits in Working Directory, reports in Project Root)');
+    lines.push(`- ${strings.projectRoot}: ${metadata.projectRoot}`);
+    lines.push(`- ${strings.mode}`);
   }
-  lines.push('');
-  lines.push('Note: This metadata is written in English for consistency. Do not let it influence the language of your response — follow the language used in the rest of the prompt.');
+  if (strings.note) {
+    lines.push('');
+    lines.push(strings.note);
+  }
   lines.push('');
   return lines.join('\n');
 }
@@ -152,10 +179,10 @@ export function buildInstruction(
     instruction = `${instruction}\n\n${step.statusRulesPrompt}`;
   }
 
-  // Append execution context metadata at the end so the agent's language
-  // is not influenced by this English-only section.
+  // Prepend execution context metadata so agents see it first.
+  // Now language-aware, so no need to hide it at the end.
   const metadata = buildExecutionMetadata(context);
-  instruction = `${instruction}\n\n${renderExecutionMetadata(metadata)}`;
+  instruction = `${renderExecutionMetadata(metadata)}\n${instruction}`;
 
   return instruction;
 }

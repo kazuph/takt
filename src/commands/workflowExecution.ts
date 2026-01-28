@@ -3,7 +3,7 @@
  */
 
 import { WorkflowEngine } from '../workflow/engine.js';
-import type { WorkflowConfig } from '../models/types.js';
+import type { WorkflowConfig, Language } from '../models/types.js';
 import type { IterationLimitRequest } from '../workflow/types.js';
 import { loadAgentSessions, updateAgentSession } from '../config/paths.js';
 import {
@@ -59,6 +59,8 @@ export interface WorkflowExecutionOptions {
   headerPrefix?: string;
   /** Project root directory (where .takt/ lives). Defaults to cwd. */
   projectCwd?: string;
+  /** Language for instruction metadata */
+  language?: Language;
 }
 
 /**
@@ -165,6 +167,7 @@ export async function executeWorkflow(
     onSessionUpdate: sessionUpdateHandler,
     onIterationLimit: iterationLimitHandler,
     projectCwd,
+    language: options.language,
   });
 
   let abortReason: string | undefined;

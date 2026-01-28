@@ -2,7 +2,7 @@
  * Task execution logic
  */
 
-import { loadWorkflow } from '../config/index.js';
+import { loadWorkflow, loadGlobalConfig } from '../config/index.js';
 import { TaskRunner, type TaskInfo } from '../task/index.js';
 import { createWorktree } from '../task/worktree.js';
 import { autoCommitWorktree } from '../task/autoCommit.js';
@@ -47,8 +47,10 @@ export async function executeTask(
     steps: workflowConfig.steps.map(s => s.name),
   });
 
+  const globalConfig = loadGlobalConfig();
   const result = await executeWorkflow(workflowConfig, task, cwd, {
     projectCwd,
+    language: globalConfig.language,
   });
   return result.success;
 }

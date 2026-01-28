@@ -87,6 +87,17 @@ describe('instruction-builder', () => {
       expect(result).not.toContain('Project Root');
       expect(result).not.toContain('Mode:');
     });
+
+    it('should prepend metadata before the instruction body', () => {
+      const step = createMinimalStep('Do some work');
+      const context = createMinimalContext({ cwd: '/project' });
+
+      const result = buildInstruction(step, context);
+      const metadataIndex = result.indexOf('## Execution Context');
+      const bodyIndex = result.indexOf('Do some work');
+
+      expect(metadataIndex).toBeLessThan(bodyIndex);
+    });
   });
 
   describe('report_dir replacement', () => {
@@ -210,11 +221,25 @@ describe('instruction-builder', () => {
       expect(metadata.workingDirectory).toBe('/same-path');
       expect(metadata.projectRoot).toBeUndefined();
     });
+
+    it('should default language to en when not specified', () => {
+      const context = createMinimalContext({ cwd: '/project' });
+      const metadata = buildExecutionMetadata(context);
+
+      expect(metadata.language).toBe('en');
+    });
+
+    it('should propagate language from context', () => {
+      const context = createMinimalContext({ cwd: '/project', language: 'ja' });
+      const metadata = buildExecutionMetadata(context);
+
+      expect(metadata.language).toBe('ja');
+    });
   });
 
   describe('renderExecutionMetadata', () => {
     it('should render normal mode without Project Root or Mode', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project' });
+      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
 
       expect(rendered).toContain('## Execution Context');
       expect(rendered).toContain('- Working Directory: /project');
@@ -226,6 +251,7 @@ describe('instruction-builder', () => {
       const rendered = renderExecutionMetadata({
         workingDirectory: '/worktree',
         projectRoot: '/project',
+        language: 'en',
       });
 
       expect(rendered).toContain('## Execution Context');
@@ -235,9 +261,37 @@ describe('instruction-builder', () => {
     });
 
     it('should end with a trailing empty line', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project' });
+      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
 
       expect(rendered).toMatch(/\n$/);
+    });
+
+    it('should render in Japanese when language is ja', () => {
+      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja' });
+
+      expect(rendered).toContain('## 実行コンテキスト');
+      expect(rendered).toContain('- 作業ディレクトリ: /project');
+      expect(rendered).not.toContain('Execution Context');
+      expect(rendered).not.toContain('Working Directory');
+    });
+
+    it('should render worktree mode in Japanese', () => {
+      const rendered = renderExecutionMetadata({
+        workingDirectory: '/worktree',
+        projectRoot: '/project',
+        language: 'ja',
+      });
+
+      expect(rendered).toContain('- プロジェクトルート: /project');
+      expect(rendered).toContain('モード: worktree');
+    });
+
+    it('should include English note only for en, not for ja', () => {
+      const enRendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
+      const jaRendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja' });
+
+      expect(enRendered).toContain('Note:');
+      expect(jaRendered).not.toContain('Note:');
     });
   });
 

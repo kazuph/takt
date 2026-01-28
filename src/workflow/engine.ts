@@ -49,6 +49,7 @@ export class WorkflowEngine extends EventEmitter {
   private task: string;
   private options: WorkflowEngineOptions;
   private loopDetector: LoopDetector;
+  private language: WorkflowEngineOptions['language'];
   private reportDir: string;
 
   constructor(config: WorkflowConfig, cwd: string, task: string, options: WorkflowEngineOptions = {}) {
@@ -58,6 +59,7 @@ export class WorkflowEngine extends EventEmitter {
     this.cwd = cwd;
     this.task = task;
     this.options = options;
+    this.language = options.language;
     this.loopDetector = new LoopDetector(config.loopDetection);
     this.reportDir = generateReportDir(task);
     this.ensureReportDirExists();
@@ -138,6 +140,7 @@ export class WorkflowEngine extends EventEmitter {
       userInputs: this.state.userInputs,
       previousOutput: getPreviousOutput(this.state),
       reportDir: this.reportDir,
+      language: this.language,
     });
   }
 

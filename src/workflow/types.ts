@@ -5,7 +5,7 @@
  * used by the workflow execution engine.
  */
 
-import type { WorkflowStep, AgentResponse, WorkflowState } from '../models/types.js';
+import type { WorkflowStep, AgentResponse, WorkflowState, Language } from '../models/types.js';
 import type { StreamCallback } from '../agents/runner.js';
 import type { PermissionHandler, AskUserQuestionHandler } from '../claude/process.js';
 
@@ -72,6 +72,8 @@ export interface WorkflowEngineOptions {
   bypassPermissions?: boolean;
   /** Project root directory (where .takt/ lives). Defaults to cwd if not specified. */
   projectCwd?: string;
+  /** Language for instruction metadata. Defaults to 'en'. */
+  language?: Language;
 }
 
 /** Loop detection result */
