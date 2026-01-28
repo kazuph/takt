@@ -163,11 +163,18 @@ program
               ? DEFAULT_WORKFLOW_NAME
               : availableWorkflows[0] || DEFAULT_WORKFLOW_NAME);
 
-        selectedWorkflow = await selectOptionWithDefault(
+        const selected = await selectOptionWithDefault(
           'Select workflow:',
           options,
           defaultWorkflow
         );
+
+        if (selected === null) {
+          info('Cancelled');
+          return;
+        }
+
+        selectedWorkflow = selected;
       }
 
       log.info('Starting task execution', { task, workflow: selectedWorkflow });

@@ -275,13 +275,13 @@ export async function promptInput(message: string): Promise<string | null> {
 /**
  * Prompt user to select from a list of options with a default value.
  * Uses cursor navigation. Enter immediately selects the default.
- * @returns Selected option value
+ * @returns Selected option value, or null if cancelled (ESC pressed)
  */
 export async function selectOptionWithDefault<T extends string>(
   message: string,
   options: { label: string; value: T }[],
   defaultValue: T
-): Promise<T> {
+): Promise<T | null> {
   if (options.length === 0) return defaultValue;
 
   // Find default index
@@ -294,12 +294,11 @@ export async function selectOptionWithDefault<T extends string>(
     label: opt.value === defaultValue ? `${opt.label} ${chalk.green('(default)')}` : opt.label,
   }));
 
-  const selectedIndex = await interactiveSelect(message, decoratedOptions, initialIndex, false);
+  const selectedIndex = await interactiveSelect(message, decoratedOptions, initialIndex, true);
 
-  // Escape pressed - use default
-  if (selectedIndex === -1) {
-    console.log(chalk.gray(`  Using default: ${defaultValue}`));
-    return defaultValue;
+  // Cancel selected (last item) or Escape pressed
+  if (selectedIndex === options.length || selectedIndex === -1) {
+    return null;
   }
 
   const selected = options[selectedIndex];

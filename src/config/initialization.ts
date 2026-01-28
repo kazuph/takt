@@ -37,6 +37,7 @@ export function needsLanguageSetup(): boolean {
 /**
  * Prompt user to select language for resources.
  * Returns 'en' for English (default), 'ja' for Japanese.
+ * Exits process if cancelled (initial setup is required).
  */
 export async function promptLanguageSelection(): Promise<Language> {
   const options: { label: string; value: Language }[] = [
@@ -44,15 +45,22 @@ export async function promptLanguageSelection(): Promise<Language> {
     { label: '日本語 (Japanese)', value: 'ja' },
   ];
 
-  return await selectOptionWithDefault(
+  const result = await selectOptionWithDefault(
     'Select language for default agents and workflows / デフォルトのエージェントとワークフローの言語を選択してください:',
     options,
     DEFAULT_LANGUAGE
   );
+
+  if (result === null) {
+    process.exit(0);
+  }
+
+  return result;
 }
 
 /**
  * Prompt user to select provider for resources.
+ * Exits process if cancelled (initial setup is required).
  */
 export async function promptProviderSelection(): Promise<'claude' | 'codex'> {
   const options: { label: string; value: 'claude' | 'codex' }[] = [
@@ -60,11 +68,17 @@ export async function promptProviderSelection(): Promise<'claude' | 'codex'> {
     { label: 'Codex', value: 'codex' },
   ];
 
-  return await selectOptionWithDefault(
+  const result = await selectOptionWithDefault(
     'Select provider (Claude Code or Codex) / プロバイダーを選択してください:',
     options,
     'claude'
   );
+
+  if (result === null) {
+    process.exit(0);
+  }
+
+  return result;
 }
 
 /**
