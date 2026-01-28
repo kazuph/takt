@@ -38,9 +38,9 @@ function generateTimestamp(): string {
 
 /**
  * Resolve the worktree path based on options.
- * Validates that the resolved path stays within the project directory.
+ * Validates that custom paths stay within the project directory.
  *
- * @throws Error if the resolved path escapes projectDir (path traversal)
+ * @throws Error if a custom path escapes projectDir (path traversal)
  */
 function resolveWorktreePath(projectDir: string, options: WorktreeOptions): string {
   if (typeof options.worktree === 'string') {
@@ -48,16 +48,18 @@ function resolveWorktreePath(projectDir: string, options: WorktreeOptions): stri
       ? options.worktree
       : path.resolve(projectDir, options.worktree);
 
+    if (!isPathSafe(projectDir, resolved)) {
+      throw new Error(`Worktree path escapes project directory: ${options.worktree}`);
+    }
+
     return resolved;
   }
 
-  // worktree: true → sibling directory: ../{timestamp}-{task-slug}/
-  // Worktrees MUST be outside the project directory to avoid Claude Code
-  // detecting the parent .git directory and writing to the main project.
+  // worktree: true → .takt/worktrees/{timestamp}-{task-slug}/
   const timestamp = generateTimestamp();
   const slug = slugify(options.taskSlug);
   const dirName = slug ? `${timestamp}-${slug}` : timestamp;
-  return path.join(path.dirname(projectDir), dirName);
+  return path.join(projectDir, '.takt', 'worktrees', dirName);
 }
 
 /**

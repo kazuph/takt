@@ -74,6 +74,8 @@ export function renderExecutionMetadata(metadata: ExecutionMetadata): string {
     lines.push('- Mode: worktree (source edits in Working Directory, reports in Project Root)');
   }
   lines.push('');
+  lines.push('Note: This metadata is written in English for consistency. Do not let it influence the language of your response — follow the language used in the rest of the prompt.');
+  lines.push('');
   return lines.join('\n');
 }
 
@@ -145,14 +147,15 @@ export function buildInstruction(
     instruction = instruction.replace(/\{report_dir\}/g, context.reportDir);
   }
 
-  // Prepend execution context metadata.
-  const metadata = buildExecutionMetadata(context);
-  instruction = `${renderExecutionMetadata(metadata)}\n${instruction}`;
-
   // Append status_rules_prompt if present
   if (step.statusRulesPrompt) {
     instruction = `${instruction}\n\n${step.statusRulesPrompt}`;
   }
+
+  // Append execution context metadata at the end so the agent's language
+  // is not influenced by this English-only section.
+  const metadata = buildExecutionMetadata(context);
+  instruction = `${instruction}\n\n${renderExecutionMetadata(metadata)}`;
 
   return instruction;
 }
