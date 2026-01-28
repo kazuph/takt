@@ -20,7 +20,7 @@
 #   {user_inputs}    - ワークフロー中に蓄積されたユーザー入力
 #   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
-name: expert-review
+name: expert-cqrs
 description: CQRS+ES・フロントエンド・セキュリティ・QA専門家レビュー
 
 max_iterations: 20
@@ -361,7 +361,7 @@ steps:
   # Phase 3: CQRS+ES Review
   # ===========================================
   - name: cqrs_es_review
-    agent: ~/.takt/agents/expert-review/cqrs-es-reviewer.md
+    agent: ~/.takt/agents/expert-cqrs/cqrs-es-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -508,7 +508,7 @@ steps:
   # Phase 3: Frontend Review
   # ===========================================
   - name: frontend_review
-    agent: ~/.takt/agents/expert-review/frontend-reviewer.md
+    agent: ~/.takt/agents/expert-cqrs/frontend-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -796,7 +796,7 @@ steps:
   # Phase 5: Security Review
   # ===========================================
   - name: security_review
-    agent: ~/.takt/agents/expert-review/security-reviewer.md
+    agent: ~/.takt/agents/expert-cqrs/security-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -950,7 +950,7 @@ steps:
   # Phase 6: QA Review
   # ===========================================
   - name: qa_review
-    agent: ~/.takt/agents/expert-review/qa-reviewer.md
+    agent: ~/.takt/agents/expert-cqrs/qa-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -1109,7 +1109,7 @@ steps:
   # Phase 7: Supervision
   # ===========================================
   - name: supervise
-    agent: ~/.takt/agents/expert-review/supervisor.md
+    agent: ~/.takt/agents/expert-cqrs/supervisor.md
     allowed_tools:
       - Read
       - Glob

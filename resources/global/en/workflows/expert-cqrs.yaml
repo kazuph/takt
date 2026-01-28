@@ -1,0 +1,1131 @@
+# Expert Review Workflow
+# Review workflow with CQRS+ES, Frontend, Security, and QA experts
+#
+# Flow:
+# plan -> implement -> cqrs_es_review -> frontend_review -> ai_review -> security_review -> qa_review -> supervise -> COMPLETE
+#                          ↓                  ↓                 ↓              ↓                ↓            ↓
+#                     fix_cqrs_es       fix_frontend        ai_fix       fix_security       fix_qa    fix_supervisor
+#
+# Fix destination is determined by Coder based on change impact:
+# - fix_security: MINOR→security_review, MAJOR→cqrs_es_review
+# - fix_qa: MINOR→qa_review, SECURITY→security_review, MAJOR→cqrs_es_review
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
+
+name: expert-cqrs
+description: CQRS+ES, Frontend, Security, QA Expert Review
+
+max_iterations: 20
+
+initial_step: plan
+
+steps:
+  # ===========================================
+  # Phase 0: Planning
+  # ===========================================
+  - name: plan
+    agent: ~/.takt/agents/default/planner.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Analysis complete | `[PLANNER:DONE]` |
+      | Requirements unclear | `[PLANNER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: plan (Task Analysis)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/00-plan.md
+
+      ## User Request
+      {task}
+
+      ## Previous Response (when returned from implement)
+      {previous_response}
+
+      ## Instructions
+      Analyze the task and create an implementation plan.
+
+      **Note:** If returned from implement step (Previous Response exists),
+      review and revise the plan based on that feedback (replan).
+
+      **Tasks:**
+      1. Understand the requirements
+      2. Identify impact scope
+      3. Decide implementation approach
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # Task Plan
+
+      ## Original Request
+      {User's request as-is}
+
+      ## Analysis Results
+
+      ### Objective
+      {What needs to be achieved}
+
+      ### Scope
+      {Impact scope}
+
+      ### Implementation Approach
+      {How to proceed}
+
+      ## Clarifications Needed (if any)
+      - {Unclear points or items requiring confirmation}
+      ```
+
+      Output [PLANNER:DONE] when complete.
+      Output [PLANNER:BLOCKED] if requirements are unclear.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: implement
+      - condition: blocked
+        next_step: ABORT
+
+  # ===========================================
+  # Phase 1: Implementation
+  # ===========================================
+  - name: implement
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Implementation complete | `[CODER:DONE]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: implement
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report Files:
+        - Scope: .takt/reports/{report_dir}/01-coder-scope.md
+        - Decisions: .takt/reports/{report_dir}/02-coder-decisions.md
+
+      ## User Request
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      Follow the plan from the plan step and implement.
+      Refer to the plan report (00-plan.md) and proceed with implementation.
+
+      **Report output:** Output to the `Report Files` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Scope report format (create at implementation start):**
+      ```markdown
+      # Change Scope Declaration
+
+      ## Task
+      {One-line task summary}
+
+      ## Planned Changes
+      | Type | File |
+      |------|------|
+      | Create | `src/example.ts` |
+      | Modify | `src/routes.ts` |
+
+      ## Estimated Size
+      Small / Medium / Large
+
+      ## Impact Scope
+      - {Affected modules or features}
+      ```
+
+      **Decisions report format (on completion, only if decisions were made):**
+      ```markdown
+      # Decision Log
+
+      ## 1. {Decision Content}
+      - **Background**: {Why the decision was needed}
+      - **Options Considered**: {List of options}
+      - **Reason**: {Why this option was chosen}
+      ```
+
+      Include [CODER:DONE] when complete.
+      Include [CODER:BLOCKED] if you cannot proceed (returns to plan).
+    transitions:
+      - condition: done
+        next_step: cqrs_es_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 2: CQRS+ES Review
+  # ===========================================
+  - name: cqrs_es_review
+    agent: ~/.takt/agents/expert-cqrs/cqrs-es-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Design is sound | `[CQRS-ES:APPROVE]` |
+      | Design issues found | `[CQRS-ES:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: cqrs_es_review (CQRS+ES Expert Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/03-cqrs-es-review.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the changes above from the CQRS (Command Query Responsibility Segregation)
+      and Event Sourcing perspective.
+
+      **Review Criteria:**
+      - Aggregate design validity
+      - Event design (granularity, naming, schema)
+      - Command/Query separation
+      - Projection design
+      - Eventual consistency considerations
+
+      **Note**: If this project does not use CQRS+ES patterns,
+      review from a general domain design perspective.
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # CQRS+ES Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {1-2 sentences summarizing result}
+
+      ## Reviewed Perspectives
+      | Perspective | Result | Notes |
+      |-------------|--------|-------|
+      | Aggregate Design | ✅ | - |
+      | Event Design | ✅ | - |
+      | Command/Query Separation | ✅ | - |
+      | Projections | ✅ | - |
+      | Eventual Consistency | ✅ | - |
+
+      ## Issues (if REJECT)
+      | # | Location | Issue | Fix |
+      |---|----------|-------|-----|
+      | 1 | `src/file.ts:42` | Issue description | Fix method |
+      ```
+
+      Include:
+      - [CQRS-ES:APPROVE] if CQRS+ES design is sound
+      - [CQRS-ES:REJECT] if design issues found (list specific issues)
+    transitions:
+      - condition: approved
+        next_step: frontend_review
+      - condition: rejected
+        next_step: fix_cqrs_es
+
+  - name: fix_cqrs_es
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Fix complete | `[CODER:DONE]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: fix_cqrs_es
+
+      ## CQRS+ES Review Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Fix the issues pointed out by the CQRS+ES expert.
+
+      Areas of concern:
+      - Aggregate design
+      - Event design
+      - Command/Query separation
+      - Projections
+      - Eventual consistency
+
+      Include [CODER:DONE] when complete.
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: cqrs_es_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 3: Frontend Review
+  # ===========================================
+  - name: frontend_review
+    agent: ~/.takt/agents/expert-cqrs/frontend-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Frontend design is sound | `[FRONTEND:APPROVE]` |
+      | Design issues found | `[FRONTEND:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: frontend_review (Frontend Expert Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/04-frontend-review.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the changes above from the frontend development perspective.
+
+      **Review Criteria:**
+      - Component design (separation of concerns, granularity)
+      - State management (local/global decisions)
+      - Performance (re-rendering, memoization)
+      - Accessibility (keyboard support, ARIA)
+      - Data fetching patterns
+      - TypeScript type safety
+
+      **Note**: If this project does not include frontend code,
+      output [FRONTEND:APPROVE] and proceed.
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # Frontend Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {1-2 sentences summarizing result}
+
+      ## Reviewed Perspectives
+      | Perspective | Result | Notes |
+      |-------------|--------|-------|
+      | Component Design | ✅ | - |
+      | State Management | ✅ | - |
+      | Performance | ✅ | - |
+      | Accessibility | ✅ | - |
+      | Type Safety | ✅ | - |
+
+      ## Issues (if REJECT)
+      | # | Location | Issue | Fix |
+      |---|----------|-------|-----|
+      | 1 | `src/file.tsx:42` | Issue description | Fix method |
+      ```
+
+      Include:
+      - [FRONTEND:APPROVE] if frontend design is sound
+      - [FRONTEND:REJECT] if design issues found (list specific issues)
+    transitions:
+      - condition: approved
+        next_step: ai_review
+      - condition: rejected
+        next_step: fix_frontend
+
+  - name: fix_frontend
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Fix complete | `[CODER:DONE]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: fix_frontend
+
+      ## Frontend Review Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Fix the issues pointed out by the frontend expert.
+
+      Areas of concern:
+      - Component design
+      - State management
+      - Performance
+      - Accessibility
+      - Type safety
+
+      Include [CODER:DONE] when complete.
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: frontend_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 4: AI Review
+  # ===========================================
+  - name: ai_review
+    agent: ~/.takt/agents/default/ai-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | No AI-specific issues | `[AI_REVIEW:APPROVE]` |
+      | Issues found | `[AI_REVIEW:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: ai_review (AI-Generated Code Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/05-ai-review.md
+
+      ## Original User Request (Initial request from workflow start)
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the code for AI-specific issues:
+      - Assumption validation
+      - Plausible but wrong patterns
+      - Context fit with existing codebase
+      - Scope creep detection
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # AI-Generated Code Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {One sentence summarizing result}
+
+      ## Verified Items
+      | Aspect | Result | Notes |
+      |--------|--------|-------|
+      | Assumption validity | ✅ | - |
+      | API/Library existence | ✅ | - |
+      | Context fit | ✅ | - |
+      | Scope | ✅ | - |
+
+      ## Issues (if REJECT)
+      | # | Category | Location | Issue |
+      |---|----------|----------|-------|
+      | 1 | Hallucinated API | `src/file.ts:23` | Non-existent method |
+      ```
+
+      **Cognitive load reduction rules:**
+      - No issues → Summary 1 line + check table only (10 lines or less)
+      - Issues found → + Issues in table format (25 lines or less)
+
+      Include:
+      - [AI_REVIEW:APPROVE] if no AI-specific issues found
+      - [AI_REVIEW:REJECT] if issues detected (list specific problems)
+    transitions:
+      - condition: approved
+        next_step: security_review
+      - condition: rejected
+        next_step: ai_fix
+
+  - name: ai_fix
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Fix complete | `[CODER:DONE]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: ai_fix
+
+      ## AI Review Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request from workflow start - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Address the AI Reviewer's feedback.
+      Focus on:
+      - Correcting incorrect assumptions
+      - Fixing plausible-but-wrong implementations
+      - Aligning with existing codebase patterns
+      - Removing scope creep
+
+      Include [CODER:DONE] when complete.
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: ai_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 5: Security Review
+  # ===========================================
+  - name: security_review
+    agent: ~/.takt/agents/expert-cqrs/security-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | No security issues | `[SECURITY:APPROVE]` |
+      | Vulnerabilities found | `[SECURITY:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: security_review (Security Expert Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/06-security-review.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the changes above from the security perspective.
+
+      **Review Criteria:**
+      - Injection attacks (SQL, command, XSS)
+      - Authentication/authorization flaws
+      - Sensitive information handling
+      - Encryption appropriateness
+      - OWASP Top 10
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # Security Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Severity: None / Low / Medium / High / Critical
+
+      ## Check Results
+      | Category | Result | Notes |
+      |----------|--------|-------|
+      | Injection | ✅ | - |
+      | Auth/Authz | ✅ | - |
+      | Data Protection | ✅ | - |
+      | Dependencies | ✅ | - |
+
+      ## Vulnerabilities (if REJECT)
+      | # | Severity | Type | Location | Fix |
+      |---|----------|------|----------|-----|
+      | 1 | High | SQLi | `src/db.ts:42` | Use parameterized query |
+
+      ## Warnings (non-blocking)
+      - {Security recommendations}
+      ```
+
+      Include:
+      - [SECURITY:APPROVE] if no security issues found
+      - [SECURITY:REJECT] if vulnerabilities found (list specific issues with severity)
+    transitions:
+      - condition: approved
+        next_step: qa_review
+      - condition: rejected
+        next_step: fix_security
+
+  - name: fix_security
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Minor fix complete | `[CODER:DONE]` |
+      | Major fix (restart from CQRS+ES) | `[CODER:REJECT]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: fix_security
+
+      ## Security Review Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Fix the issues pointed out by the security expert.
+      Security issues should be addressed with highest priority.
+
+      Areas of concern:
+      - Injection vulnerabilities
+      - Authentication/authorization flaws
+      - Sensitive information exposure
+      - Encryption issues
+
+      ## Completion: Determine Change Impact
+      When fix is complete, judge the **impact scope of changes** and output the appropriate tag:
+
+      - `[CODER:DONE]` - Minor fix (re-run security review only)
+        - Examples: Add validation, add escaping, configuration changes
+      - `[CODER:REJECT]` - Major fix (restart from CQRS+ES review)
+        - Examples: Data flow changes, API design changes, auth method changes, domain model changes
+
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: security_review
+      - condition: rejected
+        next_step: cqrs_es_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 6: QA Review
+  # ===========================================
+  - name: qa_review
+    agent: ~/.takt/agents/expert-cqrs/qa-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Quality standards met | `[QA:APPROVE]` |
+      | Quality issues found | `[QA:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: qa_review (QA Expert Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/07-qa-review.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the changes above from the quality assurance perspective.
+
+      **Review Criteria:**
+      - Test coverage and quality
+      - Test strategy (unit/integration/E2E)
+      - Documentation (in-code and external)
+      - Error handling
+      - Logging and monitoring
+      - Maintainability
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # QA Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {1-2 sentences summarizing result}
+
+      ## Reviewed Perspectives
+      | Perspective | Result | Notes |
+      |-------------|--------|-------|
+      | Test Coverage | ✅ | - |
+      | Test Quality | ✅ | - |
+      | Error Handling | ✅ | - |
+      | Documentation | ✅ | - |
+      | Maintainability | ✅ | - |
+
+      ## Issues (if REJECT)
+      | # | Category | Issue | Fix |
+      |---|----------|-------|-----|
+      | 1 | Testing | Issue description | Fix method |
+      ```
+
+      Include:
+      - [QA:APPROVE] if quality standards are met
+      - [QA:REJECT] if quality issues found (list specific issues)
+    transitions:
+      - condition: approved
+        next_step: supervise
+      - condition: rejected
+        next_step: fix_qa
+
+  - name: fix_qa
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Minor fix complete | `[CODER:DONE]` |
+      | Security-impacting fix | `[CODER:IMPROVE]` |
+      | Major fix (restart from CQRS+ES) | `[CODER:REJECT]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: fix_qa
+
+      ## QA Review Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Fix the issues pointed out by the QA expert.
+
+      Areas of concern:
+      - Adding/improving tests
+      - Adding/fixing documentation
+      - Error handling
+      - Log output
+      - Code quality
+
+      ## Completion: Determine Change Impact
+      When fix is complete, judge the **impact scope of changes** and output the appropriate tag:
+
+      - `[CODER:DONE]` - Minor fix (re-run QA review only)
+        - Examples: Add tests, add documentation, add logs, add comments
+      - `[CODER:IMPROVE]` - Security-impacting fix (restart from security review)
+        - Examples: Error handling changes (error message content changes), input validation changes
+      - `[CODER:REJECT]` - Major fix (restart from CQRS+ES review)
+        - Examples: Business logic changes, data model changes, API changes
+
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: qa_review
+      - condition: improve
+        next_step: security_review
+      - condition: rejected
+        next_step: cqrs_es_review
+      - condition: blocked
+        next_step: plan
+
+  # ===========================================
+  # Phase 7: Supervision
+  # ===========================================
+  - name: supervise
+    agent: ~/.takt/agents/expert-cqrs/supervisor.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Ready to merge | `[SUPERVISOR:APPROVE]` |
+      | Issues found | `[SUPERVISOR:REJECT]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: supervise (Final Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report Files:
+        - Validation: .takt/reports/{report_dir}/08-supervisor-validation.md
+        - Summary: .takt/reports/{report_dir}/summary.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Previous Reviews Summary
+      Reaching this step means all the following reviews have been APPROVED:
+      - CQRS+ES Review: APPROVED
+      - Frontend Review: APPROVED
+      - AI Review: APPROVED
+      - Security Review: APPROVED
+      - QA Review: APPROVED
+
+      ## Instructions
+      Run tests, verify the build, and perform final approval.
+
+      **Workflow Overall Review:**
+      1. Does the implementation match the plan (00-plan.md)?
+      2. Were all review step issues addressed?
+      3. Was the original task objective achieved?
+
+      **Review Reports:** Read all reports in Report Directory and
+      check for any unaddressed improvement suggestions.
+
+      **Report output:** Output to the `Report Files` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Validation report format:**
+      ```markdown
+      # Final Validation Results
+
+      ## Result: APPROVE / REJECT
+
+      ## Validation Summary
+      | Item | Status | Verification Method |
+      |------|--------|---------------------|
+      | Requirements met | ✅ | Matched against requirements list |
+      | Tests | ✅ | `npm test` (N passed) |
+      | Build | ✅ | `npm run build` succeeded |
+      | Functional check | ✅ | Main flows verified |
+
+      ## Deliverables
+      - Created: {Created files}
+      - Modified: {Modified files}
+
+      ## Incomplete Items (if REJECT)
+      | # | Item | Reason |
+      |---|------|--------|
+      | 1 | {Item} | {Reason} |
+      ```
+
+      **Summary report format (only if APPROVE):**
+      ```markdown
+      # Task Completion Summary
+
+      ## Task
+      {Original request in 1-2 sentences}
+
+      ## Result
+      ✅ Complete
+
+      ## Changes
+      | Type | File | Summary |
+      |------|------|---------|
+      | Create | `src/file.ts` | Summary description |
+
+      ## Review Results
+      | Review | Result |
+      |--------|--------|
+      | CQRS+ES | ✅ APPROVE |
+      | Frontend | ✅ APPROVE |
+      | AI Review | ✅ APPROVE |
+      | Security | ✅ APPROVE |
+      | QA | ✅ APPROVE |
+      | Supervisor | ✅ APPROVE |
+
+      ## Verification Commands
+      ```bash
+      npm test
+      npm run build
+      ```
+      ```
+
+      Output:
+      - [SUPERVISOR:APPROVE] if ready to merge
+      - [SUPERVISOR:REJECT] if issues found (specify the issues)
+    transitions:
+      - condition: approved
+        next_step: COMPLETE
+      - condition: rejected
+        next_step: fix_supervisor
+
+  - name: fix_supervisor
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Fix complete | `[CODER:DONE]` |
+      | Cannot proceed | `[CODER:BLOCKED]` |
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: fix_supervisor
+
+      ## Supervisor Feedback (This is the latest instruction - prioritize this)
+      {previous_response}
+
+      ## Original User Request (Initial request - for reference)
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      **Important**: Fix the issues pointed out by the supervisor.
+
+      The supervisor has identified issues from a big-picture perspective.
+      Address items in priority order.
+
+      Include [CODER:DONE] when complete.
+      Include [CODER:BLOCKED] if unable to proceed.
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: supervise
+      - condition: blocked
+        next_step: plan
