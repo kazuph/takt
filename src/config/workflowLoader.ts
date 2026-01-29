@@ -8,7 +8,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { WorkflowConfigRawSchema } from '../models/schemas.js';
-import type { WorkflowConfig, WorkflowStep, WorkflowRule, ReportConfig } from '../models/types.js';
+import type { WorkflowConfig, WorkflowStep, WorkflowRule, ReportConfig, ReportObjectConfig } from '../models/types.js';
 import { getGlobalWorkflowsDir } from './paths.js';
 
 /** Get builtin workflow by name */
@@ -55,6 +55,13 @@ function extractAgentDisplayName(agentPath: string): string {
 }
 
 /**
+ * Check if a raw report value is the object form (has 'name' property).
+ */
+function isReportObject(raw: unknown): raw is { name: string; order?: string; format?: string } {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw) && 'name' in raw;
+}
+
+/**
  * Normalize the raw report field from YAML into internal format.
  *
  * YAML formats:
@@ -62,16 +69,23 @@ function extractAgentDisplayName(agentPath: string): string {
  *   report:                               → ReportConfig[] (multiple files)
  *     - Scope: 01-scope.md
  *     - Decisions: 02-decisions.md
+ *   report:                               → ReportObjectConfig (object form)
+ *     name: 00-plan.md
+ *     order: ...
+ *     format: ...
  *
  * Array items are parsed as single-key objects: [{Scope: "01-scope.md"}, ...]
  */
 function normalizeReport(
-  raw: string | Record<string, string>[] | undefined,
-): string | ReportConfig[] | undefined {
+  raw: string | Record<string, string>[] | { name: string; order?: string; format?: string } | undefined,
+): string | ReportConfig[] | ReportObjectConfig | undefined {
   if (raw == null) return undefined;
   if (typeof raw === 'string') return raw;
+  if (isReportObject(raw)) {
+    return { name: raw.name, order: raw.order, format: raw.format };
+  }
   // Convert [{Scope: "01-scope.md"}, ...] to [{label: "Scope", path: "01-scope.md"}, ...]
-  return raw.flatMap((entry) =>
+  return (raw as Record<string, string>[]).flatMap((entry) =>
     Object.entries(entry).map(([label, path]) => ({ label, path })),
   );
 }

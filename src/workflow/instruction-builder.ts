@@ -8,7 +8,7 @@
  * 3. Appending auto-generated status rules from workflow rules
  */
 
-import type { WorkflowStep, WorkflowRule, AgentResponse, Language, ReportConfig } from '../models/types.js';
+import type { WorkflowStep, WorkflowRule, AgentResponse, Language, ReportConfig, ReportObjectConfig } from '../models/types.js';
 import { getGitDiff } from '../agents/runner.js';
 
 /**
@@ -216,6 +216,13 @@ function escapeTemplateChars(str: string): string {
   return str.replace(/\{/g, '｛').replace(/\}/g, '｝');
 }
 
+/**
+ * Check if a report config is the object form (ReportObjectConfig).
+ */
+function isReportObjectConfig(report: string | ReportConfig[] | ReportObjectConfig): report is ReportObjectConfig {
+  return typeof report === 'object' && !Array.isArray(report) && 'name' in report;
+}
+
 /** Localized strings for auto-injected sections */
 const SECTION_STRINGS = {
   en: {
@@ -268,16 +275,19 @@ function renderWorkflowContext(
 
   // Report info (only if step has report config AND reportDir is available)
   if (step.report && context.reportDir) {
-    lines.push(`- ${s.reportDirectory}: .takt/reports/${context.reportDir}/`);
+    lines.push(`- ${s.reportDirectory}: ${context.reportDir}/`);
 
     if (typeof step.report === 'string') {
-      // Single file
-      lines.push(`- ${s.reportFile}: .takt/reports/${context.reportDir}/${step.report}`);
+      // Single file (string form)
+      lines.push(`- ${s.reportFile}: ${context.reportDir}/${step.report}`);
+    } else if (isReportObjectConfig(step.report)) {
+      // Object form (name + order + format)
+      lines.push(`- ${s.reportFile}: ${context.reportDir}/${step.report.name}`);
     } else {
-      // Multiple files
+      // Multiple files (ReportConfig[] form)
       lines.push(`- ${s.reportFiles}:`);
       for (const file of step.report as ReportConfig[]) {
-        lines.push(`  - ${file.label}: .takt/reports/${context.reportDir}/${file.path}`);
+        lines.push(`  - ${file.label}: ${context.reportDir}/${file.path}`);
       }
     }
   }
@@ -339,6 +349,13 @@ function replaceTemplatePlaceholders(
   // Replace {report_dir}
   if (context.reportDir) {
     result = result.replace(/\{report_dir\}/g, context.reportDir);
+  }
+
+  // Replace {report:filename} with reportDir/filename
+  if (context.reportDir) {
+    result = result.replace(/\{report:([^}]+)\}/g, (_match, filename: string) => {
+      return `${context.reportDir}/${filename}`;
+    });
   }
 
   return result;
@@ -403,13 +420,25 @@ export function buildInstruction(
     sections.push(`${s.additionalUserInputs}\n${escapeTemplateChars(userInputsStr)}`);
   }
 
-  // 6. Instructions header + instruction_template content
+  // 6a. Report order (prepended before instruction_template, from ReportObjectConfig)
+  if (step.report && isReportObjectConfig(step.report) && step.report.order) {
+    const processedOrder = replaceTemplatePlaceholders(step.report.order.trimEnd(), step, context);
+    sections.push(processedOrder);
+  }
+
+  // 6b. Instructions header + instruction_template content
   const processedTemplate = replaceTemplatePlaceholders(
     step.instructionTemplate,
     step,
     context,
   );
   sections.push(`${s.instructions}\n${processedTemplate}`);
+
+  // 6c. Report format (appended after instruction_template, from ReportObjectConfig)
+  if (step.report && isReportObjectConfig(step.report) && step.report.format) {
+    const processedFormat = replaceTemplatePlaceholders(step.report.format.trimEnd(), step, context);
+    sections.push(processedFormat);
+  }
 
   // 7. Status rules (auto-generated from rules)
   if (step.rules && step.rules.length > 0) {

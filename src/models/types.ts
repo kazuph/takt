@@ -50,12 +50,22 @@ export interface WorkflowRule {
   appendix?: string;
 }
 
-/** Report file configuration for a workflow step */
+/** Report file configuration for a workflow step (label: path pair) */
 export interface ReportConfig {
   /** Display label (e.g., "Scope", "Decisions") */
   label: string;
   /** File path relative to report directory (e.g., "01-coder-scope.md") */
   path: string;
+}
+
+/** Report object configuration with order/format instructions */
+export interface ReportObjectConfig {
+  /** Report file name (e.g., "00-plan.md") */
+  name: string;
+  /** Instruction prepended before instruction_template (e.g., output destination) */
+  order?: string;
+  /** Instruction appended after instruction_template (e.g., output format) */
+  format?: string;
 }
 
 /** Permission mode for tool execution */
@@ -81,8 +91,8 @@ export interface WorkflowStep {
   instructionTemplate: string;
   /** Rules for step routing */
   rules?: WorkflowRule[];
-  /** Report file configuration. Single string for one file, array for multiple. */
-  report?: string | ReportConfig[];
+  /** Report file configuration. Single string, array of label:path, or object with order/format. */
+  report?: string | ReportConfig[] | ReportObjectConfig;
   passPreviousResponse: boolean;
 }
 

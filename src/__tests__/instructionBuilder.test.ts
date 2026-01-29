@@ -374,8 +374,8 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('- Report Directory: .takt/reports/20260129-test/');
-      expect(result).toContain('- Report File: .takt/reports/20260129-test/00-plan.md');
+      expect(result).toContain('- Report Directory: 20260129-test/');
+      expect(result).toContain('- Report File: 20260129-test/00-plan.md');
       expect(result).not.toContain('Report Files:');
     });
 
@@ -393,11 +393,27 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('- Report Directory: .takt/reports/20260129-test/');
+      expect(result).toContain('- Report Directory: 20260129-test/');
       expect(result).toContain('- Report Files:');
-      expect(result).toContain('  - Scope: .takt/reports/20260129-test/01-scope.md');
-      expect(result).toContain('  - Decisions: .takt/reports/20260129-test/02-decisions.md');
+      expect(result).toContain('  - Scope: 20260129-test/01-scope.md');
+      expect(result).toContain('  - Decisions: 20260129-test/02-decisions.md');
       expect(result).not.toContain('Report File:');
+    });
+
+    it('should include report file when report is ReportObjectConfig', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'plan';
+      step.report = { name: '00-plan.md' };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('- Report Directory: 20260129-test/');
+      expect(result).toContain('- Report File: 20260129-test/00-plan.md');
+      expect(result).not.toContain('Report Files:');
     });
 
     it('should NOT include report info when reportDir is undefined', () => {
@@ -436,6 +452,164 @@ describe('instruction-builder', () => {
       const result = buildInstruction(step, context);
 
       expect(result).toContain('- Step Iteration: 3（このステップの実行回数）');
+    });
+
+    it('should NOT include .takt/reports/ prefix in report paths', () => {
+      const step = createMinimalStep('Do work');
+      step.report = '00-plan.md';
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).not.toContain('.takt/reports/');
+    });
+  });
+
+  describe('ReportObjectConfig order/format injection', () => {
+    it('should inject order before instruction_template', () => {
+      const step = createMinimalStep('Do work');
+      step.report = {
+        name: '00-plan.md',
+        order: '**Output:** Write to {report:00-plan.md}',
+      };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      const orderIdx = result.indexOf('**Output:** Write to 20260129-test/00-plan.md');
+      const instructionsIdx = result.indexOf('## Instructions');
+      expect(orderIdx).toBeGreaterThan(-1);
+      expect(instructionsIdx).toBeGreaterThan(orderIdx);
+    });
+
+    it('should inject format after instruction_template', () => {
+      const step = createMinimalStep('Do work');
+      step.report = {
+        name: '00-plan.md',
+        format: '**Format:**\n```markdown\n# Plan\n```',
+      };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      const instructionsIdx = result.indexOf('## Instructions');
+      const formatIdx = result.indexOf('**Format:**');
+      expect(formatIdx).toBeGreaterThan(instructionsIdx);
+    });
+
+    it('should inject both order before and format after instruction_template', () => {
+      const step = createMinimalStep('Do work');
+      step.report = {
+        name: '00-plan.md',
+        order: '**Output:** Write to {report:00-plan.md}',
+        format: '**Format:**\n```markdown\n# Plan\n```',
+      };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      const orderIdx = result.indexOf('**Output:** Write to 20260129-test/00-plan.md');
+      const instructionsIdx = result.indexOf('## Instructions');
+      const formatIdx = result.indexOf('**Format:**');
+      expect(orderIdx).toBeGreaterThan(-1);
+      expect(instructionsIdx).toBeGreaterThan(orderIdx);
+      expect(formatIdx).toBeGreaterThan(instructionsIdx);
+    });
+
+    it('should replace {report:filename} in order text', () => {
+      const step = createMinimalStep('Do work');
+      step.report = {
+        name: '00-plan.md',
+        order: 'Output to {report:00-plan.md} file.',
+      };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('Output to 20260129-test/00-plan.md file.');
+      expect(result).not.toContain('{report:00-plan.md}');
+    });
+
+    it('should not inject order/format when report is a simple string', () => {
+      const step = createMinimalStep('Do work');
+      step.report = '00-plan.md';
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      // Should contain instructions normally
+      expect(result).toContain('## Instructions');
+      expect(result).toContain('Do work');
+      // The instruction should appear right after Additional User Inputs, not after any order section
+      const additionalIdx = result.indexOf('## Additional User Inputs');
+      const instructionsIdx = result.indexOf('## Instructions');
+      expect(additionalIdx).toBeGreaterThan(-1);
+      expect(instructionsIdx).toBeGreaterThan(additionalIdx);
+    });
+
+    it('should not inject order/format when report is ReportConfig[]', () => {
+      const step = createMinimalStep('Do work');
+      step.report = [
+        { label: 'Scope', path: '01-scope.md' },
+      ];
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      // Just verify normal behavior without extra sections
+      expect(result).toContain('## Instructions');
+      expect(result).toContain('Do work');
+    });
+
+    it('should replace {report:filename} in instruction_template too', () => {
+      const step = createMinimalStep('Write to {report:00-plan.md}');
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('Write to 20260129-test/00-plan.md');
+      expect(result).not.toContain('{report:00-plan.md}');
+    });
+
+    it('should replace {step_iteration} in order/format text', () => {
+      const step = createMinimalStep('Do work');
+      step.report = {
+        name: '00-plan.md',
+        order: 'Append ## Iteration {step_iteration} section',
+      };
+      const context = createMinimalContext({
+        reportDir: '20260129-test',
+        stepIteration: 3,
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('Append ## Iteration 3 section');
     });
   });
 

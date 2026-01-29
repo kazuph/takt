@@ -28,19 +28,47 @@ export const StatusSchema = z.enum([
 export const PermissionModeSchema = z.enum(['default', 'acceptEdits', 'bypassPermissions']);
 
 /**
+ * Report object schema (new structured format).
+ *
+ * YAML format:
+ *   report:
+ *     name: 00-plan.md
+ *     order: |
+ *       **レポート出力:** {report:00-plan.md} に出力してください。
+ *     format: |
+ *       **レポートフォーマット:**
+ *       ```markdown
+ *       ...
+ *       ```
+ */
+export const ReportObjectSchema = z.object({
+  /** Report file name */
+  name: z.string().min(1),
+  /** Instruction prepended before instruction_template (e.g., output destination) */
+  order: z.string().optional(),
+  /** Instruction appended after instruction_template (e.g., output format) */
+  format: z.string().optional(),
+});
+
+/**
  * Report field schema.
  *
  * YAML formats:
- *   report: 00-plan.md          # single file
+ *   report: 00-plan.md          # single file (string)
  *   report:                     # multiple files (label: path map entries)
  *     - Scope: 01-scope.md
  *     - Decisions: 02-decisions.md
+ *   report:                     # object form (name + order + format)
+ *     name: 00-plan.md
+ *     order: ...
+ *     format: ...
  *
  * Array items are parsed as single-key objects: [{Scope: "01-scope.md"}, ...]
  */
 export const ReportFieldSchema = z.union([
   z.string().min(1),
   z.array(z.record(z.string(), z.string())).min(1),
+  ReportObjectSchema,
 ]);
 
 /** Rule-based transition schema (new unified format) */

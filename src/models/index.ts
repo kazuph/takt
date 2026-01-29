@@ -3,6 +3,7 @@ export type {
   AgentType,
   Status,
   ReportConfig,
+  ReportObjectConfig,
   AgentResponse,
   SessionState,
   WorkflowStep,
