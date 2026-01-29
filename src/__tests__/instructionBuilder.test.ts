@@ -77,7 +77,7 @@ describe('instruction-builder', () => {
   });
 
   describe('report_dir replacement', () => {
-    it('should replace .takt/reports/{report_dir} with full absolute path', () => {
+    it('should replace {report_dir} in paths keeping them relative', () => {
       const step = createMinimalStep(
         '- Report Directory: .takt/reports/{report_dir}/'
       );
@@ -89,31 +89,31 @@ describe('instruction-builder', () => {
       const result = buildInstruction(step, context);
 
       expect(result).toContain(
-        '- Report Directory: /project/.takt/reports/20260128-test-report/'
+        '- Report Directory: .takt/reports/20260128-test-report/'
       );
     });
 
-    it('should use projectCwd for report path when cwd is a worktree', () => {
+    it('should not leak projectCwd absolute path into instruction', () => {
       const step = createMinimalStep(
         '- Report: .takt/reports/{report_dir}/00-plan.md'
       );
       const context = createMinimalContext({
-        cwd: '/project/.takt/worktrees/my-task',
+        cwd: '/clone/my-task',
         projectCwd: '/project',
         reportDir: '20260128-worktree-report',
       });
 
       const result = buildInstruction(step, context);
 
+      // Path should be relative, not absolute with projectCwd
       expect(result).toContain(
-        '- Report: /project/.takt/reports/20260128-worktree-report/00-plan.md'
+        '- Report: .takt/reports/20260128-worktree-report/00-plan.md'
       );
-      expect(result).toContain('Working Directory: /project/.takt/worktrees/my-task');
-      // Project Root should NOT be included in metadata (to avoid agent confusion)
-      expect(result).not.toContain('Project Root');
+      expect(result).not.toContain('/project/.takt/reports/');
+      expect(result).toContain('Working Directory: /clone/my-task');
     });
 
-    it('should replace multiple .takt/reports/{report_dir} occurrences', () => {
+    it('should replace multiple {report_dir} occurrences', () => {
       const step = createMinimalStep(
         '- Scope: .takt/reports/{report_dir}/01-scope.md\n- Decisions: .takt/reports/{report_dir}/02-decisions.md'
       );
@@ -125,8 +125,9 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('/project/.takt/reports/20260128-multi/01-scope.md');
-      expect(result).toContain('/project/.takt/reports/20260128-multi/02-decisions.md');
+      expect(result).toContain('.takt/reports/20260128-multi/01-scope.md');
+      expect(result).toContain('.takt/reports/20260128-multi/02-decisions.md');
+      expect(result).not.toContain('/project/.takt/reports/');
     });
 
     it('should replace standalone {report_dir} with directory name only', () => {
@@ -140,22 +141,6 @@ describe('instruction-builder', () => {
       const result = buildInstruction(step, context);
 
       expect(result).toContain('Report dir name: 20260128-standalone');
-    });
-
-    it('should fall back to cwd when projectCwd is not provided', () => {
-      const step = createMinimalStep(
-        '- Dir: .takt/reports/{report_dir}/'
-      );
-      const context = createMinimalContext({
-        cwd: '/fallback-project',
-        reportDir: '20260128-fallback',
-      });
-
-      const result = buildInstruction(step, context);
-
-      expect(result).toContain(
-        '- Dir: /fallback-project/.takt/reports/20260128-fallback/'
-      );
     });
   });
 

@@ -5,7 +5,6 @@
  * template placeholders with actual values.
  */
 
-import { join } from 'node:path';
 import type { WorkflowStep, AgentResponse, Language } from '../models/types.js';
 import { getGitDiff } from '../agents/runner.js';
 
@@ -180,14 +179,11 @@ export function buildInstruction(
     escapeTemplateChars(userInputsStr)
   );
 
-  // Replace .takt/reports/{report_dir} with absolute path first,
-  // then replace standalone {report_dir} with the directory name.
-  // This ensures agents always use the correct project root for reports,
-  // even when their cwd is a clone.
+  // Replace {report_dir} with the directory name, keeping paths relative.
+  // In worktree mode, a symlink from cwd/.takt/reports → projectCwd/.takt/reports
+  // ensures the relative path resolves correctly without embedding absolute paths
+  // that could cause agents to operate on the wrong repository.
   if (context.reportDir) {
-    const projectRoot = context.projectCwd ?? context.cwd;
-    const reportDirFullPath = join(projectRoot, '.takt', 'reports', context.reportDir);
-    instruction = instruction.replace(/\.takt\/reports\/\{report_dir\}/g, reportDirFullPath);
     instruction = instruction.replace(/\{report_dir\}/g, context.reportDir);
   }
 
