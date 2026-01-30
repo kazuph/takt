@@ -42,6 +42,7 @@ import { autoCommitAndPush } from './task/autoCommit.js';
 import { summarizeTaskName } from './task/summarize.js';
 import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 import { checkForUpdates } from './utils/updateNotifier.js';
+import { resolveIssueTask, isIssueReference } from './github/issue.js';
 
 const require = createRequire(import.meta.url);
 const { version: cliVersion } = require('../package.json') as { version: string };
@@ -188,6 +189,18 @@ program
 
     // Task execution
     if (task) {
+      // Resolve #N issue references to task text
+      let resolvedTask: string = task;
+      if (isIssueReference(task) || task.trim().split(/\s+/).every((t: string) => isIssueReference(t))) {
+        try {
+          info('Fetching GitHub Issue...');
+          resolvedTask = resolveIssueTask(task);
+        } catch (e) {
+          error(e instanceof Error ? e.message : String(e));
+          process.exit(1);
+        }
+      }
+
       // Get available workflows and prompt user to select
       const availableWorkflows = listWorkflows();
       const currentWorkflow = getCurrentWorkflow(cwd);
@@ -230,13 +243,13 @@ program
       }
 
       // Ask whether to create a worktree
-      const { execCwd, isWorktree } = await confirmAndCreateWorktree(cwd, task);
+      const { execCwd, isWorktree } = await confirmAndCreateWorktree(cwd, resolvedTask);
 
-      log.info('Starting task execution', { task, workflow: selectedWorkflow, worktree: isWorktree });
-      const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd);
+      log.info('Starting task execution', { task: resolvedTask, workflow: selectedWorkflow, worktree: isWorktree });
+      const taskSuccess = await executeTask(resolvedTask, execCwd, selectedWorkflow, cwd);
 
       if (taskSuccess && isWorktree) {
-        const commitResult = autoCommitAndPush(execCwd, task, cwd);
+        const commitResult = autoCommitAndPush(execCwd, resolvedTask, cwd);
         if (commitResult.success && commitResult.commitHash) {
           success(`Auto-committed & pushed: ${commitResult.commitHash}`);
         } else if (!commitResult.success) {

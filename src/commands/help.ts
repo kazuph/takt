@@ -14,6 +14,7 @@ export function showHelp(): void {
   console.log(`
 Usage:
   takt {task}             Execute task with current workflow (continues session)
+  takt "#N"               Execute GitHub Issue #N as task (quote # in shell)
   takt /run-tasks (/run)           Run all pending tasks from .takt/tasks/
   takt /watch                      Watch for tasks and auto-execute (stays resident)
   takt /add-task (/add)            Add a new task (interactive, YAML format)
@@ -25,6 +26,10 @@ Usage:
 
 Examples:
   takt "Fix the bug in main.ts"         # Execute task (continues session)
+  takt "#6"                             # Execute Issue #6 as task
+  takt "#6 #7"                          # Execute multiple Issues as task
+  takt /add-task "#6"                   # Create task from Issue #6
+  takt /add-task "#6" "#7"              # Create task from multiple Issues
   takt /add-task "認証機能を追加する"   # Quick add task
   takt /add-task                        # Interactive task creation
   takt /clear                           # Clear sessions, start fresh

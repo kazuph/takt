@@ -12,7 +12,9 @@ import { promptInput, promptMultilineInput, confirm, selectOption } from '../pro
 import { success, info } from '../utils/ui.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { createLogger } from '../utils/debug.js';
+import { error as errorLog } from '../utils/ui.js';
 import { listWorkflows } from '../config/workflowLoader.js';
+import { parseIssueNumbers, resolveIssueTask } from '../github/issue.js';
 import { getCurrentWorkflow } from '../config/paths.js';
 import type { TaskFileData } from '../task/schema.js';
 
@@ -53,8 +55,19 @@ export async function addTask(cwd: string, args: string[]): Promise<void> {
   let workflow: string | undefined;
 
   if (args.length > 0) {
-    // Argument mode: task content provided directly
-    taskContent = args.join(' ');
+    // Check if args are issue references (#N)
+    const issueNumbers = parseIssueNumbers(args);
+    if (issueNumbers.length > 0) {
+      try {
+        info('Fetching GitHub Issue...');
+        taskContent = resolveIssueTask(args.join(' '));
+      } catch (e) {
+        errorLog(e instanceof Error ? e.message : String(e));
+        return;
+      }
+    } else {
+      taskContent = args.join(' ');
+    }
   } else {
     // Interactive mode (multiline: empty line to finish)
     const input = await promptMultilineInput('Task content');

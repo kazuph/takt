@@ -12,6 +12,7 @@
  */
 
 import type { WorkflowStep, WorkflowRule, AgentResponse, Language, ReportConfig, ReportObjectConfig } from '../models/types.js';
+import { hasTagBasedRules } from './rule-utils.js';
 
 
 /**
@@ -465,12 +466,9 @@ export function buildInstruction(
 
   // 7. Status Output Rules (for tag-based detection in Phase 1)
   // Skip if all rules are ai() or aggregate conditions (no tags needed)
-  if (step.rules && step.rules.length > 0) {
-    const allNonTagConditions = step.rules.every((r) => r.isAiCondition || r.isAggregateCondition);
-    if (!allNonTagConditions) {
-      const statusRulesPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
-      sections.push(statusRulesPrompt);
-    }
+  if (hasTagBasedRules(step)) {
+    const statusRulesPrompt = generateStatusRulesFromRules(step.name, step.rules!, language);
+    sections.push(statusRulesPrompt);
   }
 
   return sections.join('\n\n');

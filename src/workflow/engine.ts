@@ -10,17 +10,17 @@ import type {
   WorkflowState,
   WorkflowStep,
   AgentResponse,
-  RuleMatchMethod,
 } from '../models/types.js';
 import { runAgent, type RunAgentOptions } from '../agents/runner.js';
 import { COMPLETE_STEP, ABORT_STEP, ERROR_MESSAGES } from './constants.js';
 import type { WorkflowEngineOptions } from './types.js';
 import { determineNextStepByRules } from './transitions.js';
-import { detectRuleIndex, callAiJudge } from '../claude/client.js';
-import { buildInstruction as buildInstructionFromTemplate, buildReportInstruction as buildReportInstructionFromTemplate, buildStatusJudgmentInstruction as buildStatusJudgmentInstructionFromTemplate, isReportObjectConfig } from './instruction-builder.js';
+import { buildInstruction as buildInstructionFromTemplate, isReportObjectConfig } from './instruction-builder.js';
 import { LoopDetector } from './loop-detector.js';
 import { handleBlocked } from './blocked-handler.js';
 import { ParallelLogger } from './parallel-logger.js';
+import { detectMatchedRule } from './rule-evaluator.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from './phase-runner.js';
 import {
   createInitialState,
   addUserInput,
@@ -206,18 +206,11 @@ export class WorkflowEngine extends EventEmitter {
     return this.runNormalStep(step);
   }
 
-  /** Build RunAgentOptions from a step's configuration */
-  private buildAgentOptions(step: WorkflowStep): RunAgentOptions {
-    // Phase 1: exclude Write from allowedTools when step has report config
-    const allowedTools = step.report
-      ? step.allowedTools?.filter((t) => t !== 'Write')
-      : step.allowedTools;
-
+  /** Build common RunAgentOptions shared by all phases */
+  private buildBaseOptions(step: WorkflowStep): RunAgentOptions {
     return {
       cwd: this.cwd,
-      sessionId: this.state.agentSessions.get(step.agent),
       agentPath: step.agentPath,
-      allowedTools,
       provider: step.provider,
       model: step.model,
       permissionMode: step.permissionMode,
@@ -228,24 +221,29 @@ export class WorkflowEngine extends EventEmitter {
     };
   }
 
+  /** Build RunAgentOptions from a step's configuration (Phase 1) */
+  private buildAgentOptions(step: WorkflowStep): RunAgentOptions {
+    // Phase 1: exclude Write from allowedTools when step has report config
+    const allowedTools = step.report
+      ? step.allowedTools?.filter((t) => t !== 'Write')
+      : step.allowedTools;
+
+    return {
+      ...this.buildBaseOptions(step),
+      sessionId: this.state.agentSessions.get(step.agent),
+      allowedTools,
+    };
+  }
+
   /**
    * Build RunAgentOptions for session-resume phases (Phase 2, Phase 3).
-   * Shares common fields with the original step's agent config.
    */
   private buildResumeOptions(step: WorkflowStep, sessionId: string, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>): RunAgentOptions {
     return {
-      cwd: this.cwd,
+      ...this.buildBaseOptions(step),
       sessionId,
-      agentPath: step.agentPath,
       allowedTools: overrides.allowedTools,
       maxTurns: overrides.maxTurns,
-      provider: step.provider,
-      model: step.model,
-      permissionMode: step.permissionMode,
-      onStream: this.options.onStream,
-      onPermissionRequest: this.options.onPermissionRequest,
-      onAskUserQuestion: this.options.onAskUserQuestion,
-      bypassPermissions: this.options.bypassPermissions,
     };
   }
 
@@ -261,114 +259,16 @@ export class WorkflowEngine extends EventEmitter {
     }
   }
 
-  /**
-   * Detect matched rule for a step's response.
-   * Evaluation order (first match wins):
-   * 1. Aggregate conditions: all()/any() — evaluate sub-step results
-   * 2. Tag detection from Phase 3 output
-   * 3. Tag detection from Phase 1 output (fallback)
-   * 4. ai() condition evaluation via AI judge
-   * 5. All-conditions AI judge (final fallback)
-   *
-   * Returns undefined for steps without rules.
-   * Throws if rules exist but no rule matched (Fail Fast).
-   *
-   * @param step - The workflow step
-   * @param agentContent - Phase 1 output (main execution)
-   * @param tagContent - Phase 3 output (status judgment); empty string skips tag detection
-   */
-  private async detectMatchedRule(step: WorkflowStep, agentContent: string, tagContent: string): Promise<{ index: number; method: RuleMatchMethod } | undefined> {
-    if (!step.rules || step.rules.length === 0) return undefined;
-
-    // 1. Aggregate conditions (all/any) — only meaningful for parallel parent steps
-    const aggIndex = this.evaluateAggregateConditions(step);
-    if (aggIndex >= 0) {
-      return { index: aggIndex, method: 'aggregate' };
-    }
-
-    // 2. Tag detection from Phase 3 output
-    if (tagContent) {
-      const ruleIndex = detectRuleIndex(tagContent, step.name);
-      if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-        return { index: ruleIndex, method: 'phase3_tag' };
-      }
-    }
-
-    // 3. Tag detection from Phase 1 output (fallback)
-    if (agentContent) {
-      const ruleIndex = detectRuleIndex(agentContent, step.name);
-      if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-        return { index: ruleIndex, method: 'phase1_tag' };
-      }
-    }
-
-    // 4. AI judge for ai() conditions only
-    const aiRuleIndex = await this.evaluateAiConditions(step, agentContent);
-    if (aiRuleIndex >= 0) {
-      return { index: aiRuleIndex, method: 'ai_judge' };
-    }
-
-    // 5. AI judge for all conditions (final fallback)
-    const fallbackIndex = await this.evaluateAllConditionsViaAiJudge(step, agentContent);
-    if (fallbackIndex >= 0) {
-      return { index: fallbackIndex, method: 'ai_judge_fallback' };
-    }
-
-    throw new Error(`Status not found for step "${step.name}": no rule matched after all detection phases`);
-  }
-
-  /**
-   * Evaluate aggregate conditions (all()/any()) against sub-step results.
-   * Returns the 0-based rule index in the step's rules array, or -1 if no match.
-   *
-   * For each aggregate rule, checks the matched condition text of sub-steps:
-   * - all("X"): true when ALL sub-steps have matched condition === X
-   * - any("X"): true when at least ONE sub-step has matched condition === X
-   *
-   * Edge cases per spec:
-   * - Sub-step with no matched rule: all() → false, any() → skip that sub-step
-   * - No sub-steps (0 件): both → false
-   * - Non-parallel step: both → false
-   */
-  private evaluateAggregateConditions(step: WorkflowStep): number {
-    if (!step.rules || !step.parallel || step.parallel.length === 0) return -1;
-
-    for (let i = 0; i < step.rules.length; i++) {
-      const rule = step.rules[i]!;
-      if (!rule.isAggregateCondition || !rule.aggregateType || !rule.aggregateConditionText) {
-        continue;
-      }
-
-      const subSteps = step.parallel;
-      const targetCondition = rule.aggregateConditionText;
-
-      if (rule.aggregateType === 'all') {
-        const allMatch = subSteps.every((sub) => {
-          const output = this.state.stepOutputs.get(sub.name);
-          if (!output || output.matchedRuleIndex == null || !sub.rules) return false;
-          const matchedRule = sub.rules[output.matchedRuleIndex];
-          return matchedRule?.condition === targetCondition;
-        });
-        if (allMatch) {
-          log.debug('Aggregate all() matched', { step: step.name, condition: targetCondition, ruleIndex: i });
-          return i;
-        }
-      } else {
-        // 'any'
-        const anyMatch = subSteps.some((sub) => {
-          const output = this.state.stepOutputs.get(sub.name);
-          if (!output || output.matchedRuleIndex == null || !sub.rules) return false;
-          const matchedRule = sub.rules[output.matchedRuleIndex];
-          return matchedRule?.condition === targetCondition;
-        });
-        if (anyMatch) {
-          log.debug('Aggregate any() matched', { step: step.name, condition: targetCondition, ruleIndex: i });
-          return i;
-        }
-      }
-    }
-
-    return -1;
+  /** Build phase runner context for Phase 2/3 execution */
+  private buildPhaseRunnerContext() {
+    return {
+      cwd: this.cwd,
+      reportDir: this.reportDir,
+      language: this.language,
+      getSessionId: (agent: string) => this.state.agentSessions.get(agent),
+      buildResumeOptions: this.buildResumeOptions.bind(this),
+      updateAgentSession: this.updateAgentSession.bind(this),
+    };
   }
 
   /** Run a normal (non-parallel) step */
@@ -388,18 +288,23 @@ export class WorkflowEngine extends EventEmitter {
     let response = await runAgent(step.agent, instruction, agentOptions);
     this.updateAgentSession(step.agent, response.sessionId);
 
+    const phaseCtx = this.buildPhaseRunnerContext();
+
     // Phase 2: report output (resume same session, Write only)
     if (step.report) {
-      await this.runReportPhase(step, stepIteration);
+      await runReportPhase(step, stepIteration, phaseCtx);
     }
 
     // Phase 3: status judgment (resume session, no tools, output status tag)
     let tagContent = '';
-    if (this.needsStatusJudgmentPhase(step)) {
-      tagContent = await this.runStatusJudgmentPhase(step);
+    if (needsStatusJudgmentPhase(step)) {
+      tagContent = await runStatusJudgmentPhase(step, phaseCtx);
     }
 
-    const match = await this.detectMatchedRule(step, response.content, tagContent);
+    const match = await detectMatchedRule(step, response.content, tagContent, {
+      state: this.state,
+      cwd: this.cwd,
+    });
     if (match) {
       log.debug('Rule matched', { step: step.name, ruleIndex: match.index, method: match.method });
       response = { ...response, matchedRuleIndex: match.index, matchedRuleMethod: match.method };
@@ -408,81 +313,6 @@ export class WorkflowEngine extends EventEmitter {
     this.state.stepOutputs.set(step.name, response);
     this.emitStepReports(step);
     return { response, instruction };
-  }
-
-  /**
-   * Phase 2: Report output.
-   * Resumes the agent session with Write-only tools to output reports.
-   * The response is discarded — only sessionId is updated.
-   */
-  private async runReportPhase(step: WorkflowStep, stepIteration: number): Promise<void> {
-    const sessionId = this.state.agentSessions.get(step.agent);
-    if (!sessionId) {
-      throw new Error(`Report phase requires a session to resume, but no sessionId found for agent "${step.agent}" in step "${step.name}"`);
-    }
-
-    log.debug('Running report phase', { step: step.name, sessionId });
-
-    const reportInstruction = buildReportInstructionFromTemplate(step, {
-      cwd: this.cwd,
-      reportDir: this.reportDir,
-      stepIteration,
-      language: this.language,
-    });
-
-    const reportOptions = this.buildResumeOptions(step, sessionId, {
-      allowedTools: ['Write'],
-      maxTurns: 3,
-    });
-
-    const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
-
-    // Update session (phase 2 may update it)
-    this.updateAgentSession(step.agent, reportResponse.sessionId);
-
-    log.debug('Report phase complete', { step: step.name, status: reportResponse.status });
-  }
-
-  /**
-   * Check if a step needs Phase 3 (status judgment).
-   * Returns true when at least one rule requires tag-based detection
-   * (i.e., not all rules are ai() or aggregate conditions).
-   */
-  private needsStatusJudgmentPhase(step: WorkflowStep): boolean {
-    if (!step.rules || step.rules.length === 0) return false;
-    const allNonTagConditions = step.rules.every((r) => r.isAiCondition || r.isAggregateCondition);
-    return !allNonTagConditions;
-  }
-
-  /**
-   * Phase 3: Status judgment.
-   * Resumes the agent session with no tools to ask the agent to output a status tag.
-   * Returns the Phase 3 response content (containing the status tag).
-   */
-  private async runStatusJudgmentPhase(step: WorkflowStep): Promise<string> {
-    const sessionId = this.state.agentSessions.get(step.agent);
-    if (!sessionId) {
-      throw new Error(`Status judgment phase requires a session to resume, but no sessionId found for agent "${step.agent}" in step "${step.name}"`);
-    }
-
-    log.debug('Running status judgment phase', { step: step.name, sessionId });
-
-    const judgmentInstruction = buildStatusJudgmentInstructionFromTemplate(step, {
-      language: this.language,
-    });
-
-    const judgmentOptions = this.buildResumeOptions(step, sessionId, {
-      allowedTools: [],
-      maxTurns: 3,
-    });
-
-    const judgmentResponse = await runAgent(step.agent, judgmentInstruction, judgmentOptions);
-
-    // Update session (phase 3 may update it)
-    this.updateAgentSession(step.agent, judgmentResponse.sessionId);
-
-    log.debug('Status judgment phase complete', { step: step.name, status: judgmentResponse.status });
-    return judgmentResponse.content;
   }
 
   /**
@@ -509,6 +339,9 @@ export class WorkflowEngine extends EventEmitter {
         })
       : undefined;
 
+    const phaseCtx = this.buildPhaseRunnerContext();
+    const ruleCtx = { state: this.state, cwd: this.cwd };
+
     // Run all sub-steps concurrently
     const subResults = await Promise.all(
       subSteps.map(async (subStep, index) => {
@@ -516,28 +349,28 @@ export class WorkflowEngine extends EventEmitter {
         const subInstruction = this.buildInstruction(subStep, subIteration);
 
         // Phase 1: main execution (Write excluded if sub-step has report)
-        const agentOptions = this.buildAgentOptions(subStep);
+        const baseOptions = this.buildAgentOptions(subStep);
 
-        // Override onStream with parallel logger's prefixed handler
-        if (parallelLogger) {
-          agentOptions.onStream = parallelLogger.createStreamHandler(subStep.name, index);
-        }
+        // Override onStream with parallel logger's prefixed handler (immutable)
+        const agentOptions = parallelLogger
+          ? { ...baseOptions, onStream: parallelLogger.createStreamHandler(subStep.name, index) }
+          : baseOptions;
 
         const subResponse = await runAgent(subStep.agent, subInstruction, agentOptions);
         this.updateAgentSession(subStep.agent, subResponse.sessionId);
 
         // Phase 2: report output for sub-step
         if (subStep.report) {
-          await this.runReportPhase(subStep, subIteration);
+          await runReportPhase(subStep, subIteration, phaseCtx);
         }
 
         // Phase 3: status judgment for sub-step
         let subTagContent = '';
-        if (this.needsStatusJudgmentPhase(subStep)) {
-          subTagContent = await this.runStatusJudgmentPhase(subStep);
+        if (needsStatusJudgmentPhase(subStep)) {
+          subTagContent = await runStatusJudgmentPhase(subStep, phaseCtx);
         }
 
-        const match = await this.detectMatchedRule(subStep, subResponse.content, subTagContent);
+        const match = await detectMatchedRule(subStep, subResponse.content, subTagContent, ruleCtx);
         const finalResponse = match
           ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
           : subResponse;
@@ -572,7 +405,7 @@ export class WorkflowEngine extends EventEmitter {
       .join('\n\n');
 
     // Parent step uses aggregate conditions, so tagContent is empty
-    const match = await this.detectMatchedRule(step, aggregatedContent, '');
+    const match = await detectMatchedRule(step, aggregatedContent, '', ruleCtx);
 
     const aggregatedResponse: AgentResponse = {
       agent: step.name,
@@ -585,79 +418,6 @@ export class WorkflowEngine extends EventEmitter {
     this.state.stepOutputs.set(step.name, aggregatedResponse);
     this.emitStepReports(step);
     return { response: aggregatedResponse, instruction: aggregatedInstruction };
-  }
-
-  /**
-   * Evaluate ai() conditions via AI judge.
-   * Collects all ai() rules, calls the judge, and maps the result back to the original rule index.
-   * Returns the 0-based rule index in the step's rules array, or -1 if no match.
-   */
-  private async evaluateAiConditions(step: WorkflowStep, agentOutput: string): Promise<number> {
-    if (!step.rules) return -1;
-
-    const aiConditions: { index: number; text: string }[] = [];
-    for (let i = 0; i < step.rules.length; i++) {
-      const rule = step.rules[i]!;
-      if (rule.isAiCondition && rule.aiConditionText) {
-        aiConditions.push({ index: i, text: rule.aiConditionText });
-      }
-    }
-
-    if (aiConditions.length === 0) return -1;
-
-    log.debug('Evaluating ai() conditions via judge', {
-      step: step.name,
-      conditionCount: aiConditions.length,
-    });
-
-    // Remap: judge returns 0-based index within aiConditions array
-    const judgeConditions = aiConditions.map((c, i) => ({ index: i, text: c.text }));
-    const judgeResult = await callAiJudge(agentOutput, judgeConditions, { cwd: this.cwd });
-
-    if (judgeResult >= 0 && judgeResult < aiConditions.length) {
-      const matched = aiConditions[judgeResult]!;
-      log.debug('AI judge matched condition', {
-        step: step.name,
-        judgeResult,
-        originalRuleIndex: matched.index,
-        condition: matched.text,
-      });
-      return matched.index;
-    }
-
-    log.debug('AI judge did not match any condition', { step: step.name });
-    return -1;
-  }
-
-  /**
-   * Final fallback: evaluate ALL rule conditions via AI judge.
-   * Unlike evaluateAiConditions (which only handles ai() flagged rules),
-   * this sends every rule's condition text to the judge.
-   * Returns the 0-based rule index, or -1 if no match.
-   */
-  private async evaluateAllConditionsViaAiJudge(step: WorkflowStep, agentOutput: string): Promise<number> {
-    if (!step.rules || step.rules.length === 0) return -1;
-
-    const conditions = step.rules.map((rule, i) => ({ index: i, text: rule.condition }));
-
-    log.debug('Evaluating all conditions via AI judge (final fallback)', {
-      step: step.name,
-      conditionCount: conditions.length,
-    });
-
-    const judgeResult = await callAiJudge(agentOutput, conditions, { cwd: this.cwd });
-
-    if (judgeResult >= 0 && judgeResult < conditions.length) {
-      log.debug('AI judge (fallback) matched condition', {
-        step: step.name,
-        ruleIndex: judgeResult,
-        condition: conditions[judgeResult]!.text,
-      });
-      return judgeResult;
-    }
-
-    log.debug('AI judge (fallback) did not match any condition', { step: step.name });
-    return -1;
   }
 
   /**
