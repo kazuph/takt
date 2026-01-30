@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1] - 2026-01-31
+
+### Added
+
+- Interactive task planning mode: `takt` (no args) starts AI conversation to refine task requirements before execution (#47, #5)
+  - Session persistence across takt restarts
+  - Read-only tools (Read, Glob, Grep, Bash, WebSearch, WebFetch) for codebase investigation
+  - Planning-only system prompt prevents code changes during conversation
+  - `/go` to confirm and execute, `/cancel` to exit
+- Boy Scout Rule enforcement in reviewer/supervisor agent templates
+
+### Changed
+
+- CLI migrated from slash commands (`takt /run-tasks`) to subcommands (`takt run`) (#47)
+- `/help` and `/refresh-builtin` commands removed; `eject` simplified
+- SDK options builder only includes defined values to prevent hangs
+
+### Fixed
+
+- Claude Agent SDK hanging when `model: undefined` or other undefined options were passed as keys
+
 ## [0.3.0] - 2026-01-30
 
 ### Added
