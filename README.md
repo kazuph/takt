@@ -11,6 +11,7 @@ TAKT is built with TAKT (dogfooding).
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or Codex must be installed and configured
+- [GitHub CLI](https://cli.github.com/) (`gh`) — required only for `takt "#N"` (GitHub Issue execution)
 
 TAKT supports both Claude Code and Codex as providers; you can choose the provider during setup.
 
@@ -80,7 +81,7 @@ Choose `y` to run in a `git clone --shared` isolated environment, keeping your w
 |----------|----------|
 | `default` | Full development tasks. Used for TAKT's own development. Multi-stage review with parallel architect + security review. |
 | `simple` | Lightweight tasks like README updates or small fixes. Reviews without fix loops. |
-| `expert-review` / `expert-cqrs` | Web development projects. Multi-expert review (CQRS, Frontend, Security, QA). |
+| `expert` / `expert-cqrs` | Web development projects. Sequential multi-expert review with fix loops (`expert`: Architecture, Frontend, Security, QA; `expert-cqrs`: CQRS+ES, Frontend, Security, QA). |
 | `research` | Research and investigation. Autonomous research without asking questions. |
 | `magi` | Fun deliberation. Three AI personas analyze and vote (Evangelion-inspired). |
 
@@ -196,20 +197,22 @@ TAKT ships with several built-in workflows:
 | `default` | Full development workflow: plan → implement → AI review → parallel reviewers (architect + security) → supervisor approval. Includes fix loops for each review stage. |
 | `simple` | Simplified version of default: plan → implement → architect review → AI review → supervisor. No intermediate fix steps. |
 | `research` | Research workflow: planner → digger → supervisor. Autonomously researches topics without asking questions. |
-| `expert-review` | Comprehensive review with domain experts: CQRS+ES, Frontend, AI, Security, QA reviews with fix loops. |
-| `expert-cqrs` | Expert review focused on CQRS+ES, Frontend, AI, Security, and QA. Plan → implement → multi-expert review → supervise. |
+| `expert` | Sequential review with domain experts: Architecture, Frontend, Security, QA reviews with fix loops. |
+| `expert-cqrs` | Sequential review with domain experts: CQRS+ES, Frontend, Security, QA reviews with fix loops. |
 | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
 
 Switch between workflows with `takt /switch`.
 
 ## Built-in Agents
 
-- **coder** - Implements features and fixes bugs
-- **architect** - Reviews architecture and code quality, verifies spec compliance
-- **supervisor** - Final verification, validation, and approval
-- **planner** - Task analysis, spec investigation, and implementation planning
-- **ai-reviewer** - AI-generated code quality review
-- **security** - Security vulnerability assessment
+| Agent | Description |
+|-------|-------------|
+| **planner** | Task analysis, spec investigation, and implementation planning |
+| **coder** | Implements features and fixes bugs |
+| **ai-antipattern-reviewer** | Reviews for AI-specific anti-patterns (hallucinated APIs, incorrect assumptions, scope creep) |
+| **architecture-reviewer** | Reviews architecture and code quality, verifies spec compliance |
+| **security-reviewer** | Security vulnerability assessment |
+| **supervisor** | Final verification, validation, and approval |
 
 ## Custom Agents
 
@@ -239,30 +242,15 @@ You are a code reviewer focused on security.
 
 ## Model Selection
 
-### Claude Models
+The `model` field in workflow steps, agent configs, and global config is passed directly to the provider (Claude Code CLI or Codex SDK). TAKT does not resolve model aliases — the provider handles that.
 
-You can specify models using either **aliases** or **full model names**:
+### Claude Code
 
-**Aliases** (recommended for simplicity):
-- `opus` - Claude Opus 4.5 (highest reasoning capability)
-- `sonnet` - Claude Sonnet 4.5 (balanced, best for most tasks)
-- `haiku` - Claude Haiku 4.5 (fast and efficient)
-- `opusplan` - Opus for planning, Sonnet for execution
-- `default` - Recommended model for your account type
+Claude Code supports aliases (`opus`, `sonnet`, `haiku`, `opusplan`, `default`) and full model names (e.g., `claude-sonnet-4-5-20250929`). See [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code) for available models.
 
-**Full model names** (recommended for production):
-- `claude-opus-4-5-20251101`
-- `claude-sonnet-4-5-20250929`
-- `claude-haiku-4-5-20250101`
+### Codex
 
-### Codex Models
-
-Available Codex models:
-- `gpt-5.2-codex` - Latest agentic coding model (default)
-- `gpt-5.1-codex` - Previous generation
-- `gpt-5.1-codex-max` - Optimized for long-running tasks
-- `gpt-5.1-codex-mini` - Smaller, cost-effective version
-- `codex-1` - Specialized model aligned with coding preferences
+The model string is passed to the Codex SDK. Defaults to `codex` if not specified. See Codex documentation for available models.
 
 ## Project Structure
 
@@ -485,7 +473,8 @@ Available variables in `instruction_template`:
 | `{step_iteration}` | Per-step iteration count (how many times THIS step has run) |
 | `{previous_response}` | Previous step's output (auto-injected if not in template) |
 | `{user_inputs}` | Additional user inputs during workflow (auto-injected if not in template) |
-| `{report_dir}` | Report directory name (e.g., `20250126-143052-task-summary`) |
+| `{report_dir}` | Report directory path (e.g., `.takt/reports/20250126-143052-task-summary`) |
+| `{report:filename}` | Resolves to `{report_dir}/filename` (e.g., `{report:00-plan.md}`) |
 
 ### Designing Workflows
 

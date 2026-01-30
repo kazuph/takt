@@ -7,6 +7,7 @@
 ## 必要条件
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) または Codex がインストール・設定済みであること
+- [GitHub CLI](https://cli.github.com/) (`gh`) — `takt "#N"`（GitHub Issue実行）を使う場合のみ必要
 
 TAKTはClaude CodeとCodexの両方をプロバイダーとしてサポートしています。セットアップ時にプロバイダーを選択できます。
 
@@ -76,7 +77,7 @@ Select workflow:
 |------------|------------|
 | `default` | 本格的な開発タスク。TAKT自身の開発で使用。アーキテクト＋セキュリティの並列レビュー付き多段階レビュー。 |
 | `simple` | README更新や小さな修正などの軽量タスク。レビューはあるが修正ループなし。 |
-| `expert-review` / `expert-cqrs` | Web開発プロジェクト。マルチエキスパートレビュー（CQRS、フロントエンド、セキュリティ、QA）。 |
+| `expert` / `expert-cqrs` | Web開発プロジェクト。修正ループ付き逐次マルチエキスパートレビュー（`expert`: アーキテクチャ、フロントエンド、セキュリティ、QA。`expert-cqrs`: CQRS+ES、フロントエンド、セキュリティ、QA）。 |
 | `research` | 調査・リサーチ。質問せずに自律的にリサーチを実行。 |
 | `magi` | 審議システム。3つのAIペルソナが分析・投票（エヴァンゲリオン風）。 |
 
@@ -192,20 +193,34 @@ TAKTには複数のビルトインワークフローが同梱されています:
 | `default` | フル開発ワークフロー: 計画 → 実装 → AIレビュー → 並列レビュー（アーキテクト＋セキュリティ）→ スーパーバイザー承認。各レビュー段階に修正ループあり。 |
 | `simple` | defaultの簡略版: 計画 → 実装 → アーキテクトレビュー → AIレビュー → スーパーバイザー。中間の修正ステップなし。 |
 | `research` | リサーチワークフロー: プランナー → ディガー → スーパーバイザー。質問せずに自律的にリサーチを実行。 |
-| `expert-review` | ドメインエキスパートによる包括的レビュー: CQRS+ES、フロントエンド、AI、セキュリティ、QAレビューと修正ループ。 |
-| `expert-cqrs` | CQRS+ES、フロントエンド、AI、セキュリティ、QA専門のエキスパートレビュー。計画 → 実装 → マルチエキスパートレビュー → スーパーバイザー。 |
+| `expert` | ドメインエキスパートによる逐次レビュー: アーキテクチャ、フロントエンド、セキュリティ、QAレビューと修正ループ。 |
+| `expert-cqrs` | ドメインエキスパートによる逐次レビュー: CQRS+ES、フロントエンド、セキュリティ、QAレビューと修正ループ。 |
 | `magi` | エヴァンゲリオンにインスパイアされた審議システム。3つのAIペルソナ（MELCHIOR、BALTHASAR、CASPER）が分析し投票。 |
 
 `takt /switch` でワークフローを切り替えられます。
 
 ## ビルトインエージェント
 
-- **coder** - 機能を実装しバグを修正
-- **architect** - アーキテクチャとコード品質をレビュー、仕様準拠を検証
-- **supervisor** - 最終検証、バリデーション、承認
-- **planner** - タスク分析、仕様調査、実装計画
-- **ai-reviewer** - AI生成コードの品質レビュー
-- **security** - セキュリティ脆弱性の評価
+| エージェント | 説明 |
+|------------|------|
+| **planner** | タスク分析、仕様調査、実装計画 |
+| **coder** | 機能の実装、バグ修正 |
+| **ai-antipattern-reviewer** | AI特有のアンチパターンレビュー（存在しないAPI、誤った仮定、スコープクリープ） |
+| **architecture-reviewer** | アーキテクチャとコード品質のレビュー、仕様準拠の検証 |
+| **security-reviewer** | セキュリティ脆弱性の評価 |
+| **supervisor** | 最終検証、バリデーション、承認 |
+
+## モデル選択
+
+`model` フィールド（ワークフローステップ、エージェント設定、グローバル設定）はプロバイダー（Claude Code CLI / Codex SDK）にそのまま渡されます。TAKTはモデルエイリアスの解決を行いません。
+
+### Claude Code
+
+Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`default`）およびフルモデル名（例: `claude-sonnet-4-5-20250929`）をサポートしています。利用可能なモデルは [Claude Code ドキュメント](https://docs.anthropic.com/en/docs/claude-code)を参照してください。
+
+### Codex
+
+モデル文字列はCodex SDKに渡されます。未指定の場合は `codex` がデフォルトです。利用可能なモデルはCodexのドキュメントを参照してください。
 
 ## カスタムエージェント
 
@@ -253,6 +268,27 @@ agents:
 ```
 
 ビルトインリソースはnpmパッケージ（`dist/resources/`）に埋め込まれています。`~/.takt/` のユーザーファイルが優先されます。
+
+### グローバル設定
+
+デフォルトのプロバイダーとモデルを `~/.takt/config.yaml` で設定:
+
+```yaml
+# ~/.takt/config.yaml
+language: ja
+default_workflow: default
+log_level: info
+provider: claude         # デフォルトプロバイダー: claude または codex
+model: sonnet            # デフォルトモデル（オプション）
+trusted_directories:
+  - /path/to/trusted/dir
+```
+
+**モデル解決の優先順位:**
+1. ワークフローステップの `model`（最優先）
+2. カスタムエージェントの `model`
+3. グローバル設定の `model`
+4. プロバイダーデフォルト（Claude: sonnet、Codex: codex）
 
 ## 実践的な使い方ガイド
 
@@ -423,7 +459,8 @@ agent: /path/to/custom/agent.md
 | `{step_iteration}` | ステップごとのイテレーション数（このステップが実行された回数） |
 | `{previous_response}` | 前のステップの出力（テンプレートになければ自動注入） |
 | `{user_inputs}` | ワークフロー中の追加ユーザー入力（テンプレートになければ自動注入） |
-| `{report_dir}` | レポートディレクトリ名（例: `20250126-143052-task-summary`） |
+| `{report_dir}` | レポートディレクトリパス（例: `.takt/reports/20250126-143052-task-summary`） |
+| `{report:filename}` | `{report_dir}/filename` に展開（例: `{report:00-plan.md}`） |
 
 ### ワークフローの設計
 

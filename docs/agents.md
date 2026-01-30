@@ -4,27 +4,27 @@ This guide explains how to configure and create custom agents in TAKT.
 
 ## Built-in Agents
 
-TAKT includes three built-in agents:
+TAKT includes six built-in agents (located in `resources/global/{lang}/agents/default/`):
 
-| Agent | Tools | Purpose |
-|-------|-------|---------|
-| `coder` | Read, Glob, Grep, Edit, Write, Bash, WebSearch, WebFetch | Implements features and fixes bugs |
-| `architect` | Read, Glob, Grep, WebSearch, WebFetch | Reviews code and provides feedback |
-| `supervisor` | Read, Glob, Grep, Bash, WebSearch, WebFetch | Final verification and approval |
+| Agent | Description |
+|-------|-------------|
+| **planner** | Task analysis, spec investigation, and implementation planning |
+| **coder** | Implements features and fixes bugs |
+| **ai-antipattern-reviewer** | Reviews for AI-specific anti-patterns (hallucinated APIs, incorrect assumptions, scope creep) |
+| **architecture-reviewer** | Reviews architecture and code quality, verifies spec compliance |
+| **security-reviewer** | Security vulnerability assessment |
+| **supervisor** | Final verification, validation, and approval |
 
 ## Specifying Agents
 
-In workflow YAML, agents can be specified by:
+In workflow YAML, agents are specified by file path:
 
 ```yaml
-# Built-in agent name
-agent: coder
+# Relative to workflow file directory
+agent: ../agents/default/coder.md
 
-# Path to prompt file
-agent: ~/.takt/agents/my-agent.md
-
-# Project-local agent
-agent: ./.takt/agents/reviewer.md
+# Home directory
+agent: ~/.takt/agents/default/coder.md
 
 # Absolute path
 agent: /path/to/custom/agent.md
@@ -50,25 +50,9 @@ You are a security-focused code reviewer.
 - Focus on OWASP Top 10 issues
 - Check for SQL injection, XSS, CSRF
 - Verify proper error handling
-
-## Output Format
-Output one of these status markers:
-- [REVIEWER:APPROVE] if code is secure
-- [REVIEWER:REJECT] if issues found
 ```
 
-### Status Markers
-
-Agents must output status markers for workflow transitions:
-
-| Status | Example Pattern |
-|--------|----------------|
-| done | `[AGENT:DONE]` |
-| blocked | `[AGENT:BLOCKED]` |
-| approved | `[AGENT:APPROVED]`, `[AGENT:APPROVE]` |
-| rejected | `[AGENT:REJECTED]`, `[AGENT:REJECT]` |
-
-## Advanced Configuration
+> **Note**: Agents do NOT need to output status markers manually. The workflow engine auto-injects status output rules into agent instructions based on the step's `rules` configuration. Agents output `[STEP:N]` tags (where N is the 0-based rule index) which the engine uses for routing.
 
 ### Using agents.yaml
 
@@ -76,77 +60,78 @@ For more control, define agents in `.takt/agents.yaml`:
 
 ```yaml
 agents:
-  - name: security-reviewer
-    prompt_file: .takt/prompts/security-reviewer.md
+  - name: my-reviewer
+    prompt_file: .takt/prompts/reviewer.md
     allowed_tools:
       - Read
       - Glob
       - Grep
-    status_patterns:
-      approved: "\\[SECURITY:APPROVE\\]"
-      rejected: "\\[SECURITY:REJECT\\]"
+    provider: claude             # Optional: claude or codex
+    model: opus                  # Optional: model alias or full name
 ```
 
-### Tool Permissions
+### Agent Configuration Options
 
-Available tools:
-- `Read` - Read files
-- `Glob` - Find files by pattern
-- `Grep` - Search file contents
-- `Edit` - Modify files
-- `Write` - Create/overwrite files
-- `Bash` - Execute commands
-- `WebSearch` - Search the web
-- `WebFetch` - Fetch web content
+| Field | Description |
+|-------|-------------|
+| `name` | Agent identifier (referenced in workflow steps) |
+| `prompt_file` | Path to Markdown prompt file |
+| `prompt` | Inline prompt text (alternative to `prompt_file`) |
+| `allowed_tools` | List of tools the agent can use |
+| `claude_agent` | Claude Code agent name (for Claude Code native agents) |
+| `claude_skill` | Claude Code skill name (for Claude Code native skills) |
+| `provider` | Provider override: `claude` or `codex` |
+| `model` | Model override (alias or full name) |
+
+### Available Tools
+
+- `Read` — Read files
+- `Glob` — Find files by pattern
+- `Grep` — Search file contents
+- `Edit` — Modify files
+- `Write` — Create/overwrite files
+- `Bash` — Execute commands
+- `WebSearch` — Search the web
+- `WebFetch` — Fetch web content
 
 ## Best Practices
 
-1. **Clear role definition** - State what the agent does and doesn't do
-2. **Explicit output format** - Define exact status markers
-3. **Minimal tools** - Grant only necessary permissions
-4. **Focused scope** - One agent, one responsibility
-5. **Examples** - Include examples of expected behavior
+1. **Clear role definition** — State what the agent does and doesn't do
+2. **Minimal tools** — Grant only necessary permissions
+3. **Use `edit: false`** — Review agents should not modify files
+4. **Focused scope** — One agent, one responsibility
+5. **Customize via `/eject`** — Copy builtin agents to `~/.takt/` for modification rather than writing from scratch
 
 ## Example: Multi-Reviewer Setup
 
 ```yaml
 # .takt/agents.yaml
 agents:
-  - name: security-reviewer
-    prompt_file: .takt/prompts/security.md
-    allowed_tools: [Read, Glob, Grep]
-    status_patterns:
-      approved: "\\[SEC:OK\\]"
-      rejected: "\\[SEC:FAIL\\]"
-
   - name: performance-reviewer
     prompt_file: .takt/prompts/performance.md
     allowed_tools: [Read, Glob, Grep, Bash]
-    status_patterns:
-      approved: "\\[PERF:OK\\]"
-      rejected: "\\[PERF:FAIL\\]"
 ```
 
 ```yaml
 # workflow.yaml
 steps:
   - name: implement
-    agent: coder
-    # ...
+    agent: ../agents/default/coder.md
+    edit: true
+    rules:
+      - condition: Implementation complete
+        next: review
+      - condition: Cannot proceed
+        next: ABORT
 
-  - name: security-review
-    agent: security-reviewer
-    transitions:
-      - condition: approved
-        next_step: performance-review
-      - condition: rejected
-        next_step: implement
-
-  - name: performance-review
+  - name: review
     agent: performance-reviewer
-    transitions:
-      - condition: approved
-        next_step: COMPLETE
-      - condition: rejected
-        next_step: implement
+    edit: false
+    rules:
+      - condition: Approved
+        next: COMPLETE
+      - condition: Needs fix
+        next: implement
+    instruction_template: |
+      Review the implementation for performance issues.
 ```
