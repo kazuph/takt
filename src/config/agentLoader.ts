@@ -1,7 +1,9 @@
 /**
  * Agent configuration loader
  *
- * Loads agents from ~/.takt/agents/ directory only.
+ * Loads agents with user → builtin fallback:
+ * 1. User agents: ~/.takt/agents/*.md
+ * 2. Builtin agents: resources/global/{lang}/agents/*.md
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -10,8 +12,22 @@ import type { CustomAgentConfig } from '../models/types.js';
 import {
   getGlobalAgentsDir,
   getGlobalWorkflowsDir,
+  getBuiltinAgentsDir,
+  getBuiltinWorkflowsDir,
   isPathSafe,
 } from './paths.js';
+import { getLanguage } from './globalConfig.js';
+
+/** Get all allowed base directories for agent prompt files */
+function getAllowedAgentBases(): string[] {
+  const lang = getLanguage();
+  return [
+    getGlobalAgentsDir(),
+    getGlobalWorkflowsDir(),
+    getBuiltinAgentsDir(lang),
+    getBuiltinWorkflowsDir(lang),
+  ];
+}
 
 /** Load agents from markdown files in a directory */
 export function loadAgentsFromDir(dirPath: string): CustomAgentConfig[] {
@@ -61,19 +77,7 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
   }
 
   if (agent.promptFile) {
-    const allowedBases = [
-      getGlobalAgentsDir(),
-      getGlobalWorkflowsDir(),
-    ];
-
-    let isValid = false;
-    for (const base of allowedBases) {
-      if (isPathSafe(base, agent.promptFile)) {
-        isValid = true;
-        break;
-      }
-    }
-
+    const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, agent.promptFile!));
     if (!isValid) {
       throw new Error(`Agent prompt file path is not allowed: ${agent.promptFile}`);
     }
@@ -93,19 +97,7 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
  * Used by workflow engine when agentPath is already resolved.
  */
 export function loadAgentPromptFromPath(agentPath: string): string {
-  const allowedBases = [
-    getGlobalAgentsDir(),
-    getGlobalWorkflowsDir(),
-  ];
-
-  let isValid = false;
-  for (const base of allowedBases) {
-    if (isPathSafe(base, agentPath)) {
-      isValid = true;
-      break;
-    }
-  }
-
+  const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, agentPath));
   if (!isValid) {
     throw new Error(`Agent prompt file path is not allowed: ${agentPath}`);
   }

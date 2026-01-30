@@ -10,11 +10,15 @@ import { randomUUID } from 'node:crypto';
 import {
   getBuiltinWorkflow,
   loadAllWorkflows,
+  loadWorkflow,
+  listWorkflows,
+  loadAgentPromptFromPath,
 } from '../config/loader.js';
 import {
   getCurrentWorkflow,
   setCurrentWorkflow,
   getProjectConfigDir,
+  getBuiltinAgentsDir,
   loadInputHistory,
   saveInputHistory,
   addToInputHistory,
@@ -27,11 +31,17 @@ import {
   loadWorktreeSessions,
   updateWorktreeSession,
 } from '../config/paths.js';
+import { getLanguage } from '../config/globalConfig.js';
 import { loadProjectConfig } from '../config/projectConfig.js';
 
 describe('getBuiltinWorkflow', () => {
-  it('should return null for all workflow names (no built-in workflows)', () => {
-    expect(getBuiltinWorkflow('default')).toBeNull();
+  it('should return builtin workflow when it exists in resources', () => {
+    const workflow = getBuiltinWorkflow('default');
+    expect(workflow).not.toBeNull();
+    expect(workflow!.name).toBe('default');
+  });
+
+  it('should return null for non-existent workflow names', () => {
     expect(getBuiltinWorkflow('passthrough')).toBeNull();
     expect(getBuiltinWorkflow('unknown')).toBeNull();
     expect(getBuiltinWorkflow('')).toBeNull();
@@ -75,6 +85,65 @@ steps:
 
     // Project-local workflow should NOT be loaded
     expect(workflows.has('test')).toBe(false);
+  });
+});
+
+describe('loadWorkflow (builtin fallback)', () => {
+  it('should load builtin workflow when user workflow does not exist', () => {
+    const workflow = loadWorkflow('default');
+    expect(workflow).not.toBeNull();
+    expect(workflow!.name).toBe('default');
+  });
+
+  it('should return null for non-existent workflow', () => {
+    const workflow = loadWorkflow('does-not-exist');
+    expect(workflow).toBeNull();
+  });
+
+  it('should load builtin workflows like simple, research', () => {
+    const simple = loadWorkflow('simple');
+    expect(simple).not.toBeNull();
+    expect(simple!.name).toBe('simple');
+
+    const research = loadWorkflow('research');
+    expect(research).not.toBeNull();
+    expect(research!.name).toBe('research');
+  });
+});
+
+describe('listWorkflows (builtin fallback)', () => {
+  it('should include builtin workflows', () => {
+    const workflows = listWorkflows();
+    expect(workflows).toContain('default');
+    expect(workflows).toContain('simple');
+  });
+
+  it('should return sorted list', () => {
+    const workflows = listWorkflows();
+    const sorted = [...workflows].sort();
+    expect(workflows).toEqual(sorted);
+  });
+});
+
+describe('loadAllWorkflows (builtin fallback)', () => {
+  it('should include builtin workflows in the map', () => {
+    const workflows = loadAllWorkflows();
+    expect(workflows.has('default')).toBe(true);
+    expect(workflows.has('simple')).toBe(true);
+  });
+});
+
+describe('loadAgentPromptFromPath (builtin paths)', () => {
+  it('should load agent prompt from builtin resources path', () => {
+    const lang = getLanguage();
+    const builtinAgentsDir = getBuiltinAgentsDir(lang);
+    const agentPath = join(builtinAgentsDir, 'default', 'coder.md');
+
+    if (existsSync(agentPath)) {
+      const prompt = loadAgentPromptFromPath(agentPath);
+      expect(prompt).toBeTruthy();
+      expect(typeof prompt).toBe('string');
+    }
   });
 });
 

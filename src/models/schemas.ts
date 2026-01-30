@@ -170,6 +170,8 @@ export const GlobalConfigSchema = z.object({
   debug: DebugConfigSchema.optional(),
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktree_dir: z.string().optional(),
+  /** List of builtin workflow/agent names to exclude from fallback loading */
+  disabled_builtins: z.array(z.string()).optional().default([]),
 });
 
 /** Project config schema */

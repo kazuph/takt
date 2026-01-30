@@ -29,7 +29,7 @@ initial_step: plan
 steps:
   - name: plan
     edit: false
-    agent: ~/.takt/agents/default/planner.md
+    agent: ../agents/default/planner.md
     report:
       name: 00-plan.md
       format: |
@@ -89,7 +89,7 @@ steps:
 
   - name: implement
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     report:
       - Scope: 01-coder-scope.md
       - Decisions: 02-coder-decisions.md
@@ -144,7 +144,7 @@ steps:
 
   - name: ai_review
     edit: false
-    agent: ~/.takt/agents/default/ai-antipattern-reviewer.md
+    agent: ../agents/default/ai-antipattern-reviewer.md
     report:
       name: 03-ai-review.md
       format: |
@@ -194,7 +194,7 @@ steps:
 
   - name: ai_fix
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -224,7 +224,7 @@ steps:
 
   - name: review
     edit: false
-    agent: ~/.takt/agents/default/architecture-reviewer.md
+    agent: ../agents/default/architecture-reviewer.md
     report:
       name: 04-architect-review.md
       format: |
@@ -275,7 +275,7 @@ steps:
 
   - name: improve
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -307,7 +307,7 @@ steps:
 
   - name: fix
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -334,7 +334,7 @@ steps:
 
   - name: security_review
     edit: false
-    agent: ~/.takt/agents/default/security-reviewer.md
+    agent: ../agents/default/security-reviewer.md
     report:
       name: 05-security-review.md
       format: |
@@ -387,7 +387,7 @@ steps:
 
   - name: security_fix
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -413,7 +413,7 @@ steps:
 
   - name: supervise
     edit: false
-    agent: ~/.takt/agents/default/supervisor.md
+    agent: ../agents/default/supervisor.md
     report:
       - Validation: 06-supervisor-validation.md
       - Summary: summary.md

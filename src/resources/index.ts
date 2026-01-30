@@ -3,9 +3,9 @@
  *
  * Contains default workflow definitions and resource paths.
  * Resources are organized into:
- * - resources/global/ - Files to copy to ~/.takt
- * - resources/global/en/ - English resources
- * - resources/global/ja/ - Japanese resources
+ * - resources/global/{lang}/workflows/ - Builtin workflows (loaded via fallback)
+ * - resources/global/{lang}/agents/   - Builtin agents (loaded via fallback)
+ * - resources/project/                - Project-level template files (.gitignore)
  */
 
 import { readFileSync, readdirSync, existsSync, statSync, mkdirSync, writeFileSync } from 'fs';
@@ -45,20 +45,6 @@ export function getLanguageResourcesDir(lang: Language): string {
 }
 
 /**
- * Copy global resources directory to ~/.takt.
- * Only copies files that don't exist in target.
- * Skips language-specific directories (en/, ja/) which are handled by copyLanguageResourcesToDir.
- */
-export function copyGlobalResourcesToDir(targetDir: string): void {
-  const resourcesDir = getGlobalResourcesDir();
-  if (!existsSync(resourcesDir)) {
-    return;
-  }
-  // Skip language directories (they are handled by copyLanguageResourcesToDir)
-  copyDirRecursive(resourcesDir, targetDir, { skipDirs: ['en', 'ja'] });
-}
-
-/**
  * Copy project resources directory to .takt in project.
  * Only copies files that don't exist in target (e.g., .gitignore).
  */
@@ -70,72 +56,6 @@ export function copyProjectResourcesToDir(targetDir: string): void {
   copyDirRecursive(resourcesDir, targetDir, {
     renameMap: { dotgitignore: '.gitignore' },
   });
-}
-
-/**
- * Copy language-specific resources (agents and workflows) to ~/.takt.
- * Copies from resources/global/{lang}/agents to ~/.takt/agents
- * and resources/global/{lang}/workflows to ~/.takt/workflows.
- * Also copies config.yaml from language directory.
- * @throws Error if language directory doesn't exist
- */
-export function copyLanguageResourcesToDir(targetDir: string, lang: Language): void {
-  const langDir = getLanguageResourcesDir(lang);
-  if (!existsSync(langDir)) {
-    throw new Error(`Language resources not found: ${langDir}`);
-  }
-
-  // Copy agents directory
-  const langAgentsDir = join(langDir, 'agents');
-  const targetAgentsDir = join(targetDir, 'agents');
-  if (existsSync(langAgentsDir)) {
-    copyDirRecursive(langAgentsDir, targetAgentsDir);
-  }
-
-  // Copy workflows directory
-  const langWorkflowsDir = join(langDir, 'workflows');
-  const targetWorkflowsDir = join(targetDir, 'workflows');
-  if (existsSync(langWorkflowsDir)) {
-    copyDirRecursive(langWorkflowsDir, targetWorkflowsDir);
-  }
-
-  // Copy config.yaml if exists
-  const langConfigPath = join(langDir, 'config.yaml');
-  const targetConfigPath = join(targetDir, 'config.yaml');
-  if (existsSync(langConfigPath) && !existsSync(targetConfigPath)) {
-    const content = readFileSync(langConfigPath);
-    writeFileSync(targetConfigPath, content);
-  }
-}
-
-/**
- * Force-refresh language-specific resources (agents and workflows) to ~/.takt.
- * Overwrites existing builtin files. Does NOT touch config.yaml.
- */
-export function forceRefreshLanguageResources(targetDir: string, lang: Language): string[] {
-  const langDir = getLanguageResourcesDir(lang);
-  if (!existsSync(langDir)) {
-    throw new Error(`Language resources not found: ${langDir}`);
-  }
-
-  const copiedFiles: string[] = [];
-  const forceOptions = { overwrite: true, copiedFiles };
-
-  // Overwrite agents directory
-  const langAgentsDir = join(langDir, 'agents');
-  const targetAgentsDir = join(targetDir, 'agents');
-  if (existsSync(langAgentsDir)) {
-    copyDirRecursive(langAgentsDir, targetAgentsDir, forceOptions);
-  }
-
-  // Overwrite workflows directory
-  const langWorkflowsDir = join(langDir, 'workflows');
-  const targetWorkflowsDir = join(targetDir, 'workflows');
-  if (existsSync(langWorkflowsDir)) {
-    copyDirRecursive(langWorkflowsDir, targetWorkflowsDir, forceOptions);
-  }
-
-  return copiedFiles;
 }
 
 /** Files to skip during resource copy (OS-generated files) */

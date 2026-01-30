@@ -1,7 +1,9 @@
 /**
  * Workflow configuration loader
  *
- * Loads workflows from ~/.takt/workflows/ directory only.
+ * Loads workflows with user → builtin fallback:
+ * 1. User workflows: ~/.takt/workflows/{name}.yaml
+ * 2. Builtin workflows: resources/global/{lang}/workflows/{name}.yaml
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -9,12 +11,20 @@ import { join, dirname, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { WorkflowConfigRawSchema } from '../models/schemas.js';
 import type { WorkflowConfig, WorkflowStep, WorkflowRule, ReportConfig, ReportObjectConfig } from '../models/types.js';
-import { getGlobalWorkflowsDir } from './paths.js';
+import { getGlobalWorkflowsDir, getBuiltinWorkflowsDir } from './paths.js';
+import { getLanguage, getDisabledBuiltins } from './globalConfig.js';
 
 /** Get builtin workflow by name */
 export function getBuiltinWorkflow(name: string): WorkflowConfig | null {
-  // No built-in workflows - all workflows must be defined in ~/.takt/workflows/
-  void name;
+  const lang = getLanguage();
+  const disabled = getDisabledBuiltins();
+  if (disabled.includes(name)) return null;
+
+  const builtinDir = getBuiltinWorkflowsDir(lang);
+  const yamlPath = join(builtinDir, `${name}.yaml`);
+  if (existsSync(yamlPath)) {
+    return loadWorkflowFromFile(yamlPath);
+  }
   return null;
 }
 
@@ -231,24 +241,47 @@ export function loadWorkflowFromFile(filePath: string): WorkflowConfig {
 }
 
 /**
- * Load workflow by name from global directory.
- * Looks for ~/.takt/workflows/{name}.yaml
+ * Load workflow by name.
+ * Priority: user (~/.takt/workflows/) → builtin (resources/global/{lang}/workflows/)
  */
 export function loadWorkflow(name: string): WorkflowConfig | null {
+  // 1. User workflow
   const globalWorkflowsDir = getGlobalWorkflowsDir();
   const workflowYamlPath = join(globalWorkflowsDir, `${name}.yaml`);
-
   if (existsSync(workflowYamlPath)) {
     return loadWorkflowFromFile(workflowYamlPath);
   }
-  return null;
+
+  // 2. Builtin fallback
+  return getBuiltinWorkflow(name);
 }
 
 /** Load all workflows with descriptions (for switch command) */
 export function loadAllWorkflows(): Map<string, WorkflowConfig> {
   const workflows = new Map<string, WorkflowConfig>();
+  const disabled = getDisabledBuiltins();
 
-  // Global workflows (~/.takt/workflows/{name}.yaml)
+  // 1. Builtin workflows (lower priority — will be overridden by user)
+  const lang = getLanguage();
+  const builtinDir = getBuiltinWorkflowsDir(lang);
+  if (existsSync(builtinDir)) {
+    for (const entry of readdirSync(builtinDir)) {
+      if (!entry.endsWith('.yaml') && !entry.endsWith('.yml')) continue;
+
+      const entryPath = join(builtinDir, entry);
+      if (statSync(entryPath).isFile()) {
+        const workflowName = entry.replace(/\.ya?ml$/, '');
+        if (disabled.includes(workflowName)) continue;
+        try {
+          workflows.set(workflowName, loadWorkflowFromFile(entryPath));
+        } catch {
+          // Skip invalid workflows
+        }
+      }
+    }
+  }
+
+  // 2. User workflows (higher priority — overrides builtins)
   const globalWorkflowsDir = getGlobalWorkflowsDir();
   if (existsSync(globalWorkflowsDir)) {
     for (const entry of readdirSync(globalWorkflowsDir)) {
@@ -270,22 +303,34 @@ export function loadAllWorkflows(): Map<string, WorkflowConfig> {
   return workflows;
 }
 
-/** List available workflows from global directory (~/.takt/workflows/) */
+/** List available workflows (user + builtin, excluding disabled) */
 export function listWorkflows(): string[] {
   const workflows = new Set<string>();
+  const disabled = getDisabledBuiltins();
 
+  // 1. Builtin workflows
+  const lang = getLanguage();
+  const builtinDir = getBuiltinWorkflowsDir(lang);
+  scanWorkflowDir(builtinDir, workflows, disabled);
+
+  // 2. User workflows
   const globalWorkflowsDir = getGlobalWorkflowsDir();
-  if (existsSync(globalWorkflowsDir)) {
-    for (const entry of readdirSync(globalWorkflowsDir)) {
-      if (!entry.endsWith('.yaml') && !entry.endsWith('.yml')) continue;
-
-      const entryPath = join(globalWorkflowsDir, entry);
-      if (statSync(entryPath).isFile()) {
-        const workflowName = entry.replace(/\.ya?ml$/, '');
-        workflows.add(workflowName);
-      }
-    }
-  }
+  scanWorkflowDir(globalWorkflowsDir, workflows);
 
   return Array.from(workflows).sort();
+}
+
+/** Scan a directory for .yaml/.yml files and add names to the set */
+function scanWorkflowDir(dir: string, target: Set<string>, disabled?: string[]): void {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith('.yaml') && !entry.endsWith('.yml')) continue;
+
+    const entryPath = join(dir, entry);
+    if (statSync(entryPath).isFile()) {
+      const workflowName = entry.replace(/\.ya?ml$/, '');
+      if (disabled?.includes(workflowName)) continue;
+      target.add(workflowName);
+    }
+  }
 }

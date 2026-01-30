@@ -8,6 +8,8 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
+import type { Language } from '../models/types.js';
+import { getLanguageResourcesDir } from '../resources/index.js';
 
 /** Get takt global config directory (~/.takt) */
 export function getGlobalConfigDir(): string {
@@ -32,6 +34,16 @@ export function getGlobalLogsDir(): string {
 /** Get takt global config file path */
 export function getGlobalConfigPath(): string {
   return join(getGlobalConfigDir(), 'config.yaml');
+}
+
+/** Get builtin workflows directory (resources/global/{lang}/workflows) */
+export function getBuiltinWorkflowsDir(lang: Language): string {
+  return join(getLanguageResourcesDir(lang), 'workflows');
+}
+
+/** Get builtin agents directory (resources/global/{lang}/agents) */
+export function getBuiltinAgentsDir(lang: Language): string {
+  return join(getLanguageResourcesDir(lang), 'agents');
 }
 
 /** Get project takt config directory (.takt in project) */

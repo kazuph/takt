@@ -36,6 +36,7 @@ export function loadGlobalConfig(): GlobalConfig {
       logFile: parsed.debug.log_file,
     } : undefined,
     worktreeDir: parsed.worktree_dir,
+    disabledBuiltins: parsed.disabled_builtins,
   };
 }
 
@@ -61,7 +62,20 @@ export function saveGlobalConfig(config: GlobalConfig): void {
   if (config.worktreeDir) {
     raw.worktree_dir = config.worktreeDir;
   }
+  if (config.disabledBuiltins && config.disabledBuiltins.length > 0) {
+    raw.disabled_builtins = config.disabledBuiltins;
+  }
   writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
+}
+
+/** Get list of disabled builtin names */
+export function getDisabledBuiltins(): string[] {
+  try {
+    const config = loadGlobalConfig();
+    return config.disabledBuiltins ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Get current language setting */

@@ -18,7 +18,7 @@ max_iterations: 5
 
 steps:
   - name: melchior
-    agent: ~/.takt/agents/magi/melchior.md
+    agent: ../agents/magi/melchior.md
     allowed_tools:
       - Read
       - Glob
@@ -55,7 +55,7 @@ steps:
         next: balthasar
 
   - name: balthasar
-    agent: ~/.takt/agents/magi/balthasar.md
+    agent: ../agents/magi/balthasar.md
     allowed_tools:
       - Read
       - Glob
@@ -97,7 +97,7 @@ steps:
         next: casper
 
   - name: casper
-    agent: ~/.takt/agents/magi/casper.md
+    agent: ../agents/magi/casper.md
     allowed_tools:
       - Read
       - Glob

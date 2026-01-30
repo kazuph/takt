@@ -1,37 +1,32 @@
 /**
  * Initialization module for first-time setup
  *
- * Handles language selection and initial resource setup.
- * Separated from paths.ts to avoid UI dependencies in utility modules.
+ * Handles language selection and initial config.yaml creation.
+ * Builtin agents/workflows are loaded via fallback from resources/
+ * and no longer copied to ~/.takt/ on setup.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Language } from '../models/types.js';
 import { DEFAULT_LANGUAGE } from '../constants.js';
 import { selectOptionWithDefault } from '../prompt/index.js';
 import {
   getGlobalConfigDir,
-  getGlobalAgentsDir,
-  getGlobalWorkflowsDir,
+  getGlobalConfigPath,
   getGlobalLogsDir,
   getProjectConfigDir,
   ensureDir,
 } from './paths.js';
-import {
-  copyGlobalResourcesToDir,
-  copyLanguageResourcesToDir,
-  copyProjectResourcesToDir,
-} from '../resources/index.js';
+import { copyProjectResourcesToDir, getLanguageResourcesDir } from '../resources/index.js';
 import { setLanguage, setProvider } from './globalConfig.js';
 
 /**
- * Check if language-specific resources need to be initialized.
- * Returns true if agents or workflows directories don't exist.
+ * Check if initial setup is needed.
+ * Returns true if config.yaml doesn't exist yet.
  */
 export function needsLanguageSetup(): boolean {
-  const agentsDir = getGlobalAgentsDir();
-  const workflowsDir = getGlobalWorkflowsDir();
-  return !existsSync(agentsDir) || !existsSync(workflowsDir);
+  return !existsSync(getGlobalConfigPath());
 }
 
 /**
@@ -83,29 +78,32 @@ export async function promptProviderSelection(): Promise<'claude' | 'codex'> {
 
 /**
  * Initialize global takt directory structure with language selection.
- * If agents/workflows don't exist, prompts user for language preference.
+ * On first run, creates config.yaml from language template.
+ * Agents/workflows are NOT copied — they are loaded via builtin fallback.
  */
 export async function initGlobalDirs(): Promise<void> {
   ensureDir(getGlobalConfigDir());
   ensureDir(getGlobalLogsDir());
 
-  // Check if we need to set up language-specific resources
-  const needsSetup = needsLanguageSetup();
-
-  if (needsSetup) {
-    // Ask user for language preference
+  if (needsLanguageSetup()) {
     const lang = await promptLanguageSelection();
     const provider = await promptProviderSelection();
 
-    // Copy language-specific resources (agents, workflows, config.yaml)
-    copyLanguageResourcesToDir(getGlobalConfigDir(), lang);
+    // Copy only config.yaml from language resources
+    copyLanguageConfigYaml(lang);
 
-    // Explicitly save the selected language (handles case where config.yaml existed)
     setLanguage(lang);
     setProvider(provider);
-  } else {
-    // Just copy base global resources (won't overwrite existing)
-    copyGlobalResourcesToDir(getGlobalConfigDir());
+  }
+}
+
+/** Copy config.yaml from language resources to ~/.takt/ (if not already present) */
+function copyLanguageConfigYaml(lang: Language): void {
+  const langDir = getLanguageResourcesDir(lang);
+  const srcPath = join(langDir, 'config.yaml');
+  const destPath = getGlobalConfigPath();
+  if (existsSync(srcPath) && !existsSync(destPath)) {
+    writeFileSync(destPath, readFileSync(srcPath));
   }
 }
 

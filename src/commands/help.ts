@@ -21,7 +21,8 @@ Usage:
   takt /list-tasks (/list)         List task branches (merge/delete)
   takt /switch            Switch workflow interactively
   takt /clear             Clear agent conversation sessions (reset to initial state)
-  takt /refresh-builtin   Overwrite builtin agents/workflows with latest version
+  takt /eject             Copy builtin workflow/agents to ~/.takt/ for customization
+  takt /eject {name}      Eject a specific builtin workflow
   takt /help              Show this help
 
 Examples:
@@ -34,7 +35,8 @@ Examples:
   takt /add-task                        # Interactive task creation
   takt /clear                           # Clear sessions, start fresh
   takt /watch                            # Watch & auto-execute tasks
-  takt /refresh-builtin                 # Update builtin resources
+  takt /eject                            # List available builtins
+  takt /eject default                    # Eject default workflow for customization
   takt /list-tasks                       # List & merge task branches
   takt /switch
   takt /run-tasks

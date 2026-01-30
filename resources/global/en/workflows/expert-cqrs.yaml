@@ -32,7 +32,7 @@ steps:
   # ===========================================
   - name: plan
     edit: false
-    agent: ~/.takt/agents/default/planner.md
+    agent: ../agents/default/planner.md
     report:
       name: 00-plan.md
       format: |
@@ -89,7 +89,7 @@ steps:
   # ===========================================
   - name: implement
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     report:
       - Scope: 01-coder-scope.md
       - Decisions: 02-coder-decisions.md
@@ -146,7 +146,7 @@ steps:
   # ===========================================
   - name: ai_review
     edit: false
-    agent: ~/.takt/agents/default/ai-antipattern-reviewer.md
+    agent: ../agents/default/ai-antipattern-reviewer.md
     report:
       name: 03-ai-review.md
       format: |
@@ -196,7 +196,7 @@ steps:
 
   - name: ai_fix
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -228,7 +228,7 @@ steps:
   # ===========================================
   - name: cqrs_es_review
     edit: false
-    agent: ~/.takt/agents/expert-cqrs/cqrs-es-reviewer.md
+    agent: ../agents/expert-cqrs/cqrs-es-reviewer.md
     report:
       name: 04-cqrs-es-review.md
       format: |
@@ -282,7 +282,7 @@ steps:
 
   - name: fix_cqrs_es
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -316,7 +316,7 @@ steps:
   # ===========================================
   - name: frontend_review
     edit: false
-    agent: ~/.takt/agents/expert/frontend-reviewer.md
+    agent: ../agents/expert/frontend-reviewer.md
     report:
       name: 05-frontend-review.md
       format: |
@@ -370,7 +370,7 @@ steps:
 
   - name: fix_frontend
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -404,7 +404,7 @@ steps:
   # ===========================================
   - name: security_review
     edit: false
-    agent: ~/.takt/agents/expert/security-reviewer.md
+    agent: ../agents/expert/security-reviewer.md
     report:
       name: 06-security-review.md
       format: |
@@ -455,7 +455,7 @@ steps:
 
   - name: fix_security
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -499,7 +499,7 @@ steps:
   # ===========================================
   - name: qa_review
     edit: false
-    agent: ~/.takt/agents/expert/qa-reviewer.md
+    agent: ../agents/expert/qa-reviewer.md
     report:
       name: 07-qa-review.md
       format: |
@@ -550,7 +550,7 @@ steps:
 
   - name: fix_qa
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob
@@ -598,7 +598,7 @@ steps:
   # ===========================================
   - name: supervise
     edit: false
-    agent: ~/.takt/agents/expert/supervisor.md
+    agent: ../agents/expert/supervisor.md
     report:
       - Validation: 08-supervisor-validation.md
       - Summary: summary.md
@@ -691,7 +691,7 @@ steps:
 
   - name: fix_supervisor
     edit: true
-    agent: ~/.takt/agents/default/coder.md
+    agent: ../agents/default/coder.md
     allowed_tools:
       - Read
       - Glob

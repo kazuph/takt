@@ -22,7 +22,7 @@ max_iterations: 10
 
 steps:
   - name: plan
-    agent: ~/.takt/agents/research/planner.md
+    agent: ../agents/research/planner.md
     allowed_tools:
       - Read
       - Glob
@@ -59,7 +59,7 @@ steps:
         next: ABORT
 
   - name: dig
-    agent: ~/.takt/agents/research/digger.md
+    agent: ../agents/research/digger.md
     allowed_tools:
       - Read
       - Glob
@@ -101,7 +101,7 @@ steps:
         next: ABORT
 
   - name: supervise
-    agent: ~/.takt/agents/research/supervisor.md
+    agent: ../agents/research/supervisor.md
     allowed_tools:
       - Read
       - Glob

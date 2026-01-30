@@ -1,43 +1,22 @@
 /**
- * /refresh-builtin command implementation
+ * /refresh-builtin command — DEPRECATED
  *
- * Overwrites builtin workflow and agent files in ~/.takt/ with the latest
- * embedded resources. Does NOT touch config.yaml or user-added files.
+ * Builtin resources are now loaded directly from the package bundle.
+ * Use /eject to copy individual builtins to ~/.takt/ for customization.
  */
 
-import { getGlobalConfigDir } from '../config/paths.js';
-import { getLanguage } from '../config/globalConfig.js';
-import { forceRefreshLanguageResources } from '../resources/index.js';
-import { header, success, info, error } from '../utils/ui.js';
-import { createLogger } from '../utils/debug.js';
-
-const log = createLogger('refresh-builtin');
+import { warn, info } from '../utils/ui.js';
 
 /**
- * Refresh builtin agents and workflows to latest version.
+ * Show deprecation notice and guide user to /eject.
  */
 export async function refreshBuiltin(): Promise<void> {
-  const globalDir = getGlobalConfigDir();
-  const lang = getLanguage();
-
-  header('Refresh Builtin Resources');
-  info(`Language: ${lang}`);
-  info(`Target: ${globalDir}`);
-
-  try {
-    const overwritten = forceRefreshLanguageResources(globalDir, lang);
-
-    log.info('Builtin resources refreshed', { count: overwritten.length, lang });
-
-    console.log();
-    success(`${overwritten.length} files refreshed.`);
-
-    for (const filePath of overwritten) {
-      info(`  ✓ ${filePath}`);
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    log.error('Failed to refresh builtin resources', { error: message });
-    error(`Failed to refresh: ${message}`);
-  }
+  warn('/refresh-builtin is deprecated.');
+  console.log();
+  info('Builtin workflows and agents are now loaded directly from the package.');
+  info('They no longer need to be copied to ~/.takt/.');
+  console.log();
+  info('To customize a builtin, use:');
+  info('  takt /eject           List available builtins');
+  info('  takt /eject {name}    Copy a builtin to ~/.takt/ for editing');
 }

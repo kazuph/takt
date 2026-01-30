@@ -189,6 +189,8 @@ export interface GlobalConfig {
   debug?: DebugConfig;
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktreeDir?: string;
+  /** List of builtin workflow/agent names to exclude from fallback loading */
+  disabledBuiltins?: string[];
 }
 
 /** Project-level configuration */

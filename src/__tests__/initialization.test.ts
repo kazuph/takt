@@ -26,8 +26,8 @@ vi.mock('../prompt/index.js', () => ({
 
 // Import after mocks are set up
 const { needsLanguageSetup } = await import('../config/initialization.js');
-const { getGlobalAgentsDir, getGlobalWorkflowsDir } = await import('../config/paths.js');
-const { copyLanguageResourcesToDir, copyProjectResourcesToDir, getLanguageResourcesDir, getProjectResourcesDir } = await import('../resources/index.js');
+const { getGlobalConfigPath } = await import('../config/paths.js');
+const { copyProjectResourcesToDir, getLanguageResourcesDir, getProjectResourcesDir } = await import('../resources/index.js');
 
 describe('initialization', () => {
   beforeEach(() => {
@@ -43,48 +43,17 @@ describe('initialization', () => {
   });
 
   describe('needsLanguageSetup', () => {
-    it('should return true when neither agents nor workflows exist', () => {
+    it('should return true when config.yaml does not exist', () => {
       expect(needsLanguageSetup()).toBe(true);
     });
 
-    it('should return true when only agents exists', () => {
-      mkdirSync(getGlobalAgentsDir(), { recursive: true });
-      expect(needsLanguageSetup()).toBe(true);
-    });
-
-    it('should return true when only workflows exists', () => {
-      mkdirSync(getGlobalWorkflowsDir(), { recursive: true });
-      expect(needsLanguageSetup()).toBe(true);
-    });
-
-    it('should return false when both agents and workflows exist', () => {
-      mkdirSync(getGlobalAgentsDir(), { recursive: true });
-      mkdirSync(getGlobalWorkflowsDir(), { recursive: true });
+    it('should return false when config.yaml exists', () => {
+      mkdirSync(testTaktDir, { recursive: true });
+      writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
       expect(needsLanguageSetup()).toBe(false);
     });
   });
 
-  describe('copyLanguageResourcesToDir', () => {
-    it('should throw error when language directory does not exist', () => {
-      const nonExistentLang = 'xx' as 'en' | 'ja';
-      expect(() => copyLanguageResourcesToDir(testTaktDir, nonExistentLang)).toThrow(
-        /Language resources not found/
-      );
-    });
-
-    it('should copy language resources to target directory', () => {
-      // This test requires actual language resources to exist
-      const langDir = getLanguageResourcesDir('ja');
-      if (existsSync(langDir)) {
-        mkdirSync(testTaktDir, { recursive: true });
-        copyLanguageResourcesToDir(testTaktDir, 'ja');
-
-        // Verify that agents and workflows directories were created
-        expect(existsSync(join(testTaktDir, 'agents'))).toBe(true);
-        expect(existsSync(join(testTaktDir, 'workflows'))).toBe(true);
-      }
-    });
-  });
 });
 
 describe('copyProjectResourcesToDir', () => {

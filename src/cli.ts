@@ -32,6 +32,7 @@ import {
   switchConfig,
   addTask,
   refreshBuiltin,
+  ejectBuiltin,
   watchTasks,
   listTasks,
 } from './commands/index.js';
@@ -171,6 +172,10 @@ program
           await refreshBuiltin();
           return;
 
+        case 'eject':
+          await ejectBuiltin(args[0]);
+          return;
+
         case 'watch':
           await watchTasks(cwd);
           return;
@@ -182,7 +187,7 @@ program
 
         default:
           error(`Unknown command: /${command}`);
-          info('Available: /run-tasks (/run), /watch, /add-task (/add), /list-tasks (/list), /switch (/sw), /clear, /refresh-builtin, /help, /config');
+          info('Available: /run-tasks (/run), /watch, /add-task (/add), /list-tasks (/list), /switch (/sw), /clear, /eject, /help, /config');
           process.exit(1);
       }
     }
