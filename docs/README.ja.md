@@ -64,7 +64,7 @@ Select workflow:
 **2. 隔離クローン作成**（オプション）
 
 ```
-? Create worktree? (y/N)
+? Create worktree? (Y/n)
 ```
 
 `y` を選ぶと `git clone --shared` で隔離環境を作成し、作業ディレクトリをクリーンに保てます。

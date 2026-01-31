@@ -113,7 +113,7 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
   let branch: string | undefined;
   let workflow: string | undefined;
 
-  const useWorktree = await confirm('Create worktree?', false);
+  const useWorktree = await confirm('Create worktree?', true);
   if (useWorktree) {
     const customPath = await promptInput('Worktree path (Enter for auto)');
     worktree = customPath || true;

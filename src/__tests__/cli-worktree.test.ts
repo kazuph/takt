@@ -154,7 +154,7 @@ describe('confirmAndCreateWorktree', () => {
     );
   });
 
-  it('should call confirm with default=false', async () => {
+  it('should call confirm with default=true', async () => {
     // Given
     mockConfirm.mockResolvedValue(false);
 
@@ -162,7 +162,7 @@ describe('confirmAndCreateWorktree', () => {
     await confirmAndCreateWorktree('/project', 'task');
 
     // Then
-    expect(mockConfirm).toHaveBeenCalledWith('Create worktree?', false);
+    expect(mockConfirm).toHaveBeenCalledWith('Create worktree?', true);
   });
 
   it('should summarize Japanese task name to English slug', async () => {

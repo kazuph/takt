@@ -68,7 +68,7 @@ Select workflow:
 **2. Isolated clone** (optional)
 
 ```
-? Create worktree? (y/N)
+? Create worktree? (Y/n)
 ```
 
 Choose `y` to run in a `git clone --shared` isolated environment, keeping your working directory clean.

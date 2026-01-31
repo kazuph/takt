@@ -131,7 +131,7 @@ export async function confirmAndCreateWorktree(
   cwd: string,
   task: string,
 ): Promise<WorktreeConfirmationResult> {
-  const useWorktree = await confirm('Create worktree?', false);
+  const useWorktree = await confirm('Create worktree?', true);
 
   if (!useWorktree) {
     return { execCwd: cwd, isWorktree: false };
