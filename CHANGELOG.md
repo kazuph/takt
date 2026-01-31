@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.7] - 2026-02-01
+
+### Added
+
+- `--pipeline` flag for explicit pipeline/non-interactive mode execution (#28)
+- Pipeline mode can be used with both `--task` and `--issue` options
+
+### Changed
+
+- Log file naming changed from base36 to human-readable `YYYYMMDD-HHmmss-random` format (#28)
+- `--task` option description updated to clarify it's an alternative to GitHub issue
+
+## [0.3.6] - 2026-01-31
+
+### Fixed
+
+- `ai_review` workflow step now correctly includes `pass_previous_request` setting
+
+## [0.3.5] - 2026-01-31
+
+### Added
+
+- `--create-worktree <yes|no>` option to skip worktree confirmation prompt
+
+### Fixed
+
+- Various CI/CD improvements and fixes (#66, #67, #68, #69)
+
+## [0.3.4] - 2026-01-31
+
+### Added
+
+- Review-only workflow for code review without modifications (#60)
+- Various bug fixes and improvements (#14, #23, #35, #38, #45, #50, #51, #52, #59)
+
 ## [0.3.3] - 2026-01-31
 
 ### Fixed
