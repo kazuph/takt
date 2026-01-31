@@ -6,7 +6,13 @@ on:
 
 jobs:
   takt:
-    if: contains(github.event.comment.body, '@takt')
+    if: |
+      contains(github.event.comment.body, '@takt') &&
+      github.event.comment.author_association == 'OWNER'
+      # Uncomment to allow organization members:
+      # || github.event.comment.author_association == 'MEMBER'
+      # Uncomment to allow collaborators:
+      # || github.event.comment.author_association == 'COLLABORATOR'
     runs-on: ubuntu-latest
     permissions:
       issues: write
