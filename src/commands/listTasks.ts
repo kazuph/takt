@@ -24,7 +24,7 @@ import { autoCommitAndPush } from '../task/autoCommit.js';
 import { selectOption, confirm, promptInput } from '../prompt/index.js';
 import { info, success, error as logError, warn } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
-import { executeTask } from './taskExecution.js';
+import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
 import { listWorkflows } from '../config/workflowLoader.js';
 import { getCurrentWorkflow } from '../config/paths.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
@@ -292,6 +292,7 @@ function getBranchContext(projectDir: string, branch: string): string {
 export async function instructBranch(
   projectDir: string,
   item: BranchListItem,
+  options?: TaskExecutionOptions,
 ): Promise<boolean> {
   const { branch } = item.info;
 
@@ -323,7 +324,7 @@ export async function instructBranch(
       : instruction;
 
     // 5. Execute task on temp clone
-    const taskSuccess = await executeTask(fullInstruction, clone.path, selectedWorkflow, projectDir);
+    const taskSuccess = await executeTask(fullInstruction, clone.path, selectedWorkflow, projectDir, options);
 
     // 6. Auto-commit+push if successful
     if (taskSuccess) {
@@ -351,7 +352,7 @@ export async function instructBranch(
 /**
  * Main entry point: list branch-based tasks interactively.
  */
-export async function listTasks(cwd: string): Promise<void> {
+export async function listTasks(cwd: string, options?: TaskExecutionOptions): Promise<void> {
   log.info('Starting list-tasks');
 
   const defaultBranch = detectDefaultBranch(cwd);
@@ -367,7 +368,7 @@ export async function listTasks(cwd: string): Promise<void> {
     const items = buildListItems(cwd, branches, defaultBranch);
 
     // Build selection options
-    const options = items.map((item, idx) => {
+    const menuOptions = items.map((item, idx) => {
       const filesSummary = `${item.filesChanged} file${item.filesChanged !== 1 ? 's' : ''} changed`;
       const description = item.originalInstruction
         ? `${filesSummary} | ${item.originalInstruction}`
@@ -381,7 +382,7 @@ export async function listTasks(cwd: string): Promise<void> {
 
     const selected = await selectOption<string>(
       'List Tasks (Branches)',
-      options,
+      menuOptions,
     );
 
     if (selected === null) {
@@ -406,7 +407,7 @@ export async function listTasks(cwd: string): Promise<void> {
 
     switch (action) {
       case 'instruct':
-        await instructBranch(cwd, item);
+        await instructBranch(cwd, item, options);
         break;
       case 'try':
         tryMergeBranch(cwd, item);

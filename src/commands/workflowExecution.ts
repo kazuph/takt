@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { WorkflowEngine } from '../workflow/engine.js';
 import type { WorkflowConfig, Language } from '../models/types.js';
 import type { IterationLimitRequest } from '../workflow/types.js';
+import type { ProviderType } from '../providers/index.js';
 import {
   loadAgentSessions,
   updateAgentSession,
@@ -73,6 +74,8 @@ export interface WorkflowExecutionOptions {
   projectCwd?: string;
   /** Language for instruction metadata */
   language?: Language;
+  provider?: ProviderType;
+  model?: string;
 }
 
 /**
@@ -182,6 +185,8 @@ export async function executeWorkflow(
     onIterationLimit: iterationLimitHandler,
     projectCwd,
     language: options.language,
+    provider: options.provider,
+    model: options.model,
   });
 
   let abortReason: string | undefined;

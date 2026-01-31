@@ -8,6 +8,7 @@
 import type { WorkflowStep, AgentResponse, WorkflowState, Language } from '../models/types.js';
 import type { StreamCallback } from '../agents/runner.js';
 import type { PermissionHandler, AskUserQuestionHandler } from '../claude/process.js';
+import type { ProviderType } from '../providers/index.js';
 
 /** Events emitted by workflow engine */
 export interface WorkflowEvents {
@@ -75,6 +76,8 @@ export interface WorkflowEngineOptions {
   projectCwd?: string;
   /** Language for instruction metadata. Defaults to 'en'. */
   language?: Language;
+  provider?: ProviderType;
+  model?: string;
 }
 
 /** Loop detection result */

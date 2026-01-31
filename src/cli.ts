@@ -50,6 +50,8 @@ import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 import { checkForUpdates } from './utils/updateNotifier.js';
 import { resolveIssueTask, isIssueReference } from './github/issue.js';
 import { createPullRequest, buildPrBody } from './github/pr.js';
+import type { TaskExecutionOptions } from './commands/taskExecution.js';
+import type { ProviderType } from './providers/index.js';
 
 const require = createRequire(import.meta.url);
 const { version: cliVersion } = require('../package.json') as { version: string };
@@ -109,6 +111,7 @@ async function selectAndExecuteTask(
   cwd: string,
   task: string,
   options?: { autoPr?: boolean; repo?: string },
+  agentOverrides?: TaskExecutionOptions,
 ): Promise<void> {
   const selectedWorkflow = await selectWorkflow(cwd);
 
@@ -120,7 +123,7 @@ async function selectAndExecuteTask(
   const { execCwd, isWorktree, branch } = await confirmAndCreateWorktree(cwd, task);
 
   log.info('Starting task execution', { workflow: selectedWorkflow, worktree: isWorktree });
-  const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd);
+  const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd, agentOverrides);
 
   if (taskSuccess && isWorktree) {
     const commitResult = autoCommitAndPush(execCwd, task, cwd);
@@ -186,6 +189,18 @@ export async function confirmAndCreateWorktree(
 
 const program = new Command();
 
+function resolveAgentOverrides(): TaskExecutionOptions | undefined {
+  const opts = program.opts();
+  const provider = opts.provider as ProviderType | undefined;
+  const model = opts.model as string | undefined;
+
+  if (!provider && !model) {
+    return undefined;
+  }
+
+  return { provider, model };
+}
+
 program
   .name('takt')
   .description('TAKT: Task Agent Koordination Tool')
@@ -198,6 +213,8 @@ program
   .option('-b, --branch <name>', 'Branch name (auto-generated if omitted)')
   .option('--auto-pr', 'Create PR after successful execution')
   .option('--repo <owner/repo>', 'Repository (defaults to current)')
+  .option('--provider <name>', 'Override agent provider (claude|codex|mock)')
+  .option('--model <name>', 'Override agent model')
   .option('-t, --task <string>', 'Task content (triggers pipeline/non-interactive mode)')
   .option('--skip-git', 'Skip branch creation, commit, and push (pipeline mode)');
 
@@ -239,14 +256,14 @@ program
   .description('Run all pending tasks from .takt/tasks/')
   .action(async () => {
     const workflow = getCurrentWorkflow(resolvedCwd);
-    await runAllTasks(resolvedCwd, workflow);
+    await runAllTasks(resolvedCwd, workflow, resolveAgentOverrides());
   });
 
 program
   .command('watch')
   .description('Watch for tasks and auto-execute')
   .action(async () => {
-    await watchTasks(resolvedCwd);
+    await watchTasks(resolvedCwd, resolveAgentOverrides());
   });
 
 program
@@ -261,7 +278,7 @@ program
   .command('list')
   .description('List task branches (merge/delete)')
   .action(async () => {
-    await listTasks(resolvedCwd);
+    await listTasks(resolvedCwd, resolveAgentOverrides());
   });
 
 program
@@ -318,6 +335,7 @@ program
   .argument('[task]', 'Task to execute (or GitHub issue reference like "#6")')
   .action(async (task?: string) => {
     const opts = program.opts();
+    const agentOverrides = resolveAgentOverrides();
 
     // --- Pipeline mode (non-interactive): triggered by --task ---
     if (pipelineMode) {
@@ -328,9 +346,11 @@ program
         branch: opts.branch as string | undefined,
         autoPr: opts.autoPr === true,
         repo: opts.repo as string | undefined,
-        skipGit: opts.skipGit === true,
-        cwd: resolvedCwd,
-      });
+      skipGit: opts.skipGit === true,
+      cwd: resolvedCwd,
+      provider: agentOverrides?.provider,
+      model: agentOverrides?.model,
+    });
 
       if (exitCode !== 0) {
         process.exit(exitCode);
@@ -350,7 +370,7 @@ program
     if (issueFromOption) {
       try {
         const resolvedTask = resolveIssueTask(`#${issueFromOption}`);
-        await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions);
+        await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions, agentOverrides);
       } catch (e) {
         error(e instanceof Error ? e.message : String(e));
         process.exit(1);
@@ -371,7 +391,7 @@ program
         }
       }
 
-      await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions);
+        await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions, agentOverrides);
       return;
     }
 
@@ -382,7 +402,7 @@ program
       return;
     }
 
-    await selectAndExecuteTask(resolvedCwd, result.task, prOptions);
+    await selectAndExecuteTask(resolvedCwd, result.task, prOptions, agentOverrides);
   });
 
 program.parse();

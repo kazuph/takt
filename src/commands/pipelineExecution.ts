@@ -12,7 +12,7 @@
 import { execFileSync } from 'node:child_process';
 import { fetchIssue, formatIssueAsTask, checkGhCli, type GitHubIssue } from '../github/issue.js';
 import { createPullRequest, pushBranch, buildPrBody } from '../github/pr.js';
-import { executeTask } from './taskExecution.js';
+import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
 import { info, error, success, status } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
@@ -23,6 +23,7 @@ import {
   EXIT_GIT_OPERATION_FAILED,
   EXIT_PR_CREATION_FAILED,
 } from '../exitCodes.js';
+import type { ProviderType } from '../providers/index.js';
 
 const log = createLogger('pipeline');
 
@@ -43,6 +44,8 @@ export interface PipelineExecutionOptions {
   skipGit?: boolean;
   /** Working directory */
   cwd: string;
+  provider?: ProviderType;
+  model?: string;
 }
 
 /**
@@ -184,7 +187,11 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
   info(`Running workflow: ${workflow}`);
   log.info('Pipeline workflow execution starting', { workflow, branch, skipGit, issueNumber: options.issueNumber });
 
-  const taskSuccess = await executeTask(task, cwd, workflow);
+  const agentOverrides: TaskExecutionOptions | undefined = (options.provider || options.model)
+    ? { provider: options.provider, model: options.model }
+    : undefined;
+
+  const taskSuccess = await executeTask(task, cwd, workflow, undefined, agentOverrides);
 
   if (!taskSuccess) {
     error(`Workflow '${workflow}' failed`);

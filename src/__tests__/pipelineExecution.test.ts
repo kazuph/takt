@@ -150,6 +150,30 @@ describe('executePipeline', () => {
       'Fix the bug',
       '/tmp/test',
       'default',
+      undefined,
+      undefined,
+    );
+  });
+
+  it('passes provider/model overrides to task execution', async () => {
+    mockExecuteTask.mockResolvedValueOnce(true);
+
+    const exitCode = await executePipeline({
+      task: 'Fix the bug',
+      workflow: 'default',
+      autoPr: false,
+      cwd: '/tmp/test',
+      provider: 'codex',
+      model: 'codex-model',
+    });
+
+    expect(exitCode).toBe(0);
+    expect(mockExecuteTask).toHaveBeenCalledWith(
+      'Fix the bug',
+      '/tmp/test',
+      'default',
+      undefined,
+      { provider: 'codex', model: 'codex-model' },
     );
   });
 
@@ -205,6 +229,8 @@ describe('executePipeline', () => {
       'From --task flag',
       '/tmp/test',
       'magi',
+      undefined,
+      undefined,
     );
   });
 
@@ -359,7 +385,13 @@ describe('executePipeline', () => {
       });
 
       expect(exitCode).toBe(0);
-      expect(mockExecuteTask).toHaveBeenCalledWith('Fix the bug', '/tmp/test', 'default');
+      expect(mockExecuteTask).toHaveBeenCalledWith(
+        'Fix the bug',
+        '/tmp/test',
+        'default',
+        undefined,
+        undefined,
+      );
 
       // No git operations should have been called
       const gitCalls = mockExecFileSync.mock.calls.filter(

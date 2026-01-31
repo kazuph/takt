@@ -16,12 +16,13 @@ import {
 } from '../utils/ui.js';
 import { executeAndCompleteTask } from './taskExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
+import type { TaskExecutionOptions } from './taskExecution.js';
 
 /**
  * Watch for tasks and execute them as they appear.
  * Runs until Ctrl+C.
  */
-export async function watchTasks(cwd: string): Promise<void> {
+export async function watchTasks(cwd: string, options?: TaskExecutionOptions): Promise<void> {
   const workflowName = getCurrentWorkflow(cwd) || DEFAULT_WORKFLOW_NAME;
   const taskRunner = new TaskRunner(cwd);
   const watcher = new TaskWatcher(cwd);
@@ -51,7 +52,7 @@ export async function watchTasks(cwd: string): Promise<void> {
       info(`=== Task ${taskCount}: ${task.name} ===`);
       console.log();
 
-      const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName);
+      const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName, options);
 
       if (taskSuccess) {
         successCount++;

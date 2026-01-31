@@ -18,8 +18,14 @@ import { createLogger } from '../utils/debug.js';
 import { getErrorMessage } from '../utils/error.js';
 import { executeWorkflow } from './workflowExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
+import type { ProviderType } from '../providers/index.js';
 
 const log = createLogger('task');
+
+export interface TaskExecutionOptions {
+  provider?: ProviderType;
+  model?: string;
+}
 
 /**
  * Execute a single task with workflow
@@ -32,7 +38,8 @@ export async function executeTask(
   task: string,
   cwd: string,
   workflowName: string = DEFAULT_WORKFLOW_NAME,
-  projectCwd?: string
+  projectCwd?: string,
+  options?: TaskExecutionOptions
 ): Promise<boolean> {
   const workflowConfig = loadWorkflow(workflowName);
 
@@ -52,6 +59,8 @@ export async function executeTask(
   const result = await executeWorkflow(workflowConfig, task, cwd, {
     projectCwd,
     language: globalConfig.language,
+    provider: options?.provider,
+    model: options?.model,
   });
   return result.success;
 }
@@ -69,6 +78,7 @@ export async function executeAndCompleteTask(
   taskRunner: TaskRunner,
   cwd: string,
   workflowName: string,
+  options?: TaskExecutionOptions,
 ): Promise<boolean> {
   const startedAt = new Date().toISOString();
   const executionLog: string[] = [];
@@ -77,7 +87,7 @@ export async function executeAndCompleteTask(
     const { execCwd, execWorkflow, isWorktree } = await resolveTaskExecution(task, cwd, workflowName);
 
     // cwd is always the project root; pass it as projectCwd so reports/sessions go there
-    const taskSuccess = await executeTask(task.content, execCwd, execWorkflow, cwd);
+    const taskSuccess = await executeTask(task.content, execCwd, execWorkflow, cwd, options);
     const completedAt = new Date().toISOString();
 
     if (taskSuccess && isWorktree) {
@@ -132,7 +142,8 @@ export async function executeAndCompleteTask(
  */
 export async function runAllTasks(
   cwd: string,
-  workflowName: string = DEFAULT_WORKFLOW_NAME
+  workflowName: string = DEFAULT_WORKFLOW_NAME,
+  options?: TaskExecutionOptions,
 ): Promise<void> {
   const taskRunner = new TaskRunner(cwd);
 
@@ -155,7 +166,7 @@ export async function runAllTasks(
     info(`=== Task: ${task.name} ===`);
     console.log();
 
-    const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName);
+    const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName, options);
 
     if (taskSuccess) {
       successCount++;
