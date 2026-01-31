@@ -141,6 +141,7 @@ steps:
   - name: ai_review
     edit: false
     agent: ../agents/default/ai-antipattern-reviewer.md
+    pass_previous_response: true
     report:
       name: 03-ai-review.md
       format: |
