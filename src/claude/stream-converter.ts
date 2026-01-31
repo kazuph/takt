@@ -154,12 +154,16 @@ export function sdkMessageToStreamEvent(
 
     case 'result': {
       const resultMsg = message as SDKResultMessage;
+      const errors = resultMsg.subtype !== 'success' && resultMsg.errors?.length
+        ? resultMsg.errors.join('\n')
+        : undefined;
       callback({
         type: 'result',
         data: {
           result: resultMsg.subtype === 'success' ? resultMsg.result : '',
           sessionId: resultMsg.session_id,
           success: resultMsg.subtype === 'success',
+          error: errors,
         },
       });
       break;

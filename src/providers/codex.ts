@@ -3,6 +3,7 @@
  */
 
 import { callCodex, callCodexCustom, type CodexCallOptions } from '../codex/client.js';
+import { resolveOpenaiApiKey } from '../config/globalConfig.js';
 import type { AgentResponse } from '../models/types.js';
 import type { Provider, ProviderCallOptions } from './index.js';
 
@@ -15,6 +16,7 @@ export class CodexProvider implements Provider {
       model: options.model,
       systemPrompt: options.systemPrompt,
       onStream: options.onStream,
+      openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
     };
 
     return callCodex(agentName, prompt, callOptions);
@@ -26,6 +28,7 @@ export class CodexProvider implements Provider {
       sessionId: options.sessionId,
       model: options.model,
       onStream: options.onStream,
+      openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
     };
 
     return callCodexCustom(agentName, prompt, systemPrompt, callOptions);

@@ -88,6 +88,8 @@ export function addToInputHistory(projectDir: string, input: string): void {
 export interface AgentSessionData {
   agentSessions: Record<string, string>;
   updatedAt: string;
+  /** Provider that created these sessions (claude, codex, etc.) */
+  provider?: string;
 }
 
 /** Get path for storing agent sessions */
@@ -95,13 +97,17 @@ export function getAgentSessionsPath(projectDir: string): string {
   return join(getProjectConfigDir(projectDir), 'agent_sessions.json');
 }
 
-/** Load saved agent sessions */
-export function loadAgentSessions(projectDir: string): Record<string, string> {
+/** Load saved agent sessions. Returns empty if provider has changed. */
+export function loadAgentSessions(projectDir: string, currentProvider?: string): Record<string, string> {
   const path = getAgentSessionsPath(projectDir);
   if (existsSync(path)) {
     try {
       const content = readFileSync(path, 'utf-8');
       const data = JSON.parse(content) as AgentSessionData;
+      // If provider has changed or is unknown (legacy data), sessions are incompatible — discard them
+      if (currentProvider && data.provider !== currentProvider) {
+        return {};
+      }
       return data.agentSessions || {};
     } catch {
       return {};
@@ -113,13 +119,15 @@ export function loadAgentSessions(projectDir: string): Record<string, string> {
 /** Save agent sessions (atomic write) */
 export function saveAgentSessions(
   projectDir: string,
-  sessions: Record<string, string>
+  sessions: Record<string, string>,
+  provider?: string
 ): void {
   const path = getAgentSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
   const data: AgentSessionData = {
     agentSessions: sessions,
     updatedAt: new Date().toISOString(),
+    provider,
   };
   writeFileAtomic(path, JSON.stringify(data, null, 2));
 }
@@ -131,17 +139,25 @@ export function saveAgentSessions(
 export function updateAgentSession(
   projectDir: string,
   agentName: string,
-  sessionId: string
+  sessionId: string,
+  provider?: string
 ): void {
   const path = getAgentSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
 
   let sessions: Record<string, string> = {};
+  let existingProvider: string | undefined;
   if (existsSync(path)) {
     try {
       const content = readFileSync(path, 'utf-8');
       const data = JSON.parse(content) as AgentSessionData;
-      sessions = data.agentSessions || {};
+      existingProvider = data.provider;
+      // If provider changed, discard old sessions
+      if (provider && existingProvider && existingProvider !== provider) {
+        sessions = {};
+      } else {
+        sessions = data.agentSessions || {};
+      }
     } catch {
       sessions = {};
     }
@@ -152,6 +168,7 @@ export function updateAgentSession(
   const data: AgentSessionData = {
     agentSessions: sessions,
     updatedAt: new Date().toISOString(),
+    provider: provider ?? existingProvider,
   };
   writeFileAtomic(path, JSON.stringify(data, null, 2));
 }

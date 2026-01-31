@@ -44,6 +44,7 @@ interface ConversationMessage {
 interface CallAIResult {
   content: string;
   sessionId?: string;
+  success: boolean;
 }
 
 /**
@@ -111,7 +112,8 @@ async function callAI(
   });
 
   display.flush();
-  return { content: response.content, sessionId: response.sessionId };
+  const success = response.status !== 'blocked';
+  return { content: response.content, sessionId: response.sessionId, success };
 }
 
 export interface InteractiveModeResult {
@@ -138,7 +140,7 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
 
   const history: ConversationMessage[] = [];
   const agentName = 'interactive';
-  const savedSessions = loadAgentSessions(cwd);
+  const savedSessions = loadAgentSessions(cwd, providerType);
   let sessionId: string | undefined = savedSessions[agentName];
 
   info('Interactive mode - describe your task. Commands: /go (execute), /cancel (exit)');
@@ -147,26 +149,47 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
   }
   console.log();
 
+  /** Call AI with automatic retry on session error (stale/invalid session ID). */
+  async function callAIWithRetry(prompt: string): Promise<CallAIResult | null> {
+    const display = new StreamDisplay('assistant');
+    try {
+      const result = await callAI(provider, prompt, cwd, model, sessionId, display);
+      // If session failed, clear it and retry without session
+      if (!result.success && sessionId) {
+        log.info('Session invalid, retrying without session');
+        sessionId = undefined;
+        const retryDisplay = new StreamDisplay('assistant');
+        const retry = await callAI(provider, prompt, cwd, model, undefined, retryDisplay);
+        if (retry.sessionId) {
+          sessionId = retry.sessionId;
+          updateAgentSession(cwd, agentName, sessionId, providerType);
+        }
+        return retry;
+      }
+      if (result.sessionId) {
+        sessionId = result.sessionId;
+        updateAgentSession(cwd, agentName, sessionId, providerType);
+      }
+      return result;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      log.error('AI call failed', { error: msg });
+      console.log(chalk.red(`Error: ${msg}`));
+      console.log();
+      return null;
+    }
+  }
+
   // Process initial input if provided (e.g. from `takt a`)
   if (initialInput) {
     history.push({ role: 'user', content: initialInput });
-
     log.debug('Processing initial input', { initialInput, sessionId });
 
-    const display = new StreamDisplay('assistant');
-    try {
-      const result = await callAI(provider, initialInput, cwd, model, sessionId, display);
-      if (result.sessionId) {
-        sessionId = result.sessionId;
-        updateAgentSession(cwd, agentName, sessionId);
-      }
+    const result = await callAIWithRetry(initialInput);
+    if (result) {
       history.push({ role: 'assistant', content: result.content });
       console.log();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      log.error('AI call failed for initial input', { error: msg });
-      console.log(chalk.red(`Error: ${msg}`));
-      console.log();
+    } else {
       history.pop();
     }
   }
@@ -211,21 +234,11 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
     log.debug('Sending to AI', { messageCount: history.length, sessionId });
     process.stdin.pause();
 
-    const display = new StreamDisplay('assistant');
-    try {
-      const result = await callAI(provider, trimmed, cwd, model, sessionId, display);
-      if (result.sessionId) {
-        sessionId = result.sessionId;
-        updateAgentSession(cwd, agentName, sessionId);
-      }
+    const result = await callAIWithRetry(trimmed);
+    if (result) {
       history.push({ role: 'assistant', content: result.content });
       console.log();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      log.error('AI call failed', { error: msg });
-      console.log();
-      console.log(chalk.red(`Error: ${msg}`));
-      console.log();
+    } else {
       history.pop();
     }
   }

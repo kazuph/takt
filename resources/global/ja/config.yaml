@@ -21,6 +21,12 @@ provider: claude
 # Codex: gpt-5.2-codex, gpt-5.1-codex など
 # model: sonnet
 
+# Anthropic APIキー (オプション、環境変数 TAKT_ANTHROPIC_API_KEY で上書き可能)
+# anthropic_api_key: ""
+
+# OpenAI APIキー (オプション、環境変数 TAKT_OPENAI_API_KEY で上書き可能)
+# openai_api_key: ""
+
 # デバッグ設定 (オプション)
 # debug:
 #   enabled: false

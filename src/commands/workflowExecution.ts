@@ -12,6 +12,7 @@ import {
   loadWorktreeSessions,
   updateWorktreeSession,
 } from '../config/paths.js';
+import { loadGlobalConfig } from '../config/globalConfig.js';
 import {
   header,
   info,
@@ -131,9 +132,10 @@ export async function executeWorkflow(
 
   // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
+  const currentProvider = loadGlobalConfig().provider ?? 'claude';
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd)
-    : loadAgentSessions(projectCwd);
+    : loadAgentSessions(projectCwd, currentProvider);
 
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
@@ -142,7 +144,7 @@ export async function executeWorkflow(
         updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId);
       }
     : (agentName: string, agentSessionId: string): void => {
-        updateAgentSession(projectCwd, agentName, agentSessionId);
+        updateAgentSession(projectCwd, agentName, agentSessionId, currentProvider);
       };
 
   const iterationLimitHandler = async (

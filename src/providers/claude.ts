@@ -3,6 +3,7 @@
  */
 
 import { callClaude, callClaudeCustom, type ClaudeCallOptions } from '../claude/client.js';
+import { resolveAnthropicApiKey } from '../config/globalConfig.js';
 import type { AgentResponse } from '../models/types.js';
 import type { Provider, ProviderCallOptions } from './index.js';
 
@@ -21,6 +22,7 @@ export class ClaudeProvider implements Provider {
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
       bypassPermissions: options.bypassPermissions,
+      anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
     };
 
     return callClaude(agentName, prompt, callOptions);
@@ -38,6 +40,7 @@ export class ClaudeProvider implements Provider {
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
       bypassPermissions: options.bypassPermissions,
+      anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
     };
 
     return callClaudeCustom(agentName, prompt, systemPrompt, callOptions);

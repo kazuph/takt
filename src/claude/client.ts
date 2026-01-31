@@ -31,6 +31,8 @@ export interface ClaudeCallOptions {
   onAskUserQuestion?: AskUserQuestionHandler;
   /** Bypass all permission checks (sacrifice-my-pc mode) */
   bypassPermissions?: boolean;
+  /** Anthropic API key to inject via env (bypasses CLI auth) */
+  anthropicApiKey?: string;
 }
 
 /**
@@ -108,6 +110,7 @@ export async function callClaude(
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
+    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(prompt, spawnOptions);
@@ -146,6 +149,7 @@ export async function callClaudeCustom(
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
+    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(prompt, spawnOptions);
@@ -272,6 +276,7 @@ export async function callClaudeSkill(
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
+    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(fullPrompt, spawnOptions);

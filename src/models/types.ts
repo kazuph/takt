@@ -191,6 +191,10 @@ export interface GlobalConfig {
   worktreeDir?: string;
   /** List of builtin workflow/agent names to exclude from fallback loading */
   disabledBuiltins?: string[];
+  /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
+  anthropicApiKey?: string;
+  /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
+  openaiApiKey?: string;
 }
 
 /** Project-level configuration */

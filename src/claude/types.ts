@@ -44,6 +44,7 @@ export interface ResultEventData {
   result: string;
   sessionId: string;
   success: boolean;
+  error?: string;
 }
 
 export interface ErrorEventData {

@@ -327,7 +327,7 @@ export class StreamDisplay {
   }
 
   /** Display final result */
-  showResult(success: boolean): void {
+  showResult(success: boolean, error?: string): void {
     this.stopToolSpinner();
     this.flushThinking();
     this.flushText();
@@ -336,6 +336,9 @@ export class StreamDisplay {
       console.log(chalk.green('✓ Complete'));
     } else {
       console.log(chalk.red('✗ Failed'));
+      if (error) {
+        console.log(chalk.red(`  ${error}`));
+      }
     }
   }
 
@@ -378,7 +381,7 @@ export class StreamDisplay {
           this.showThinking(event.data.thinking);
           break;
         case 'result':
-          this.showResult(event.data.success);
+          this.showResult(event.data.success, event.data.error);
           break;
         case 'error':
           // Parse errors are logged but not displayed to user

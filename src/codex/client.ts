@@ -19,6 +19,8 @@ export interface CodexCallOptions {
   systemPrompt?: string;
   /** Enable streaming mode with callback (best-effort) */
   onStream?: StreamCallback;
+  /** OpenAI API key (bypasses CLI auth) */
+  openaiApiKey?: string;
 }
 
 function extractThreadId(value: unknown): string | undefined {
@@ -94,6 +96,7 @@ function emitResult(
       result,
       sessionId: sessionId || 'unknown',
       success,
+      error: success ? undefined : result || undefined,
     },
   });
 }
@@ -341,7 +344,7 @@ export async function callCodex(
   prompt: string,
   options: CodexCallOptions
 ): Promise<AgentResponse> {
-  const codex = new Codex();
+  const codex = new Codex(options.openaiApiKey ? { apiKey: options.openaiApiKey } : undefined);
   const threadOptions = {
     model: options.model,
     workingDirectory: options.cwd,

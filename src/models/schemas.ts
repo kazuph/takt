@@ -172,6 +172,10 @@ export const GlobalConfigSchema = z.object({
   worktree_dir: z.string().optional(),
   /** List of builtin workflow/agent names to exclude from fallback loading */
   disabled_builtins: z.array(z.string()).optional().default([]),
+  /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
+  anthropic_api_key: z.string().optional(),
+  /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
+  openai_api_key: z.string().optional(),
 });
 
 /** Project config schema */

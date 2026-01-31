@@ -26,6 +26,10 @@ export interface ProviderCallOptions {
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
   bypassPermissions?: boolean;
+  /** Anthropic API key for Claude provider */
+  anthropicApiKey?: string;
+  /** OpenAI API key for Codex provider */
+  openaiApiKey?: string;
 }
 
 /** Provider interface - all providers must implement this */

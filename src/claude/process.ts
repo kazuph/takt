@@ -69,6 +69,8 @@ export interface ClaudeSpawnOptions {
   onAskUserQuestion?: AskUserQuestionHandler;
   /** Bypass all permission checks (sacrifice-my-pc mode) */
   bypassPermissions?: boolean;
+  /** Anthropic API key to inject via env (bypasses CLI auth) */
+  anthropicApiKey?: string;
 }
 
 /**

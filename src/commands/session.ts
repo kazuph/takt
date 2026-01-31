@@ -12,15 +12,16 @@ import type { AgentResponse } from '../models/types.js';
 export async function withAgentSession(
   cwd: string,
   agentName: string,
-  fn: (sessionId?: string) => Promise<AgentResponse>
+  fn: (sessionId?: string) => Promise<AgentResponse>,
+  provider?: string
 ): Promise<AgentResponse> {
-  const sessions = loadAgentSessions(cwd);
+  const sessions = loadAgentSessions(cwd, provider);
   const sessionId = sessions[agentName];
 
   const result = await fn(sessionId);
 
   if (result.sessionId) {
-    updateAgentSession(cwd, agentName, result.sessionId);
+    updateAgentSession(cwd, agentName, result.sessionId, provider);
   }
 
   return result;

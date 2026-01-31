@@ -25,6 +25,7 @@ import {
   createCanUseToolCallback,
   createAskUserQuestionHooks,
 } from './options-builder.js';
+import { resolveAnthropicApiKey } from '../config/globalConfig.js';
 import type {
   StreamCallback,
   PermissionHandler,
@@ -49,6 +50,8 @@ export interface ExecuteOptions {
   onAskUserQuestion?: AskUserQuestionHandler;
   /** Bypass all permission checks (sacrifice-my-pc mode) */
   bypassPermissions?: boolean;
+  /** Anthropic API key to inject via env (bypasses CLI auth) */
+  anthropicApiKey?: string;
 }
 
 /**
@@ -90,6 +93,14 @@ function buildSdkOptions(options: ExecuteOptions): Options {
   if (options.systemPrompt) sdkOptions.systemPrompt = options.systemPrompt;
   if (canUseTool) sdkOptions.canUseTool = canUseTool;
   if (hooks) sdkOptions.hooks = hooks;
+
+  const anthropicApiKey = options.anthropicApiKey ?? resolveAnthropicApiKey();
+  if (anthropicApiKey) {
+    sdkOptions.env = {
+      ...process.env as Record<string, string>,
+      ANTHROPIC_API_KEY: anthropicApiKey,
+    };
+  }
 
   if (options.onStream) {
     sdkOptions.includePartialMessages = true;
