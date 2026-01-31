@@ -22,5 +22,6 @@ jobs:
 
       - uses: nrslib/takt-action@main
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ secrets.TAKT_ANTHROPIC_API_KEY }}
+          model: ${{ vars.TAKT_MODEL }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
