@@ -1,10 +1,7 @@
 /**
  * Git clone lifecycle management
  *
- * Creates, removes, and tracks git clones for task isolation.
- * Uses `git clone --reference --dissociate` so each clone has a fully
- * independent .git directory, then removes the origin remote to prevent
- * Claude Code SDK from traversing back to the main repository.
+ * Creates, removes, and tracks git worktrees for task isolation.
  */
 
 import * as fs from 'node:fs';
@@ -38,7 +35,7 @@ function generateTimestamp(): string {
 
 /**
  * Resolve the base directory for clones from global config.
- * Returns the configured worktree_dir (resolved to absolute), or ../
+ * Returns the configured worktree_dir (resolved to absolute), or ./.worktree
  */
 function resolveCloneBaseDir(projectDir: string): string {
   const globalConfig = loadGlobalConfig();
@@ -47,16 +44,16 @@ function resolveCloneBaseDir(projectDir: string): string {
       ? globalConfig.worktreeDir
       : path.resolve(projectDir, globalConfig.worktreeDir);
   }
-  return path.join(projectDir, '..');
+  return path.join(projectDir, '.worktree');
 }
 
 /**
- * Resolve the clone path based on options and global config.
+ * Resolve the worktree path based on options and global config.
  *
  * Priority:
  * 1. Custom path in options.worktree (string)
  * 2. worktree_dir from config.yaml (if set)
- * 3. Default: ../{dir-name}
+ * 3. Default: ./.worktree/{dir-name}
  */
 function resolveClonePath(projectDir: string, options: WorktreeOptions): string {
   const timestamp = generateTimestamp();
@@ -94,62 +91,66 @@ function branchExists(projectDir: string, branch: string): boolean {
 }
 
 /**
- * Clone a repository and remove origin to isolate from the main repo.
+ * Create a git worktree for the given branch.
  */
-function cloneAndIsolate(projectDir: string, clonePath: string): void {
-  fs.mkdirSync(path.dirname(clonePath), { recursive: true });
+function addWorktreeWithGitWt(projectDir: string, branch: string, baseDir: string): string {
+  const resolvedBaseDir = path.isAbsolute(baseDir)
+    ? baseDir
+    : path.resolve(projectDir, baseDir);
 
-  execFileSync('git', ['clone', '--reference', projectDir, '--dissociate', projectDir, clonePath], {
-    cwd: projectDir,
-    stdio: 'pipe',
-  });
+  const output = execFileSync(
+    'git',
+    ['wt', '--basedir', resolvedBaseDir, '--nocd', branch],
+    {
+      cwd: projectDir,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    },
+  );
 
-  execFileSync('git', ['remote', 'remove', 'origin'], {
-    cwd: clonePath,
-    stdio: 'pipe',
-  });
+  const lines = output.trim().split('\n');
+  const lastLine = lines[lines.length - 1] ?? '';
+  if (!lastLine) {
+    throw new Error('git wt did not return a worktree path');
+  }
+  return lastLine.trim();
+}
 
-  // Propagate local git user config from source repo to clone
-  for (const key of ['user.name', 'user.email']) {
-    try {
-      const value = execFileSync('git', ['config', '--local', key], {
-        cwd: projectDir,
-        stdio: 'pipe',
-      }).toString().trim();
-      if (value) {
-        execFileSync('git', ['config', key, value], {
-          cwd: clonePath,
-          stdio: 'pipe',
-        });
-      }
-    } catch {
-      // not set locally — skip
-    }
+function addWorktreeAtPath(projectDir: string, worktreePath: string, branch: string): void {
+  fs.mkdirSync(path.dirname(worktreePath), { recursive: true });
+
+  if (branchExists(projectDir, branch)) {
+    execFileSync('git', ['worktree', 'add', worktreePath, branch], {
+      cwd: projectDir,
+      stdio: 'pipe',
+    });
+  } else {
+    execFileSync('git', ['worktree', 'add', '-b', branch, worktreePath], {
+      cwd: projectDir,
+      stdio: 'pipe',
+    });
   }
 }
 
 /**
- * Create a git clone for a task.
- *
- * Uses `git clone --reference --dissociate` to create an independent clone,
- * then removes origin and checks out a new branch.
+ * Create a git worktree for a task.
  */
 export function createSharedClone(projectDir: string, options: WorktreeOptions): WorktreeResult {
-  const clonePath = resolveClonePath(projectDir, options);
   const branch = resolveBranchName(options);
+  const baseDir = resolveCloneBaseDir(projectDir);
+  const clonePath =
+    typeof options.worktree === 'string'
+      ? resolveClonePath(projectDir, options)
+      : addWorktreeWithGitWt(projectDir, branch, baseDir);
 
-  log.info('Creating shared clone', { path: clonePath, branch });
+  log.info('Creating worktree', { path: clonePath, branch });
 
-  cloneAndIsolate(projectDir, clonePath);
-
-  if (branchExists(clonePath, branch)) {
-    execFileSync('git', ['checkout', branch], { cwd: clonePath, stdio: 'pipe' });
-  } else {
-    execFileSync('git', ['checkout', '-b', branch], { cwd: clonePath, stdio: 'pipe' });
+  if (typeof options.worktree === 'string') {
+    addWorktreeAtPath(projectDir, clonePath, branch);
   }
 
   saveCloneMeta(projectDir, branch, clonePath);
-  log.info('Clone created', { path: clonePath, branch });
+  log.info('Worktree created', { path: clonePath, branch });
 
   return { path: clonePath, branch };
 }
@@ -159,17 +160,13 @@ export function createSharedClone(projectDir: string, options: WorktreeOptions):
  * Used by review/instruct to work on a branch that was previously pushed.
  */
 export function createTempCloneForBranch(projectDir: string, branch: string): WorktreeResult {
-  const timestamp = generateTimestamp();
-  const clonePath = path.join(resolveCloneBaseDir(projectDir), `tmp-${timestamp}`);
+  const baseDir = resolveCloneBaseDir(projectDir);
+  const clonePath = addWorktreeWithGitWt(projectDir, branch, baseDir);
 
-  log.info('Creating temp clone for branch', { path: clonePath, branch });
-
-  cloneAndIsolate(projectDir, clonePath);
-
-  execFileSync('git', ['checkout', branch], { cwd: clonePath, stdio: 'pipe' });
+  log.info('Creating temp worktree for branch', { path: clonePath, branch });
 
   saveCloneMeta(projectDir, branch, clonePath);
-  log.info('Temp clone created', { path: clonePath, branch });
+  log.info('Temp worktree created', { path: clonePath, branch });
 
   return { path: clonePath, branch };
 }
@@ -177,13 +174,21 @@ export function createTempCloneForBranch(projectDir: string, branch: string): Wo
 /**
  * Remove a clone directory.
  */
-export function removeClone(clonePath: string): void {
-  log.info('Removing clone', { path: clonePath });
+export function removeClone(projectDir: string, clonePath: string): void {
+  log.info('Removing worktree', { path: clonePath });
   try {
-    fs.rmSync(clonePath, { recursive: true, force: true });
-    log.info('Clone removed', { path: clonePath });
+    execFileSync('git', ['worktree', 'remove', '--force', clonePath], {
+      cwd: projectDir,
+      stdio: 'pipe',
+    });
+    log.info('Worktree removed', { path: clonePath });
   } catch (err) {
-    log.error('Failed to remove clone', { path: clonePath, error: String(err) });
+    try {
+      fs.rmSync(clonePath, { recursive: true, force: true });
+      log.info('Worktree path removed by fallback', { path: clonePath });
+    } catch (fallbackErr) {
+      log.error('Failed to remove worktree', { path: clonePath, error: String(fallbackErr) });
+    }
   }
 }
 
@@ -223,16 +228,16 @@ export function removeCloneMeta(projectDir: string, branch: string): void {
 }
 
 /**
- * Clean up an orphaned clone directory associated with a branch.
- * Reads metadata, removes clone directory if it still exists, then removes metadata.
+ * Clean up an orphaned worktree directory associated with a branch.
+ * Reads metadata, removes worktree if it still exists, then removes metadata.
  */
 export function cleanupOrphanedClone(projectDir: string, branch: string): void {
   try {
     const raw = fs.readFileSync(getCloneMetaPath(projectDir, branch), 'utf-8');
     const meta = JSON.parse(raw) as { clonePath: string };
     if (fs.existsSync(meta.clonePath)) {
-      removeClone(meta.clonePath);
-      log.info('Orphaned clone cleaned up', { branch, clonePath: meta.clonePath });
+      removeClone(projectDir, meta.clonePath);
+      log.info('Orphaned worktree cleaned up', { branch, clonePath: meta.clonePath });
     }
   } catch {
     // No metadata or parse error — nothing to clean up

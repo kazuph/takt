@@ -19,7 +19,7 @@
 #   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
 name: expert
-description: アーキテクチャ・フロントエンド・セキュリティ・QA専門家レビュー
+description: 実装あり。アーキ/フロント/セキュリティ/QAの逐次レビュー＋修正ループ。
 
 max_iterations: 30
 

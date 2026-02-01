@@ -1,20 +1,20 @@
 # TAKT
 
-**T**ask **A**gent **K**oordination **T**ool - Claude CodeとOpenAI Codex向けのマルチエージェントオーケストレーションシステム
+**T**ask **A**gent **K**oordination **T**ool - Claude Code/Codex/Gemini CLI向けのマルチエージェントオーケストレーションシステム
 
 TAKTはTAKT自身で開発されています（ドッグフーディング）。
 
 ## 必要条件
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) または Codex がインストール・設定済みであること
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、Codex、または Gemini CLI がインストール・設定済みであること
 - [GitHub CLI](https://cli.github.com/) (`gh`) — `takt "#N"`（GitHub Issue実行）を使う場合のみ必要
 
-TAKTはClaude CodeとCodexの両方をプロバイダーとしてサポートしています。セットアップ時にプロバイダーを選択できます。
+TAKTはClaude Code/Codex/Gemini CLIをプロバイダーとしてサポートしています。セットアップ時にプロバイダーを選択できます。
 
 ## インストール
 
 ```bash
-npm install -g takt
+npm install -g @kazuph/takt
 ```
 
 ## クイックスタート
@@ -53,13 +53,13 @@ Select workflow:
     Cancel
 ```
 
-**2. 隔離クローン作成**（オプション）
+**2. worktree作成**（オプション）
 
 ```
 ? Create worktree? (Y/n)
 ```
 
-`y` を選ぶと `git clone --shared` で隔離環境を作成し、作業ディレクトリをクリーンに保てます。
+`y` を選ぶと `git worktree` で隔離環境を作成し、作業ディレクトリをクリーンに保てます。
 
 **3. 実行** — 選択したワークフローが複数のエージェントを連携させてタスクを完了します。
 
@@ -301,7 +301,7 @@ agents:
 
 ## モデル選択
 
-`model` フィールド（ワークフローステップ、エージェント設定、グローバル設定）はプロバイダー（Claude Code CLI / Codex SDK）にそのまま渡されます。TAKTはモデルエイリアスの解決を行いません。
+`model` フィールド（ワークフローステップ、エージェント設定、グローバル設定）はプロバイダーCLI（Claude Code/Codex/Gemini）にそのまま渡されます。TAKTはモデルエイリアスの解決を行いません。
 
 ### Claude Code
 
@@ -379,7 +379,7 @@ trusted_directories:
 `takt` （対話モード）または `takt #6` （GitHub Issue）を実行すると、以下の流れで案内されます:
 
 1. **ワークフロー選択** - 利用可能なワークフローから選択（矢印キーで移動、ESCでキャンセル）
-2. **隔離クローン作成**（オプション） - `git clone --shared` による隔離環境でタスクを実行
+2. **worktree作成**（オプション） - `git worktree` による隔離環境でタスクを実行
 3. **PR作成**（worktree実行後） - タスクブランチからPRを作成
 
 `--auto-pr` を指定している場合、PR作成の確認はスキップされ自動で作成されます。
@@ -404,7 +404,7 @@ takt add
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "認証機能を追加する"
-worktree: true                  # 隔離された共有クローンで実行
+worktree: true                  # 隔離されたworktreeで実行
 branch: "feat/add-auth"         # ブランチ名（省略時は自動生成）
 workflow: "default"             # ワークフロー指定（省略時は現在のもの）
 ```
@@ -424,16 +424,14 @@ workflow: "default"             # ワークフロー指定（省略時は現在�
 
 #### 共有クローンによる隔離実行
 
-YAMLタスクファイルで`worktree`を指定すると、各タスクを`git clone --shared`で作成した隔離クローンで実行し、メインの作業ディレクトリをクリーンに保てます:
+YAMLタスクファイルで`worktree`を指定すると、各タスクを`git worktree`で作成した隔離環境で実行し、メインの作業ディレクトリをクリーンに保てます:
 
-- `worktree: true` - 隣接ディレクトリ（または`worktree_dir`設定で指定した場所）に共有クローンを自動作成
+- `worktree: true` - `.worktree/`（または`worktree_dir`設定で指定した場所）にworktreeを自動作成
 - `worktree: "/path/to/dir"` - 指定パスに作成
 - `branch: "feat/xxx"` - 指定ブランチを使用（省略時は`takt/{timestamp}-{slug}`で自動生成）
 - `worktree`省略 - カレントディレクトリで実行（デフォルト）
 
-> **Note**: YAMLフィールド名は後方互換のため`worktree`のままです。内部的には`git worktree`ではなく`git clone --shared`を使用しています。git worktreeの`.git`ファイルには`gitdir:`でメインリポジトリへのパスが記載されており、Claude Codeがそれを辿ってメインリポジトリをプロジェクトルートと認識してしまうためです。共有クローンは独立した`.git`ディレクトリを持つため、この問題が発生しません。
-
-クローンは使い捨てです。タスク完了後に自動的にコミット＋プッシュし、クローンを削除します。ブランチが唯一の永続的な成果物です。`takt list`でブランチの一覧表示・マージ・削除ができます。
+worktreeは使い捨てです。タスク完了後に自動的にコミット＋プッシュし、worktreeを削除します。ブランチが唯一の永続的な成果物です。`takt list`でブランチの一覧表示・マージ・削除ができます。
 
 #### `/run-tasks` でタスクを実行
 
@@ -638,11 +636,10 @@ jobs:
       - name: Run TAKT
         uses: nrslib/takt-action@main
         with:
-          anthropic_api_key: ${{ secrets.TAKT_ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**コスト警告**: TAKTはAI API（ClaudeまたはOpenAI）を使用するため、特にCI/CD環境でタスクが自動実行される場合、かなりのコストが発生する可能性があります。API使用量を監視し、請求アラートを設定してください。
+**コスト警告**: TAKTはClaude/Codex/GeminiのAIサービスを利用します。CI/CDの自動実行ではコストが増えるため、必要に応じて利用状況を監視してください。
 
 ### その他のCIシステム
 
@@ -650,13 +647,13 @@ GitHub以外のCIシステムでは、パイプラインモードを使用しま
 
 ```bash
 # taktをインストール
-npm install -g takt
+npm install -g @kazuph/takt
 
 # パイプラインモードで実行
 takt --pipeline --task "バグ修正" --auto-pr --repo owner/repo
 ```
 
-認証には `ANTHROPIC_API_KEY` または `OPENAI_API_KEY` 環境変数を設定してください。
+各プロバイダーのCLI認証を事前に済ませてください（Claude/Codex/Gemini）。Claude Codeは `claude setup-token` でCI向けの長期トークンを発行できます。Codex/Geminiは各CLIのログイン機能を使ってください。
 
 ## Docker サポート
 

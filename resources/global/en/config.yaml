@@ -21,11 +21,9 @@ provider: claude
 # Codex: gpt-5.2-codex, gpt-5.1-codex, etc.
 # model: sonnet
 
-# Anthropic API key (optional, overridden by TAKT_ANTHROPIC_API_KEY env var)
-# anthropic_api_key: ""
-
-# OpenAI API key (optional, overridden by TAKT_OPENAI_API_KEY env var)
-# openai_api_key: ""
+# Authentication
+# Claude: use `claude setup-token` (subscription) or `claude login`
+# Codex/Gemini: use each CLI's login flow
 
 # Pipeline execution settings (optional)
 # Customize branch naming, commit messages, and PR body for pipeline mode (--task).

@@ -16,7 +16,7 @@
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: research
-description: Research workflow - autonomously executes research without asking questions
+description: Research only (no implementation). Autonomously investigates without asking questions.
 
 max_iterations: 10
 

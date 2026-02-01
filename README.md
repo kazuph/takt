@@ -2,21 +2,21 @@
 
 🇯🇵 [日本語ドキュメント](./docs/README.ja.md)
 
-**T**ask **A**gent **K**oordination **T**ool - Multi-agent orchestration system for Claude Code and OpenAI Codex.
+**T**ask **A**gent **K**oordination **T**ool - Multi-agent orchestration system for Claude Code, Codex, and Gemini CLI.
 
 TAKT is built with TAKT (dogfooding).
 
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or Codex must be installed and configured
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex, or Gemini CLI must be installed and configured
 - [GitHub CLI](https://cli.github.com/) (`gh`) — required only for `takt #N` (GitHub Issue execution)
 
-TAKT supports both Claude Code and Codex as providers; you can choose the provider during setup.
+TAKT supports Claude Code, Codex, and Gemini CLI as providers; you can choose the provider during setup.
 
 ## Installation
 
 ```bash
-npm install -g takt
+npm install -g @kazuph/takt
 ```
 
 ## Quick Start
@@ -55,13 +55,13 @@ Select workflow:
     Cancel
 ```
 
-**2. Isolated clone** (optional)
+**2. Worktree** (optional)
 
 ```
 ? Create worktree? (Y/n)
 ```
 
-Choose `y` to run in a `git clone --shared` isolated environment, keeping your working directory clean.
+Choose `y` to run in a `git worktree` isolated environment, keeping your working directory clean.
 
 **3. Execution** — The selected workflow orchestrates multiple agents to complete the task.
 
@@ -303,7 +303,7 @@ You are a code reviewer focused on security.
 
 ## Model Selection
 
-The `model` field in workflow steps, agent configs, and global config is passed directly to the provider (Claude Code CLI or Codex SDK). TAKT does not resolve model aliases — the provider handles that.
+The `model` field in workflow steps, agent configs, and global config is passed directly to the provider CLI (Claude Code/Codex/Gemini). TAKT does not resolve model aliases — the provider handles that.
 
 ### Claude Code
 
@@ -382,7 +382,7 @@ trusted_directories:
 When running `takt` (interactive planning mode) or `takt #6` (GitHub issue), you are prompted to:
 
 1. **Select a workflow** - Choose from available workflows (arrow keys, ESC to cancel)
-2. **Create an isolated clone** (optional) - Run the task in a `git clone --shared` for isolation
+2. **Create a worktree** (optional) - Run the task in a `git worktree` for isolation
 3. **Create a pull request** (after worktree execution) - Create a PR from the task branch
 
 If `--auto-pr` is specified, the PR confirmation is skipped and the PR is created automatically.
@@ -462,7 +462,7 @@ The `takt add` command starts an AI conversation where you discuss and refine yo
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "Add authentication feature"
-worktree: true                  # Run in isolated shared clone
+worktree: true                  # Run in isolated worktree
 branch: "feat/add-auth"         # Branch name (auto-generated if omitted)
 workflow: "default"             # Workflow override (uses current if omitted)
 ```
@@ -480,18 +480,16 @@ Requirements:
 - Error handling for failed attempts
 ```
 
-#### Isolated Execution (Shared Clone)
+#### Isolated Execution (Worktree)
 
-YAML task files can specify `worktree` to run each task in an isolated `git clone --shared`, keeping the main working directory clean:
+YAML task files can specify `worktree` to run each task in an isolated `git worktree`, keeping the main working directory clean:
 
-- `worktree: true` - Auto-create a shared clone in a sibling directory (or `worktree_dir` from config)
+- `worktree: true` - Auto-create a worktree in `.worktree/` (or `worktree_dir` from config)
 - `worktree: "/path/to/dir"` - Create at specified path
 - `branch: "feat/xxx"` - Use specified branch (auto-generated as `takt/{timestamp}-{slug}` if omitted)
 - Omit `worktree` - Run in current working directory (default)
 
-> **Note**: The YAML field is named `worktree` for backward compatibility. Internally, `git clone --shared` is used instead of `git worktree` because git worktrees have a `.git` file with `gitdir:` that points back to the main repository, causing Claude Code to recognize the main repo as the project root. Shared clones have an independent `.git` directory that avoids this issue.
-
-Clones are ephemeral. When a task completes successfully, TAKT automatically commits all changes and pushes the branch to the main repository, then deletes the clone. Use `takt list` to list, try-merge, or delete task branches.
+Worktrees are ephemeral. When a task completes successfully, TAKT automatically commits all changes and pushes the branch to the main repository, then removes the worktree. Use `takt list` to list, try-merge, or delete task branches.
 
 #### Running Tasks with `/run-tasks`
 
@@ -641,11 +639,10 @@ jobs:
       - name: Run TAKT
         uses: nrslib/takt-action@main
         with:
-          anthropic_api_key: ${{ secrets.TAKT_ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**Cost Warning**: TAKT uses AI APIs (Claude or OpenAI) which can incur significant costs, especially in CI/CD environments where tasks run automatically. Monitor your API usage and set billing alerts.
+**Cost Warning**: TAKT uses AI services (Claude/Codex/Gemini). Monitor usage and set billing alerts where applicable.
 
 ### Other CI Systems
 
@@ -653,13 +650,13 @@ For non-GitHub CI systems, use pipeline mode:
 
 ```bash
 # Install takt
-npm install -g takt
+npm install -g @kazuph/takt
 
 # Run in pipeline mode
 takt --pipeline --task "fix bug" --auto-pr --repo owner/repo
 ```
 
-Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variables for authentication.
+Authenticate the CLI for your provider (Claude/Codex/Gemini). For Claude Code, use `claude setup-token` to provision a long-lived token for CI. For Codex/Gemini, use their CLI login mechanisms.
 
 ## Docker Support
 

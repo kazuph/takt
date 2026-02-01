@@ -19,7 +19,7 @@
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: expert-cqrs
-description: CQRS+ES, Frontend, Security, QA Expert Review
+description: Implementation included. Sequential expert reviews (CQRS+ES/frontend/security/QA) with fix loops.
 
 max_iterations: 30
 

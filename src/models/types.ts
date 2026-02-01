@@ -102,7 +102,7 @@ export interface WorkflowStep {
   /** Resolved absolute path to agent prompt file (set by loader) */
   agentPath?: string;
   /** Provider override for this step */
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'gemini' | 'mock';
   /** Model override for this step */
   model?: string;
   /** Permission mode for tool execution in this step */
@@ -165,7 +165,7 @@ export interface CustomAgentConfig {
   allowedTools?: string[];
   claudeAgent?: string;
   claudeSkill?: string;
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'gemini' | 'mock';
   model?: string;
 }
 
@@ -194,17 +194,13 @@ export interface GlobalConfig {
   trustedDirectories: string[];
   defaultWorkflow: string;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'gemini' | 'mock';
   model?: string;
   debug?: DebugConfig;
-  /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
+  /** Directory for worktrees (worktree_dir in config). If empty, uses ./.worktree relative to project */
   worktreeDir?: string;
   /** List of builtin workflow/agent names to exclude from fallback loading */
   disabledBuiltins?: string[];
-  /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
-  anthropicApiKey?: string;
-  /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
-  openaiApiKey?: string;
   /** Pipeline execution settings */
   pipeline?: PipelineConfig;
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
@@ -215,5 +211,5 @@ export interface GlobalConfig {
 export interface ProjectConfig {
   workflow?: string;
   agents?: CustomAgentConfig[];
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'gemini' | 'mock';
 }

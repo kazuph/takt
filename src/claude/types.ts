@@ -1,14 +1,6 @@
 /**
- * Type definitions for Claude SDK integration
- *
- * Contains stream event types, callback types, and result types
- * used throughout the Claude integration layer.
+ * Type definitions for Claude CLI integration
  */
-
-import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
-
-// Re-export PermissionResult for convenience
-export type { PermissionResult, PermissionUpdate };
 
 /** Stream event data types (for backward compatibility) */
 export interface InitEventData {
@@ -70,7 +62,11 @@ export type StreamCallback = (event: StreamEvent) => void;
 export interface PermissionRequest {
   toolName: string;
   input: Record<string, unknown>;
-  suggestions?: PermissionUpdate[];
+  suggestions?: Array<{
+    toolName?: string;
+    allow?: boolean;
+    reason?: string;
+  }>;
   blockedPath?: string;
   decisionReason?: string;
 }
@@ -78,7 +74,7 @@ export interface PermissionRequest {
 /** Permission handler callback type */
 export type PermissionHandler = (
   request: PermissionRequest
-) => Promise<PermissionResult>;
+) => Promise<{ allow: boolean; reason?: string }>;
 
 /** AskUserQuestion tool input */
 export interface AskUserQuestionInput {

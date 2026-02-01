@@ -12,7 +12,7 @@
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: simple
-description: Simplified development workflow (plan -> implement -> ai_review -> review -> supervise)
+description: 実装あり。計画→実装→アーキレビュー→AIレビュー→最終承認。中間の修正ループなし。
 
 max_iterations: 20
 

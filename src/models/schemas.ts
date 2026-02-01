@@ -86,7 +86,7 @@ export const ParallelSubStepRawSchema = z.object({
   agent: z.string().min(1),
   agent_name: z.string().optional(),
   allowed_tools: z.array(z.string()).optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'gemini', 'mock']).optional(),
   model: z.string().optional(),
   permission_mode: PermissionModeSchema.optional(),
   edit: z.boolean().optional(),
@@ -105,7 +105,7 @@ export const WorkflowStepRawSchema = z.object({
   /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
   agent_name: z.string().optional(),
   allowed_tools: z.array(z.string()).optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'gemini', 'mock']).optional(),
   model: z.string().optional(),
   /** Permission mode for tool execution in this step */
   permission_mode: PermissionModeSchema.optional(),
@@ -143,7 +143,7 @@ export const CustomAgentConfigSchema = z.object({
   allowed_tools: z.array(z.string()).optional(),
   claude_agent: z.string().optional(),
   claude_skill: z.string().optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'gemini', 'mock']).optional(),
   model: z.string().optional(),
 }).refine(
   (data) => data.prompt_file || data.prompt || data.claude_agent || data.claude_skill,
@@ -172,17 +172,13 @@ export const GlobalConfigSchema = z.object({
   trusted_directories: z.array(z.string()).optional().default([]),
   default_workflow: z.string().optional().default('default'),
   log_level: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
-  provider: z.enum(['claude', 'codex', 'mock']).optional().default('claude'),
+  provider: z.enum(['claude', 'codex', 'gemini', 'mock']).optional().default('claude'),
   model: z.string().optional(),
   debug: DebugConfigSchema.optional(),
-  /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
+  /** Directory for worktrees (worktree_dir in config). If empty, uses ./.worktree relative to project */
   worktree_dir: z.string().optional(),
   /** List of builtin workflow/agent names to exclude from fallback loading */
   disabled_builtins: z.array(z.string()).optional().default([]),
-  /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
-  anthropic_api_key: z.string().optional(),
-  /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
-  openai_api_key: z.string().optional(),
   /** Pipeline execution settings */
   pipeline: PipelineConfigSchema.optional(),
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
@@ -193,6 +189,5 @@ export const GlobalConfigSchema = z.object({
 export const ProjectConfigSchema = z.object({
   workflow: z.string().optional(),
   agents: z.array(CustomAgentConfigSchema).optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'gemini', 'mock']).optional(),
 });
-

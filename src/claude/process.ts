@@ -1,22 +1,26 @@
 /**
- * Claude Agent SDK wrapper
- *
- * Uses @anthropic-ai/claude-agent-sdk for native TypeScript integration
- * instead of spawning CLI processes.
+ * Claude CLI wrapper
  */
 
-import type { AgentDefinition, PermissionMode } from '@anthropic-ai/claude-agent-sdk';
-import {
-  hasActiveProcess,
-  interruptCurrentProcess,
-} from './query-manager.js';
-import { executeClaudeQuery } from './executor.js';
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import type { PermissionMode } from '../models/types.js';
 import type {
   StreamCallback,
   PermissionHandler,
   AskUserQuestionHandler,
   ClaudeResult,
 } from './types.js';
+import {
+  generateQueryId,
+  registerQuery,
+  unregisterQuery,
+  hasActiveProcess,
+  interruptCurrentProcess,
+} from './query-manager.js';
+import { createLogger } from '../utils/debug.js';
+
+const log = createLogger('claude-cli');
 
 // Re-export types for backward compatibility
 export type {
@@ -49,7 +53,7 @@ export {
   interruptCurrentProcess,
 } from './query-manager.js';
 
-/** Options for calling Claude via SDK */
+/** Options for calling Claude via CLI */
 export interface ClaudeSpawnOptions {
   cwd: string;
   sessionId?: string;
@@ -57,37 +61,142 @@ export interface ClaudeSpawnOptions {
   model?: string;
   maxTurns?: number;
   systemPrompt?: string;
+  /** Permission mode for tool execution */
+  permissionMode?: PermissionMode;
+  /** Disable session persistence (CLI only) */
+  noSessionPersistence?: boolean;
   /** Enable streaming mode with callback */
   onStream?: StreamCallback;
-  /** Custom agents to register */
-  agents?: Record<string, AgentDefinition>;
-  /** Permission mode for tool execution (default: 'default' for interactive) */
-  permissionMode?: PermissionMode;
-  /** Custom permission handler for interactive permission prompts */
+  /** Custom permission handler for interactive permission prompts (CLI-only, not used here) */
   onPermissionRequest?: PermissionHandler;
-  /** Custom handler for AskUserQuestion tool */
+  /** Custom handler for AskUserQuestion tool (CLI-only, not used here) */
   onAskUserQuestion?: AskUserQuestionHandler;
-  /** Bypass all permission checks (sacrifice-my-pc mode) */
+  /** Bypass all permission checks */
   bypassPermissions?: boolean;
-  /** Anthropic API key to inject via env (bypasses CLI auth) */
-  anthropicApiKey?: string;
 }
 
-/**
- * Execute a Claude query using the Agent SDK.
- * Supports concurrent execution with query ID tracking.
- */
+/** Execute a Claude query using the CLI. */
 export async function executeClaudeCli(
   prompt: string,
   options: ClaudeSpawnOptions
 ): Promise<ClaudeResult> {
-  return executeClaudeQuery(prompt, options);
+  const queryId = generateQueryId();
+  const sessionId = options.sessionId ?? randomUUID();
+
+  const args: string[] = ['--output-format', 'text'];
+
+  if (options.noSessionPersistence) {
+    args.push('--no-session-persistence');
+  } else {
+    args.push('--session-id', sessionId);
+  }
+
+  if (options.model) {
+    args.push('--model', options.model);
+  }
+
+  const combinedPrompt = options.systemPrompt
+    ? `${options.systemPrompt}\n\n${prompt}`
+    : prompt;
+
+  if (options.allowedTools && options.allowedTools.length > 0) {
+    args.push('--allowed-tools', options.allowedTools.join(' '));
+  }
+
+  if (options.permissionMode) {
+    args.push('--permission-mode', options.permissionMode);
+  }
+
+  if (options.bypassPermissions) {
+    args.push('--dangerously-skip-permissions');
+  }
+
+  args.push('-p', combinedPrompt);
+
+  const shellEscape = (value: string): string => {
+    if (value.length === 0) return '""';
+    if (/^[A-Za-z0-9_./:-]+$/.test(value)) return value;
+    return `"${value.replace(/(["\\$`])/g, '\\$1')}"`;
+  };
+  const commandString = `claude ${args.map((arg) => shellEscape(arg)).join(' ')}`;
+  log.info(`Claude CLI exec: ${commandString}`);
+  log.info(`Claude CLI prompt: ${combinedPrompt}`);
+
+  return new Promise((resolve) => {
+    const child = spawn('claude', args, {
+      cwd: options.cwd,
+      stdio: 'pipe',
+      env: process.env,
+    });
+
+    log.info(`Claude CLI spawned: pid=${child.pid ?? 'unknown'}`);
+
+    registerQuery(queryId, child);
+
+    let stdout = '';
+    let stderr = '';
+    const startedAt = Date.now();
+    const heartbeat = setInterval(() => {
+      const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+      log.info(`Claude CLI waiting: pid=${child.pid ?? 'unknown'} elapsed=${elapsedSec}s`);
+    }, 10_000);
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk;
+      log.info(`Claude CLI stdout: ${chunk}`);
+      if (options.onStream) {
+        options.onStream({
+          type: 'text',
+          data: { text: chunk },
+        });
+      }
+    });
+
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk;
+      log.info(`Claude CLI stderr: ${chunk}`);
+    });
+
+    child.on('close', (code) => {
+      clearInterval(heartbeat);
+      unregisterQuery(queryId);
+      const exitCode = code ?? 0;
+      const success = exitCode === 0;
+      const content = stdout.trim();
+      const error = success ? undefined : (stderr.trim() || content || `Claude CLI exited with code ${exitCode}`);
+
+      log.info(`Claude CLI exit: code=${exitCode} success=${success}`);
+      if (stderr.trim()) {
+        log.info(`Claude CLI stderr: ${stderr.trim()}`);
+      }
+
+      resolve({
+        success,
+        content: success ? content : '',
+        sessionId,
+        error,
+        interrupted: !success && (error ? error.includes('interrupted') : false),
+        fullContent: content,
+      });
+    });
+
+    child.on('error', (error) => {
+      clearInterval(heartbeat);
+      unregisterQuery(queryId);
+      resolve({
+        success: false,
+        content: '',
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  });
 }
 
-/**
- * ClaudeProcess class for backward compatibility.
- * Wraps the SDK query function.
- */
+/** ClaudeProcess class for backward compatibility. */
 export class ClaudeProcess {
   private options: ClaudeSpawnOptions;
   private currentSessionId?: string;

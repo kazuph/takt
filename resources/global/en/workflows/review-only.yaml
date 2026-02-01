@@ -20,7 +20,7 @@
 #   {report_dir}        - Report directory name
 
 name: review-only
-description: Review-only workflow - reviews code without making edits
+description: Review only (no implementation, no edits). Code review only.
 
 max_iterations: 10
 

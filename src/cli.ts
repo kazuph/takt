@@ -41,7 +41,8 @@ import {
   interactiveMode,
   executePipeline,
 } from './commands/index.js';
-import { listWorkflows, isWorkflowPath } from './config/workflowLoader.js';
+import { listWorkflows, loadAllWorkflows, isWorkflowPath } from './config/workflowLoader.js';
+import { getLanguage } from './config/globalConfig.js';
 import { selectOptionWithDefault, confirm } from './prompt/index.js';
 import { createSharedClone } from './task/clone.js';
 import { autoCommitAndPush } from './task/autoCommit.js';
@@ -82,6 +83,7 @@ export interface WorktreeConfirmationResult {
 async function selectWorkflow(cwd: string): Promise<string | null> {
   const availableWorkflows = listWorkflows(cwd);
   const currentWorkflow = getCurrentWorkflow(cwd);
+  const language = getLanguage();
 
   if (availableWorkflows.length === 0) {
     info(`No workflows found. Using default: ${DEFAULT_WORKFLOW_NAME}`);
@@ -92,10 +94,17 @@ async function selectWorkflow(cwd: string): Promise<string | null> {
     return availableWorkflows[0];
   }
 
-  const options = availableWorkflows.map((name) => ({
-    label: name === currentWorkflow ? `${name} (current)` : name,
-    value: name,
-  }));
+  const workflows = loadAllWorkflows(cwd);
+  const options = availableWorkflows.map((name) => {
+    const workflow = workflows.get(name);
+    const description = workflow?.description?.trim();
+    const fallback = language === 'ja' ? '説明なし' : 'No description';
+    return {
+      label: name === currentWorkflow ? `${name} (current)` : name,
+      value: name,
+      description: description && description.length > 0 ? description : fallback,
+    };
+  });
 
   const defaultWorkflow = availableWorkflows.includes(currentWorkflow)
     ? currentWorkflow
@@ -220,7 +229,7 @@ export async function confirmAndCreateWorktree(
     worktree: true,
     taskSlug,
   });
-  info(`Clone created: ${result.path} (branch: ${result.branch})`);
+  info(`Worktree created: ${result.path} (branch: ${result.branch})`);
 
   return { execCwd: result.path, isWorktree: true, branch: result.branch };
 }
@@ -268,13 +277,14 @@ program
   .option('-b, --branch <name>', 'Branch name (auto-generated if omitted)')
   .option('--auto-pr', 'Create PR after successful execution')
   .option('--repo <owner/repo>', 'Repository (defaults to current)')
-  .option('--provider <name>', 'Override agent provider (claude|codex|mock)')
+  .option('--provider <name>', 'Override agent provider (claude|codex|gemini|mock)')
   .option('--model <name>', 'Override agent model')
   .option('-t, --task <string>', 'Task content (as alternative to GitHub issue)')
   .option('--pipeline', 'Pipeline mode: non-interactive, no worktree, direct branch creation')
   .option('--skip-git', 'Skip branch creation, commit, and push (pipeline mode)')
   .option('--create-worktree <yes|no>', 'Skip the worktree prompt by explicitly specifying yes or no')
-  .option('-q, --quiet', 'Minimal output mode: suppress AI output (for CI)');
+  .option('-q, --quiet', 'Minimal output mode: suppress AI output (for CI)')
+  .option('-v, --verbose', 'Verbose debug output');
 
 // Common initialization for all commands
 program.hook('preAction', async () => {
@@ -287,7 +297,7 @@ program.hook('preAction', async () => {
   await initGlobalDirs({ nonInteractive: pipelineMode });
   initProjectDirs(resolvedCwd);
 
-  const verbose = isVerboseMode(resolvedCwd);
+  const verbose = rootOpts.verbose === true || isVerboseMode(resolvedCwd);
   let debugConfig = getEffectiveDebugConfig(resolvedCwd);
 
   if (verbose && (!debugConfig || !debugConfig.enabled)) {
@@ -393,6 +403,11 @@ program
 function isDirectTask(input: string): boolean {
   // Multi-word input is a task description
   if (input.includes(' ')) return true;
+  if (input.includes('\n')) return true;
+  // Japanese and general punctuation indicate a full sentence/task
+  if (/[。．\.！!？\?、,；;：:]/.test(input)) return true;
+  // Long single-token input is likely a task description (Japanese often has no spaces)
+  if (input.trim().length >= 12) return true;
   // Issue references are direct tasks
   if (isIssueReference(input) || input.trim().split(/\s+/).every((t: string) => isIssueReference(t))) return true;
   return false;

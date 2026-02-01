@@ -12,7 +12,7 @@
 #   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
 name: magi
-description: MAGI合議システム - 3つの観点から分析し多数決で判定
+description: 分析のみ（実装なし）。3つの観点から分析し多数決で判定。
 
 max_iterations: 5
 

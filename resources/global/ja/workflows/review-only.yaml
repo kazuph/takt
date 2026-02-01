@@ -20,7 +20,7 @@
 #   {report_dir}        - レポートディレクトリ名
 
 name: review-only
-description: レビュー専用ワークフロー - コードをレビューするだけで編集は行わない
+description: レビューのみ（実装なし、編集禁止）。コードをレビューするだけ。
 
 max_iterations: 10
 

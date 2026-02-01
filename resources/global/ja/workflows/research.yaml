@@ -16,7 +16,7 @@
 #   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
 name: research
-description: 調査ワークフロー - 質問せずに自律的に調査を実行
+description: 調査のみ（実装なし）。質問せずに自律的に調査を実行。
 
 max_iterations: 10
 

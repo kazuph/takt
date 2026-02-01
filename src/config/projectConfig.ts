@@ -25,7 +25,7 @@ export interface ProjectLocalConfig {
   /** Current workflow name */
   workflow?: string;
   /** Provider selection for agent runtime */
-  provider?: 'claude' | 'codex';
+  provider?: 'claude' | 'codex' | 'gemini';
   /** Permission mode setting */
   permissionMode?: PermissionMode;
   /** @deprecated Use permissionMode instead. Auto-approve all permissions in this project */

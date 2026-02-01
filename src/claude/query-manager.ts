@@ -1,17 +1,13 @@
 /**
- * Query management for Claude SDK
+ * Query management for Claude CLI
  *
- * Handles tracking and lifecycle management of active Claude queries.
- * Supports concurrent query execution with interrupt capabilities.
+ * Tracks active Claude CLI processes for interrupt support.
  */
 
-import type { Query } from '@anthropic-ai/claude-agent-sdk';
+import type { ChildProcess } from 'node:child_process';
 
-/**
- * Active query registry for interrupt support.
- * Uses a Map to support concurrent query execution.
- */
-const activeQueries = new Map<string, Query>();
+/** Active query registry */
+const activeQueries = new Map<string, ChildProcess>();
 
 /** Generate a unique query ID */
 export function generateQueryId(): string {
@@ -34,8 +30,8 @@ export function getActiveQueryCount(): number {
 }
 
 /** Register an active query */
-export function registerQuery(queryId: string, queryInstance: Query): void {
-  activeQueries.set(queryId, queryInstance);
+export function registerQuery(queryId: string, process: ChildProcess): void {
+  activeQueries.set(queryId, process);
 }
 
 /** Unregister an active query */
@@ -43,43 +39,32 @@ export function unregisterQuery(queryId: string): void {
   activeQueries.delete(queryId);
 }
 
-/**
- * Interrupt a specific Claude query by ID.
- * @returns true if the query was interrupted, false if not found
- */
+/** Interrupt a specific Claude query by ID */
 export function interruptQuery(queryId: string): boolean {
-  const queryInstance = activeQueries.get(queryId);
-  if (queryInstance) {
-    queryInstance.interrupt();
+  const process = activeQueries.get(queryId);
+  if (process) {
+    process.kill('SIGINT');
     activeQueries.delete(queryId);
     return true;
   }
   return false;
 }
 
-/**
- * Interrupt all active Claude queries.
- * @returns number of queries that were interrupted
- */
+/** Interrupt all active Claude queries */
 export function interruptAllQueries(): number {
   const count = activeQueries.size;
-  for (const [id, queryInstance] of activeQueries) {
-    queryInstance.interrupt();
+  for (const [id, process] of activeQueries) {
+    process.kill('SIGINT');
     activeQueries.delete(id);
   }
   return count;
 }
 
-/**
- * Interrupt the most recently started Claude query (backward compatibility).
- * @returns true if a query was interrupted, false if no query was running
- */
+/** Interrupt the most recently started Claude query (backward compatibility) */
 export function interruptCurrentProcess(): boolean {
   if (activeQueries.size === 0) {
     return false;
   }
-  // Interrupt all queries for backward compatibility
-  // In the old design, there was only one query
   interruptAllQueries();
   return true;
 }

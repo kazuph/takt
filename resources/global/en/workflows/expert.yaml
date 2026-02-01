@@ -31,7 +31,7 @@
 #                          - Decisions: 02-coder-decisions.md
 
 name: expert
-description: Architecture, Frontend, Security, QA Expert Review
+description: Implementation included. Sequential expert reviews (architecture/frontend/security/QA) with fix loops.
 
 max_iterations: 30
 

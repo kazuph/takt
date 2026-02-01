@@ -1,11 +1,8 @@
 /**
- * High-level Claude client for agent interactions
- *
- * Uses the Claude Agent SDK for native TypeScript integration.
+ * High-level Claude client for agent interactions (CLI-based)
  */
 
 import { executeClaudeCli, type ClaudeSpawnOptions, type StreamCallback, type PermissionHandler, type AskUserQuestionHandler } from './process.js';
-import type { AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
 import type { AgentResponse, Status, PermissionMode } from '../models/types.js';
 import { createLogger } from '../utils/debug.js';
 
@@ -19,10 +16,10 @@ export interface ClaudeCallOptions {
   model?: string;
   maxTurns?: number;
   systemPrompt?: string;
-  /** SDK agents to register for sub-agent execution */
-  agents?: Record<string, AgentDefinition>;
   /** Permission mode for tool execution (from workflow step) */
   permissionMode?: PermissionMode;
+  /** Disable session persistence (CLI only) */
+  noSessionPersistence?: boolean;
   /** Enable streaming mode with callback for real-time output */
   onStream?: StreamCallback;
   /** Custom permission handler for interactive permission prompts */
@@ -31,8 +28,6 @@ export interface ClaudeCallOptions {
   onAskUserQuestion?: AskUserQuestionHandler;
   /** Bypass all permission checks (sacrifice-my-pc mode) */
   bypassPermissions?: boolean;
-  /** Anthropic API key to inject via env (bypasses CLI auth) */
-  anthropicApiKey?: string;
 }
 
 /**
@@ -105,13 +100,12 @@ export async function callClaude(
     model: options.model,
     maxTurns: options.maxTurns,
     systemPrompt: options.systemPrompt,
-    agents: options.agents,
     permissionMode: options.permissionMode,
+    noSessionPersistence: options.noSessionPersistence,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
-    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(prompt, spawnOptions);
@@ -146,11 +140,11 @@ export async function callClaudeCustom(
     maxTurns: options.maxTurns,
     systemPrompt,
     permissionMode: options.permissionMode,
+    noSessionPersistence: options.noSessionPersistence,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
-    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(prompt, spawnOptions);
@@ -273,11 +267,11 @@ export async function callClaudeSkill(
     model: options.model,
     maxTurns: options.maxTurns,
     permissionMode: options.permissionMode,
+    noSessionPersistence: options.noSessionPersistence,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
-    anthropicApiKey: options.anthropicApiKey,
   };
 
   const result = await executeClaudeCli(fullPrompt, spawnOptions);

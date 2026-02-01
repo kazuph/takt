@@ -12,7 +12,7 @@
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: magi
-description: MAGI Deliberation System - Analyze from 3 perspectives and decide by majority
+description: Analysis only (no implementation). Three perspectives, majority vote.
 
 max_iterations: 5
 

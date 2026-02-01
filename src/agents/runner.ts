@@ -26,7 +26,7 @@ export interface RunAgentOptions {
   cwd: string;
   sessionId?: string;
   model?: string;
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'gemini' | 'mock';
   /** Resolved path to agent prompt file */
   agentPath?: string;
   /** Allowed tools for this agent run */

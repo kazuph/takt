@@ -45,8 +45,6 @@ export function loadGlobalConfig(): GlobalConfig {
     } : undefined,
     worktreeDir: parsed.worktree_dir,
     disabledBuiltins: parsed.disabled_builtins,
-    anthropicApiKey: parsed.anthropic_api_key,
-    openaiApiKey: parsed.openai_api_key,
     pipeline: parsed.pipeline ? {
       defaultBranchPrefix: parsed.pipeline.default_branch_prefix,
       commitMessageTemplate: parsed.pipeline.commit_message_template,
@@ -80,12 +78,6 @@ export function saveGlobalConfig(config: GlobalConfig): void {
   }
   if (config.disabledBuiltins && config.disabledBuiltins.length > 0) {
     raw.disabled_builtins = config.disabledBuiltins;
-  }
-  if (config.anthropicApiKey) {
-    raw.anthropic_api_key = config.anthropicApiKey;
-  }
-  if (config.openaiApiKey) {
-    raw.openai_api_key = config.openaiApiKey;
   }
   if (config.pipeline) {
     const pipelineRaw: Record<string, unknown> = {};
@@ -130,7 +122,7 @@ export function setLanguage(language: Language): void {
 }
 
 /** Set provider setting */
-export function setProvider(provider: 'claude' | 'codex'): void {
+export function setProvider(provider: 'claude' | 'codex' | 'gemini'): void {
   const config = loadGlobalConfig();
   config.provider = provider;
   saveGlobalConfig(config);
@@ -153,38 +145,6 @@ export function isDirectoryTrusted(dir: string): boolean {
   return config.trustedDirectories.some(
     (trusted) => resolvedDir === trusted || resolvedDir.startsWith(trusted + '/')
   );
-}
-
-/**
- * Resolve the Anthropic API key.
- * Priority: TAKT_ANTHROPIC_API_KEY env var > config.yaml > undefined (CLI auth fallback)
- */
-export function resolveAnthropicApiKey(): string | undefined {
-  const envKey = process.env['TAKT_ANTHROPIC_API_KEY'];
-  if (envKey) return envKey;
-
-  try {
-    const config = loadGlobalConfig();
-    return config.anthropicApiKey;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Resolve the OpenAI API key.
- * Priority: TAKT_OPENAI_API_KEY env var > config.yaml > undefined (CLI auth fallback)
- */
-export function resolveOpenaiApiKey(): string | undefined {
-  const envKey = process.env['TAKT_OPENAI_API_KEY'];
-  if (envKey) return envKey;
-
-  try {
-    const config = loadGlobalConfig();
-    return config.openaiApiKey;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Load project-level debug configuration (from .takt/config.yaml) */

@@ -28,7 +28,7 @@
 #                      - Decisions: 02-coder-decisions.md
 
 name: expert-cqrs
-description: CQRS+ES・フロントエンド・セキュリティ・QA専門家レビュー
+description: 実装あり。CQRS+ES/フロント/セキュリティ/QAの逐次レビュー＋修正ループ。
 
 max_iterations: 30
 

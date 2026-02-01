@@ -17,7 +17,7 @@
 #   ## Additional User Inputs - {user_inputs}
 
 name: simple
-description: Simplified development workflow (plan -> implement -> ai_review -> review -> supervise)
+description: Implementation included. Plan → implement → architecture review → AI review → final approval. No intermediate fix loops.
 
 max_iterations: 20
 

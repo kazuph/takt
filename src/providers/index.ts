@@ -9,6 +9,7 @@ import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '
 import type { AgentResponse, PermissionMode } from '../models/types.js';
 import { ClaudeProvider } from './claude.js';
 import { CodexProvider } from './codex.js';
+import { GeminiProvider } from './gemini.js';
 import { MockProvider } from './mock.js';
 
 /** Common options for all providers */
@@ -20,16 +21,14 @@ export interface ProviderCallOptions {
   allowedTools?: string[];
   /** Maximum number of agentic turns */
   maxTurns?: number;
+  /** Disable session persistence for one-off calls (CLI providers only) */
+  noSessionPersistence?: boolean;
   /** Permission mode for tool execution (from workflow step) */
   permissionMode?: PermissionMode;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
   bypassPermissions?: boolean;
-  /** Anthropic API key for Claude provider */
-  anthropicApiKey?: string;
-  /** OpenAI API key for Codex provider */
-  openaiApiKey?: string;
 }
 
 /** Provider interface - all providers must implement this */
@@ -42,12 +41,13 @@ export interface Provider {
 }
 
 /** Provider type */
-export type ProviderType = 'claude' | 'codex' | 'mock';
+export type ProviderType = 'claude' | 'codex' | 'gemini' | 'mock';
 
 /** Provider registry */
 const providers: Record<ProviderType, Provider> = {
   claude: new ClaudeProvider(),
   codex: new CodexProvider(),
+  gemini: new GeminiProvider(),
   mock: new MockProvider(),
 };
 

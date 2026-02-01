@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Claude Code. It enables YAML-based workflow definitions that coordinate multiple AI agents through state machine transitions with rule-based routing.
+TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Claude Code, Codex, and Gemini CLI. It enables YAML-based workflow definitions that coordinate multiple AI agents through state machine transitions with rule-based routing.
 
 ## Development Commands
 
@@ -107,9 +107,14 @@ Implemented in `src/workflow/rule-evaluator.ts`. The matched method is tracked a
 
 **Claude Integration** (`src/claude/`)
 - `client.ts` - High-level API: `callClaude()`, `callClaudeCustom()`, `callClaudeAgent()`, `callClaudeSkill()`
-- `process.ts` - SDK wrapper with `ClaudeProcess` class
-- `executor.ts` - Query execution using `@anthropic-ai/claude-agent-sdk`
-- `query-manager.ts` - Concurrent query tracking with query IDs
+- `process.ts` - CLI wrapper with `ClaudeProcess` class (`claude -p`)
+- `query-manager.ts` - Concurrent CLI process tracking with query IDs
+
+**Codex Integration** (`src/codex/`)
+- `client.ts` - Codex CLI wrapper (`codex exec` / `codex exec resume`)
+
+**Gemini Integration** (`src/providers/gemini.ts`)
+- CLI wrapper for `gemini` command
 
 **Configuration** (`src/config/`)
 - `loader.ts` - Custom agent loading from `.takt/agents.yaml`
@@ -156,6 +161,24 @@ resources/                # Bundled defaults (builtin, read from dist/ at runtim
 
 Builtin resources are embedded in the npm package (`dist/resources/`). User files in `~/.takt/` take priority. Use `/eject` to copy builtins to `~/.takt/` for customization.
 
+## ローカル環境のtakt更新（publish不要）
+
+このリポジトリを修正するたびに、ローカルの `takt` コマンドを更新します。
+
+```
+# 依存関係が変わったら
+npm install
+
+# ビルドしてからローカルにリンク
+npm run build
+npm link
+```
+
+確認:
+```
+takt --version
+```
+
 ## Workflow YAML Schema
 
 ```yaml
@@ -169,7 +192,7 @@ steps:
   - name: step-name
     agent: ../agents/default/coder.md   # Path to agent prompt
     agent_name: coder                   # Display name (optional)
-    provider: codex                     # claude|codex (optional)
+    provider: codex                     # claude|codex|gemini (optional)
     model: opus                         # Model name (optional)
     edit: true                          # Whether step can edit files
     permission_mode: acceptEdits        # Tool permission mode (optional)

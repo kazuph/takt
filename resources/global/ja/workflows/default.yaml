@@ -11,7 +11,7 @@
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: default
-description: Standard development workflow with planning and specialized reviews
+description: 実装あり。計画→実装→AIレビュー→並列レビュー（アーキ/セキュリティ）→最終承認。指摘時は修正ループあり。
 
 max_iterations: 30
 

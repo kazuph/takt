@@ -11,12 +11,12 @@ import { z } from 'zod/v4';
  *
  * Examples:
  *   task: "認証機能を追加する"
- *   worktree: true                  # 共有クローンで隔離実行
+ *   worktree: true                  # worktreeで隔離実行
  *   branch: "feat/add-auth"         # オプション（省略時は自動生成）
  *   workflow: "default"             # オプション（省略時はcurrent workflow）
  *
- * worktree patterns (uses git clone --shared internally):
- *   - true: create shared clone in sibling dir or worktree_dir
+ * worktree patterns (uses git worktree internally):
+ *   - true: create worktree in ./.worktree or worktree_dir
  *   - "/path/to/dir": create at specified path
  *   - omitted: no isolation (run in cwd)
  *

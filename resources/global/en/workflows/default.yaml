@@ -20,7 +20,7 @@
 #                          - Decisions: 02-coder-decisions.md
 
 name: default
-description: Standard development workflow with planning and specialized reviews
+description: Implementation included. Plan → implement → AI review → parallel reviews (architecture/security) → final approval. Fix loops on review feedback.
 
 max_iterations: 30
 

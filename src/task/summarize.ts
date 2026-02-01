@@ -91,15 +91,16 @@ export async function summarizeTaskName(
   const model = options.model ?? globalConfig.model ?? 'haiku';
 
   const provider = getProvider(providerType);
+
   const response = await provider.call('summarizer', taskName, {
     cwd: options.cwd,
     model,
     systemPrompt: SUMMARIZE_SYSTEM_PROMPT,
     allowedTools: [],
+    noSessionPersistence: true,
   });
 
   const slug = sanitizeSlug(response.content);
   log.info('Task name summarized', { original: taskName, slug });
-
   return slug || 'task';
 }

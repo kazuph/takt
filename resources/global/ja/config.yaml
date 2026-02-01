@@ -21,11 +21,9 @@ provider: claude
 # Codex: gpt-5.2-codex, gpt-5.1-codex など
 # model: sonnet
 
-# Anthropic APIキー (オプション、環境変数 TAKT_ANTHROPIC_API_KEY で上書き可能)
-# anthropic_api_key: ""
-
-# OpenAI APIキー (オプション、環境変数 TAKT_OPENAI_API_KEY で上書き可能)
-# openai_api_key: ""
+# 認証
+# Claude: `claude setup-token`（サブスク）または `claude login`
+# Codex/Gemini: 各CLIのログインフローを使用
 
 # パイプライン実行設定 (オプション)
 # パイプラインモード (--task) のブランチ名、コミットメッセージ、PRの本文をカスタマイズできます。

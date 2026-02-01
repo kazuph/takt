@@ -197,7 +197,7 @@ export async function runAllTasks(
 
 /**
  * Resolve execution directory and workflow from task data.
- * If the task has worktree settings, create a shared clone and use it as cwd.
+ * If the task has worktree settings, create a git worktree and use it as cwd.
  * Task name is summarized to English by AI for use in branch/clone names.
  */
 export async function resolveTaskExecution(
@@ -216,7 +216,7 @@ export async function resolveTaskExecution(
   let isWorktree = false;
   let branch: string | undefined;
 
-  // Handle worktree (now creates a shared clone)
+  // Handle worktree (uses git worktree)
   if (data.worktree) {
     // Summarize task content to English slug using AI
     info('Generating branch name...');

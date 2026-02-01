@@ -3,7 +3,7 @@
  *
  * Interactive UI for reviewing branch-based task results:
  * try merge, merge & cleanup, or delete actions.
- * Clones are ephemeral — only branches persist between sessions.
+ * Worktrees are ephemeral — only branches persist between sessions.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -143,7 +143,7 @@ export function tryMergeBranch(projectDir: string, item: BranchListItem): boolea
 /**
  * Merge & cleanup: if already merged, skip merge and just delete the branch.
  * Otherwise merge first, then delete the branch.
- * No worktree removal needed — clones are ephemeral.
+ * Worktree cleanup is handled via metadata.
  */
 export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
   const { branch } = item.info;
@@ -190,7 +190,7 @@ export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
 
 /**
  * Delete a branch (discard changes).
- * No worktree removal needed — clones are ephemeral.
+ * Worktree cleanup is handled via metadata.
  */
 export function deleteBranch(projectDir: string, item: BranchListItem): boolean {
   const { branch } = item.info;
@@ -344,7 +344,7 @@ export async function instructBranch(
     return taskSuccess;
   } finally {
     // 7. Always remove temp clone and metadata
-    removeClone(clone.path);
+    removeClone(projectDir, clone.path);
     removeCloneMeta(projectDir, branch);
   }
 }

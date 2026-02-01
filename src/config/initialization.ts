@@ -56,14 +56,15 @@ export async function promptLanguageSelection(): Promise<Language> {
  * Prompt user to select provider for resources.
  * Exits process if cancelled (initial setup is required).
  */
-export async function promptProviderSelection(): Promise<'claude' | 'codex'> {
-  const options: { label: string; value: 'claude' | 'codex' }[] = [
+export async function promptProviderSelection(): Promise<'claude' | 'codex' | 'gemini'> {
+  const options: { label: string; value: 'claude' | 'codex' | 'gemini' }[] = [
     { label: 'Claude Code', value: 'claude' },
     { label: 'Codex', value: 'codex' },
+    { label: 'Gemini CLI', value: 'gemini' },
   ];
 
   const result = await selectOptionWithDefault(
-    'Select provider (Claude Code or Codex) / プロバイダーを選択してください:',
+    'Select provider (Claude Code, Codex, or Gemini) / プロバイダーを選択してください:',
     options,
     'claude'
   );
