@@ -89,6 +89,15 @@ export interface NdjsonUserInput {
   timestamp: string;
 }
 
+/** NDJSON record: insufficient info detected (questions requested) */
+export interface NdjsonNeedsInput {
+  type: 'needs_input';
+  step: string;
+  agent: string;
+  questions: string[];
+  timestamp: string;
+}
+
 /** Union of all NDJSON record types */
 export type NdjsonRecord =
   | NdjsonWorkflowStart
@@ -96,7 +105,8 @@ export type NdjsonRecord =
   | NdjsonStepComplete
   | NdjsonWorkflowComplete
   | NdjsonWorkflowAbort
-  | NdjsonUserInput;
+  | NdjsonUserInput
+  | NdjsonNeedsInput;
 
 /**
  * Append a single NDJSON line to a log file.
@@ -289,6 +299,34 @@ export function loadSessionLog(filepath: string): SessionLog | null {
   }
   const content = readFileSync(filepath, 'utf-8');
   return JSON.parse(content) as SessionLog;
+}
+
+/** Load latest session pointer (latest.json) */
+export function loadLatestPointer(projectDir?: string): LatestLogPointer | null {
+  const logsDir = projectDir
+    ? getProjectLogsDir(projectDir)
+    : getGlobalLogsDir();
+  const latestPath = join(logsDir, 'latest.json');
+  if (!existsSync(latestPath)) {
+    return null;
+  }
+  try {
+    const content = readFileSync(latestPath, 'utf-8');
+    return JSON.parse(content) as LatestLogPointer;
+  } catch {
+    return null;
+  }
+}
+
+/** Load the latest session log (from latest.json pointer) */
+export function loadLatestSessionLog(projectDir?: string): SessionLog | null {
+  const pointer = loadLatestPointer(projectDir);
+  if (!pointer) return null;
+  const logsDir = projectDir
+    ? getProjectLogsDir(projectDir)
+    : getGlobalLogsDir();
+  const logPath = join(logsDir, pointer.logFile);
+  return loadSessionLog(logPath);
 }
 
 /** Load project context (CLAUDE.md files) */

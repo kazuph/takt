@@ -36,6 +36,8 @@ import {
   type NdjsonWorkflowComplete,
   type NdjsonWorkflowAbort,
   type NdjsonUserInput,
+  type NdjsonNeedsInput,
+  loadLatestSessionLog,
 } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
 import { notifySuccess, notifyError } from '../utils/notification.js';
@@ -141,6 +143,12 @@ export async function executeWorkflow(
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
     : loadAgentSessions(projectCwd, currentProvider);
+  const latestLog = loadLatestSessionLog(projectCwd);
+  const initialUserInputs = latestLog && latestLog.task === task
+    ? latestLog.history
+        .filter((entry) => entry.status === 'answer')
+        .map((entry) => entry.content)
+    : [];
 
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
@@ -198,6 +206,7 @@ export async function executeWorkflow(
   const engine = new WorkflowEngine(workflowConfig, cwd, task, {
     onStream: streamHandler,
     initialSessions: savedSessions,
+    initialUserInputs,
     onSessionUpdate: sessionUpdateHandler,
     onIterationLimit: iterationLimitHandler,
     onUserInput: async (request) => {
@@ -205,6 +214,15 @@ export async function executeWorkflow(
       if (questions.length === 0) {
         return promptInput('追加情報を入力してください（空で中断）');
       }
+
+      const needsRecord: NdjsonNeedsInput = {
+        type: 'needs_input',
+        step: request.step.name,
+        agent: request.step.agentDisplayName,
+        questions,
+        timestamp: new Date().toISOString(),
+      };
+      appendNdjsonLine(ndjsonLogPath, needsRecord);
 
       const action = await selectOption('情報不足のため確認が必要です。回答しますか？', [
         { label: '回答する', value: 'answer' },
