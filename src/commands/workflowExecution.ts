@@ -14,6 +14,7 @@ import {
   updateWorktreeSession,
 } from '../config/paths.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
+import { isQuietMode } from '../cli.js';
 import {
   header,
   info,
@@ -200,7 +201,8 @@ export async function executeWorkflow(
       log.debug('Step instruction', instruction);
     }
 
-    displayRef.current = new StreamDisplay(step.agentDisplayName);
+    // Use quiet mode from CLI (already resolved CLI flag + config in preAction)
+    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode());
 
     // Write step_start record to NDJSON log
     const record: NdjsonStepStart = {

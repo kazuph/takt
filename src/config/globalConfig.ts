@@ -52,6 +52,7 @@ export function loadGlobalConfig(): GlobalConfig {
       commitMessageTemplate: parsed.pipeline.commit_message_template,
       prBodyTemplate: parsed.pipeline.pr_body_template,
     } : undefined,
+    minimalOutput: parsed.minimal_output,
   };
 }
 
@@ -94,6 +95,9 @@ export function saveGlobalConfig(config: GlobalConfig): void {
     if (Object.keys(pipelineRaw).length > 0) {
       raw.pipeline = pipelineRaw;
     }
+  }
+  if (config.minimalOutput !== undefined) {
+    raw.minimal_output = config.minimalOutput;
   }
   writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
 }

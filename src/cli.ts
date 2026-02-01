@@ -66,6 +66,9 @@ let resolvedCwd = '';
 /** Whether pipeline mode is active (--task specified, set in preAction) */
 let pipelineMode = false;
 
+/** Whether quiet mode is active (--quiet flag or config, set in preAction) */
+let quietMode = false;
+
 export interface WorktreeConfirmationResult {
   execCwd: string;
   isWorktree: boolean;
@@ -263,7 +266,8 @@ program
   .option('-t, --task <string>', 'Task content (as alternative to GitHub issue)')
   .option('--pipeline', 'Pipeline mode: non-interactive, no worktree, direct branch creation')
   .option('--skip-git', 'Skip branch creation, commit, and push (pipeline mode)')
-  .option('--create-worktree <yes|no>', 'Skip the worktree prompt by explicitly specifying yes or no');
+  .option('--create-worktree <yes|no>', 'Skip the worktree prompt by explicitly specifying yes or no')
+  .option('-q, --quiet', 'Minimal output mode: suppress AI output (for CI)');
 
 // Common initialization for all commands
 program.hook('preAction', async () => {
@@ -285,16 +289,26 @@ program.hook('preAction', async () => {
 
   initDebugLogger(debugConfig, resolvedCwd);
 
+  // Load config once for both log level and quiet mode
+  const config = loadGlobalConfig();
+
   if (verbose) {
     setVerboseConsole(true);
     setLogLevel('debug');
   } else {
-    const config = loadGlobalConfig();
     setLogLevel(config.logLevel);
   }
 
-  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, verbose, pipelineMode });
+  // Quiet mode: CLI flag takes precedence over config
+  quietMode = rootOpts.quiet === true || config.minimalOutput === true;
+
+  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, verbose, pipelineMode, quietMode });
 });
+
+/** Get whether quiet mode is active (CLI flag or config, resolved in preAction) */
+export function isQuietMode(): boolean {
+  return quietMode;
+}
 
 // --- Subcommands ---
 

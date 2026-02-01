@@ -13,6 +13,7 @@
 import * as readline from 'node:readline';
 import chalk from 'chalk';
 import { loadGlobalConfig } from '../config/globalConfig.js';
+import { isQuietMode } from '../cli.js';
 import { loadAgentSessions, updateAgentSession } from '../config/paths.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
 import { createLogger } from '../utils/debug.js';
@@ -151,14 +152,14 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
 
   /** Call AI with automatic retry on session error (stale/invalid session ID). */
   async function callAIWithRetry(prompt: string): Promise<CallAIResult | null> {
-    const display = new StreamDisplay('assistant');
+    const display = new StreamDisplay('assistant', isQuietMode());
     try {
       const result = await callAI(provider, prompt, cwd, model, sessionId, display);
       // If session failed, clear it and retry without session
       if (!result.success && sessionId) {
         log.info('Session invalid, retrying without session');
         sessionId = undefined;
-        const retryDisplay = new StreamDisplay('assistant');
+        const retryDisplay = new StreamDisplay('assistant', isQuietMode());
         const retry = await callAI(provider, prompt, cwd, model, undefined, retryDisplay);
         if (retry.sessionId) {
           sessionId = retry.sessionId;
