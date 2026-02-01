@@ -165,24 +165,39 @@ export class StreamDisplay {
   } | null = null;
   private spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private spinnerFrame = 0;
+  private modelFamily: string | null = null;
+  private displayLabel: string | null = null;
 
   constructor(
     private agentName = 'Claude',
     private quiet = false,
   ) {}
 
+  private buildLabel(): string {
+    if (this.displayLabel) return this.displayLabel;
+    if (!this.modelFamily) return this.agentName;
+
+    const match = this.agentName.match(/^(.*?)(?:\(([^)]+)\))?$/);
+    const base = match?.[1]?.trim() || this.agentName;
+    const permission = match?.[2]?.trim();
+    if (permission) {
+      return `${base}(${this.modelFamily}, ${permission})`;
+    }
+    return `${base}(${this.modelFamily})`;
+  }
+
   /** Display initialization event */
   showInit(model: string): void {
     if (this.quiet) return;
     const normalized = model.toLowerCase();
-    const family = normalized.includes('opus')
+    this.modelFamily = normalized.includes('opus')
       ? 'Opus'
       : normalized.includes('sonnet')
           ? 'Sonnet'
           : normalized.includes('haiku')
               ? 'Haiku'
               : 'Unknown';
-    console.log(chalk.gray(`[${this.agentName}(${family})]`));
+    this.displayLabel = this.buildLabel();
   }
 
   /** Start spinner for tool execution */
@@ -301,7 +316,7 @@ export class StreamDisplay {
 
     if (this.isFirstThinking) {
       console.log();
-      console.log(chalk.magenta(`💭 [${this.agentName} thinking]:`));
+      console.log(chalk.magenta(`💭 [${this.buildLabel()} thinking]:`));
       this.isFirstThinking = false;
     }
     // Write thinking in a dimmed/italic style
@@ -331,7 +346,7 @@ export class StreamDisplay {
 
     if (this.isFirstText) {
       console.log();
-      console.log(chalk.cyan(`[${this.agentName}]:`));
+      console.log(chalk.cyan(`[${this.buildLabel()}]:`));
       this.isFirstText = false;
     }
     // Write directly to stdout without newline for smooth streaming
