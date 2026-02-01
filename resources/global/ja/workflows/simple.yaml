@@ -94,7 +94,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: bypassPermissions
     instruction_template: |
       planステップで立てた計画に従って実装してください。
       計画レポート（00-plan.md）を参照し、実装を進めてください。

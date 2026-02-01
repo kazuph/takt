@@ -460,7 +460,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: bypassPermissions
     rules:
       - condition: Fix complete
         next: reviewers

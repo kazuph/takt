@@ -90,7 +90,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: bypassPermissions
     rules:
       - condition: 実装完了
         next: ai_review
