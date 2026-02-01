@@ -35,6 +35,7 @@ import {
   type NdjsonStepComplete,
   type NdjsonWorkflowComplete,
   type NdjsonWorkflowAbort,
+  type NdjsonUserInput,
 } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
 import { notifySuccess, notifyError } from '../utils/notification.js';
@@ -59,6 +60,21 @@ function formatElapsedTime(startTime: string, endTime: string): string {
   const minutes = Math.floor(elapsedSec / 60);
   const seconds = Math.floor(elapsedSec % 60);
   return `${minutes}m ${seconds}s`;
+}
+
+function extractInfoQuestions(request: { response: { content: string } }): string[] {
+  const lines = request.response.content.split(/\r?\n/);
+  const questions: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('- ')) {
+      const q = trimmed.slice(2).trim();
+      if (q.length > 0) {
+        questions.push(q);
+      }
+    }
+  }
+  return questions;
 }
 
 /** Result of workflow execution */
@@ -184,6 +200,30 @@ export async function executeWorkflow(
     initialSessions: savedSessions,
     onSessionUpdate: sessionUpdateHandler,
     onIterationLimit: iterationLimitHandler,
+    onUserInput: async (request) => {
+      const questions = extractInfoQuestions(request);
+      if (questions.length === 0) {
+        return promptInput('追加情報を入力してください（空で中断）');
+      }
+
+      const action = await selectOption('情報不足のため確認が必要です。回答しますか？', [
+        { label: '回答する', value: 'answer' },
+        { label: '中断する', value: 'cancel' },
+      ]);
+      if (action !== 'answer') {
+        return null;
+      }
+
+      const answers: string[] = [];
+      for (const q of questions) {
+        const answer = await promptInput(`${q}\n> `);
+        if (answer == null) {
+          return null;
+        }
+        answers.push(`${q} ${answer.trim()}`);
+      }
+      return answers.join('\n');
+    },
     projectCwd,
     language: options.language,
     provider: options.provider,
@@ -215,6 +255,17 @@ export async function executeWorkflow(
       iteration,
       timestamp: new Date().toISOString(),
       ...(instruction ? { instruction } : {}),
+    };
+    appendNdjsonLine(ndjsonLogPath, record);
+  });
+
+  engine.on('step:user_input', (step, userInput) => {
+    const record: NdjsonUserInput = {
+      type: 'user_input',
+      step: step.name,
+      agent: step.agentDisplayName,
+      input: userInput,
+      timestamp: new Date().toISOString(),
     };
     appendNdjsonLine(ndjsonLogPath, record);
   });

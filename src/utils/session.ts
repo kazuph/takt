@@ -80,13 +80,23 @@ export interface NdjsonWorkflowAbort {
   endTime: string;
 }
 
+/** NDJSON record: user input provided */
+export interface NdjsonUserInput {
+  type: 'user_input';
+  step: string;
+  agent: string;
+  input: string;
+  timestamp: string;
+}
+
 /** Union of all NDJSON record types */
 export type NdjsonRecord =
   | NdjsonWorkflowStart
   | NdjsonStepStart
   | NdjsonStepComplete
   | NdjsonWorkflowComplete
-  | NdjsonWorkflowAbort;
+  | NdjsonWorkflowAbort
+  | NdjsonUserInput;
 
 /**
  * Append a single NDJSON line to a log file.
@@ -181,6 +191,19 @@ export function loadNdjsonLog(filepath: string): SessionLog | null {
         if (sessionLog) {
           sessionLog.status = 'aborted';
           sessionLog.endTime = record.endTime;
+        }
+        break;
+      case 'user_input':
+        if (sessionLog) {
+          sessionLog.history.push({
+            step: record.step,
+            agent: record.agent,
+            instruction: record.input,
+            status: 'answer',
+            timestamp: record.timestamp,
+            content: record.input,
+          });
+          sessionLog.iterations++;
         }
         break;
 

@@ -451,6 +451,13 @@ export class WorkflowEngine extends EventEmitter {
     throw new Error(`No matching rule found for step "${step.name}" (status: ${response.status})`);
   }
 
+  private isInsufficientInfo(step: WorkflowStep, response: AgentResponse): boolean {
+    if (response.matchedRuleIndex == null || !step.rules) return false;
+    const rule = step.rules[response.matchedRuleIndex];
+    const condition = rule?.condition ?? '';
+    return /情報不足|insufficient|not enough info|insufficient info/i.test(condition);
+  }
+
   /** Run the workflow to completion */
   async run(): Promise<WorkflowState> {
     while (this.state.status === 'running') {
@@ -542,6 +549,14 @@ export class WorkflowEngine extends EventEmitter {
         }
 
         if (nextStep === ABORT_STEP) {
+          if (this.isInsufficientInfo(step, response) && this.options.onUserInput) {
+            const result = await handleBlocked(step, response, this.options);
+            if (result.shouldContinue && result.userInput) {
+              this.addUserInput(result.userInput);
+              this.emit('step:user_input', step, result.userInput);
+              continue;
+            }
+          }
           this.state.status = 'aborted';
           this.emit('workflow:abort', this.state, 'Workflow aborted by step transition');
           break;
