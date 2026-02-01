@@ -320,12 +320,22 @@ export async function executeClaudeCli(
         log.info(`Claude CLI stderr: ${stderr.trim()}`);
       }
 
+      const finalError = streamResult?.error ?? error;
+      const sessionInUse = Boolean(finalError && /already in use/i.test(finalError));
+
+      if (!success && sessionInUse && !options.noSessionPersistence) {
+        log.info('Claude CLI retrying with no-session-persistence due to session conflict');
+        executeClaudeCli(prompt, { ...options, noSessionPersistence: true, sessionId: undefined })
+          .then(resolve);
+        return;
+      }
+
       resolve({
         success,
         content: success ? content : '',
         sessionId: streamResult?.sessionId ?? sessionId,
-        error: streamResult?.error ?? error,
-        interrupted: !success && (error ? error.includes('interrupted') : false),
+        error: finalError,
+        interrupted: !success && (finalError ? finalError.includes('interrupted') : false),
         fullContent: content,
       });
     });

@@ -141,6 +141,7 @@ In pipeline mode, PRs are **not** created unless `--auto-pr` is explicitly speci
 |---------|-------------|
 | `takt run` | Run all pending tasks from `.takt/tasks/` |
 | `takt watch` | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
+| `takt log` | Watch workflow session logs (NDJSON) |
 | `takt add` | Add a new task via AI conversation |
 | `takt list` | List task branches (try merge, merge & cleanup, or delete) |
 | `takt switch` | Switch workflow interactively |
@@ -505,6 +506,12 @@ takt run
 
 ```bash
 takt watch
+```
+
+#### Watching Session Logs with `log`
+
+```bash
+takt log
 ```
 
 Watch mode polls `.takt/tasks/` for new task files and auto-executes them as they appear. The process stays resident until `Ctrl+C`. This is useful for:

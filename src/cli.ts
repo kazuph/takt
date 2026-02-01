@@ -37,6 +37,7 @@ import {
   addTask,
   ejectBuiltin,
   watchTasks,
+  watchLog,
   listTasks,
   interactiveMode,
   executePipeline,
@@ -342,6 +343,23 @@ program
   .description('Watch for tasks and auto-execute')
   .action(async () => {
     await watchTasks(resolvedCwd, resolveAgentOverrides());
+  });
+
+program
+  .command('log')
+  .description('Watch workflow session logs')
+  .option('-s, --session <id>', 'Session ID (or filename without .jsonl)')
+  .option('-f, --file <path>', 'Log file path')
+  .option('-n, --lines <number>', 'Number of lines to show initially', '50')
+  .option('--no-follow', 'Do not follow (tail -f)')
+  .action(async (opts: { session?: string; file?: string; lines?: string; follow?: boolean }) => {
+    const lines = opts.lines ? Number.parseInt(opts.lines, 10) : 50;
+    await watchLog(resolvedCwd, {
+      sessionId: opts.session,
+      file: opts.file,
+      lines: Number.isFinite(lines) ? lines : 50,
+      follow: opts.follow,
+    });
   });
 
 program

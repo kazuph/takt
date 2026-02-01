@@ -139,6 +139,7 @@ takt --pipeline --task "バグを修正" --skip-git
 |---------|------|
 | `takt run` | `.takt/tasks/` の保留中タスクをすべて実行 |
 | `takt watch` | `.takt/tasks/` を監視してタスクを自動実行（常駐プロセス） |
+| `takt log` | セッションログ（NDJSON）を監視 |
 | `takt add` | AI会話で新しいタスクを追加 |
 | `takt list` | タスクブランチ一覧（マージ・削除） |
 | `takt switch` | ワークフローを対話的に切り替え |
@@ -447,6 +448,12 @@ takt run
 
 ```bash
 takt watch
+```
+
+#### `log` でセッションログを監視
+
+```bash
+takt log
 ```
 
 ウォッチモードは`.takt/tasks/`をポーリングし、新しいタスクファイルが現れると自動実行します。`Ctrl+C`で停止する常駐プロセスです。以下のような場合に便利です:

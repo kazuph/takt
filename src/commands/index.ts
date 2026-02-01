@@ -13,3 +13,4 @@ export { switchConfig, getCurrentPermissionMode, setPermissionMode, type Permiss
 export { listTasks } from './listTasks.js';
 export { interactiveMode } from './interactive.js';
 export { executePipeline, type PipelineExecutionOptions } from './pipelineExecution.js';
+export { watchLog } from './watchLog.js';
