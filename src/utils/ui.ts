@@ -174,7 +174,15 @@ export class StreamDisplay {
   /** Display initialization event */
   showInit(model: string): void {
     if (this.quiet) return;
-    console.log(chalk.gray(`[${this.agentName}] Model: ${model}`));
+    const normalized = model.toLowerCase();
+    const family = normalized.includes('opus')
+      ? 'Opus'
+      : normalized.includes('sonnet')
+          ? 'Sonnet'
+          : normalized.includes('haiku')
+              ? 'Haiku'
+              : 'Unknown';
+    console.log(chalk.gray(`[${this.agentName}] Model: ${model} (${family})`));
   }
 
   /** Start spinner for tool execution */
