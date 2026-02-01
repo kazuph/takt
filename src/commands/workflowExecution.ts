@@ -202,7 +202,10 @@ export async function executeWorkflow(
     }
 
     // Use quiet mode from CLI (already resolved CLI flag + config in preAction)
-    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode());
+    const permissionLabel = step.permissionMode === 'bypassPermissions'
+      ? `${step.agentDisplayName}(bypassPermissions)`
+      : step.agentDisplayName;
+    displayRef.current = new StreamDisplay(permissionLabel, isQuietMode());
 
     // Write step_start record to NDJSON log
     const record: NdjsonStepStart = {

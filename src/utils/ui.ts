@@ -182,7 +182,7 @@ export class StreamDisplay {
           : normalized.includes('haiku')
               ? 'Haiku'
               : 'Unknown';
-    console.log(chalk.gray(`[${this.agentName}] Model: ${model} (${family})`));
+    console.log(chalk.gray(`[${this.agentName}(${family})]`));
   }
 
   /** Start spinner for tool execution */
