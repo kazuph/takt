@@ -527,7 +527,7 @@ takt list
 
 Lists all `takt/`-prefixed branches with file change counts. For each branch you can:
 - **Try merge** - Squash merge into main (stage changes without committing)
-- **Instruct** - Give additional instructions via a temporary clone
+- **Resume** - Continue work on the branch (worktree)
 - **Merge & cleanup** - Merge and delete the branch
 - **Delete** - Delete the branch without merging
 

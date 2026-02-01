@@ -156,17 +156,55 @@ export function createSharedClone(projectDir: string, options: WorktreeOptions):
 }
 
 /**
- * Create a temporary clone for an existing branch.
- * Used by review/instruct to work on a branch that was previously pushed.
+ * Ensure a worktree for an existing branch.
+ * Used by resume to continue work on a branch that was previously pushed.
  */
-export function createTempCloneForBranch(projectDir: string, branch: string): WorktreeResult {
+function findWorktreePathForBranch(projectDir: string, branch: string): string | null {
+  try {
+    const output = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: projectDir,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    const lines = output.split(/\r?\n/);
+    let currentPath: string | null = null;
+    for (const line of lines) {
+      if (line.startsWith('worktree ')) {
+        currentPath = line.slice('worktree '.length).trim();
+        continue;
+      }
+      if (line.startsWith('branch ')) {
+        const ref = line.slice('branch '.length).trim();
+        if (ref === `refs/heads/${branch}`) {
+          return currentPath;
+        }
+      }
+    }
+  } catch {
+    // Ignore errors; fall back to creating a new worktree
+  }
+  return null;
+}
+
+/**
+ * Ensure a worktree exists for an existing branch.
+ * Reuses an existing worktree if present; otherwise creates one.
+ */
+export function createWorktreeForBranch(projectDir: string, branch: string): WorktreeResult {
+  const existingPath = findWorktreePathForBranch(projectDir, branch);
+  if (existingPath) {
+    log.info('Reusing existing worktree for branch', { path: existingPath, branch });
+    saveCloneMeta(projectDir, branch, existingPath);
+    return { path: existingPath, branch };
+  }
+
   const baseDir = resolveCloneBaseDir(projectDir);
   const clonePath = addWorktreeWithGitWt(projectDir, branch, baseDir);
 
-  log.info('Creating temp worktree for branch', { path: clonePath, branch });
+  log.info('Creating worktree for branch', { path: clonePath, branch });
 
   saveCloneMeta(projectDir, branch, clonePath);
-  log.info('Temp worktree created', { path: clonePath, branch });
+  log.info('Worktree created', { path: clonePath, branch });
 
   return { path: clonePath, branch };
 }

@@ -34,7 +34,7 @@ vi.mock('../config/globalConfig.js', () => ({
 }));
 
 import { execFileSync } from 'node:child_process';
-import { createSharedClone, createTempCloneForBranch } from '../task/clone.js';
+import { createSharedClone, createWorktreeForBranch } from '../task/clone.js';
 
 const mockExecFileSync = vi.mocked(execFileSync);
 
@@ -87,6 +87,11 @@ describe('cloneAndIsolate git config propagation', () => {
       // git checkout -b (new branch)
       if (argsArr[0] === 'checkout') {
         return Buffer.from('');
+      }
+
+      // git wt (worktree helper)
+      if (argsArr[0] === 'wt') {
+        return Buffer.from('/tmp/worktree\n');
       }
 
       return Buffer.from('');
@@ -143,7 +148,7 @@ describe('cloneAndIsolate git config propagation', () => {
     expect(configSetCalls).toEqual([{ key: 'user.name', value: 'Test User' }]);
   });
 
-  it('should propagate git config when using createTempCloneForBranch', () => {
+  it('should propagate git config when using createWorktreeForBranch', () => {
     // Given: source repo has local user config
     const configSetCalls = setupMock({
       'user.name': 'Temp User',
@@ -161,7 +166,7 @@ describe('cloneAndIsolate git config propagation', () => {
     });
 
     // When: creating a temp clone for a branch
-    createTempCloneForBranch('/project', 'existing-branch');
+    createWorktreeForBranch('/project', 'existing-branch');
 
     // Then: git config is propagated
     expect(configSetCalls).toContainEqual({ key: 'user.name', value: 'Temp User' });

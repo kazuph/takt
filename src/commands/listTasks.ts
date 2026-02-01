@@ -3,15 +3,13 @@
  *
  * Interactive UI for reviewing branch-based task results:
  * try merge, merge & cleanup, or delete actions.
- * Worktrees are ephemeral — only branches persist between sessions.
+ * Worktrees are retained for resume; cleanup happens on merge/delete.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import chalk from 'chalk';
 import {
-  createTempCloneForBranch,
-  removeClone,
-  removeCloneMeta,
+  createWorktreeForBranch,
   cleanupOrphanedClone,
 } from '../task/clone.js';
 import {
@@ -32,7 +30,7 @@ import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
 const log = createLogger('list-tasks');
 
 /** Actions available for a listed branch */
-export type ListAction = 'diff' | 'instruct' | 'try' | 'merge' | 'delete';
+export type ListAction = 'diff' | 'resume' | 'try' | 'merge' | 'delete';
 
 /**
  * Check if a branch has already been merged into HEAD.
@@ -103,7 +101,7 @@ async function showDiffAndPromptAction(
     `Action for ${item.info.branch}:`,
     [
       { label: 'View diff', value: 'diff', description: 'Show full diff in pager' },
-      { label: 'Instruct', value: 'instruct', description: 'Give additional instructions via temp clone' },
+      { label: 'Resume', value: 'resume', description: 'Continue work on the branch (worktree)' },
       { label: 'Try merge', value: 'try', description: 'Squash merge (stage changes without commit)' },
       { label: 'Merge & cleanup', value: 'merge', description: 'Merge and delete branch' },
       { label: 'Delete', value: 'delete', description: 'Discard changes, delete branch' },
@@ -234,7 +232,7 @@ export function deleteBranch(projectDir: string, item: BranchListItem): boolean 
 }
 
 /**
- * Get the workflow to use for instruction.
+ * Get the workflow to use for resume.
  * If multiple workflows available, prompt user to select.
  */
 async function selectWorkflowForInstruction(projectDir: string): Promise<string | null> {
@@ -302,10 +300,10 @@ function getBranchContext(projectDir: string, branch: string): string {
 }
 
 /**
- * Instruct branch: create a temp clone, give additional instructions,
- * auto-commit+push, then remove clone.
+ * Resume branch: reuse or create a worktree, give additional instructions,
+ * and continue the workflow.
  */
-export async function instructBranch(
+export async function resumeBranch(
   projectDir: string,
   item: BranchListItem,
   options?: TaskExecutionOptions,
@@ -313,7 +311,7 @@ export async function instructBranch(
   const { branch } = item.info;
 
   // 1. Prompt for instruction
-  const instruction = await promptInput('Enter instruction');
+  const instruction = await promptInput('Enter additional instruction');
   if (!instruction) {
     info('Cancelled');
     return false;
@@ -326,11 +324,11 @@ export async function instructBranch(
     return false;
   }
 
-  log.info('Instructing branch via temp clone', { branch, workflow: selectedWorkflow });
-  info(`Running instruction on ${branch}...`);
+  log.info('Resuming branch', { branch, workflow: selectedWorkflow });
+  info(`Resuming ${branch}...`);
 
-  // 3. Create temp clone for the branch
-  const clone = createTempCloneForBranch(projectDir, branch);
+  // 3. Reuse or create worktree for the branch
+  const clone = createWorktreeForBranch(projectDir, branch);
 
   try {
     // 4. Build instruction with branch context
@@ -339,7 +337,7 @@ export async function instructBranch(
       ? `${branchContext}## 追加指示\n${instruction}`
       : instruction;
 
-    // 5. Execute task on temp clone
+    // 5. Execute task on worktree
     const taskSuccess = await executeTask(fullInstruction, clone.path, selectedWorkflow, projectDir, options);
 
     // 6. Auto-commit+push if successful
@@ -350,18 +348,16 @@ export async function instructBranch(
       } else if (!commitResult.success) {
         warn(`Auto-commit skipped: ${commitResult.message}`);
       }
-      success(`Instruction completed on ${branch}`);
-      log.info('Instruction completed', { branch });
+      success(`Resume completed on ${branch}`);
+      log.info('Resume completed', { branch });
     } else {
-      logError(`Instruction failed on ${branch}`);
-      log.error('Instruction failed', { branch });
+      logError(`Resume failed on ${branch}`);
+      log.error('Resume failed', { branch });
     }
 
     return taskSuccess;
   } finally {
-    // 7. Always remove temp clone and metadata
-    removeClone(projectDir, clone.path);
-    removeCloneMeta(projectDir, branch);
+    // Keep worktree; cleanup is handled via list merge/delete.
   }
 }
 
@@ -422,8 +418,8 @@ export async function listTasks(cwd: string, options?: TaskExecutionOptions): Pr
     if (action === null) continue;
 
     switch (action) {
-      case 'instruct':
-        await instructBranch(cwd, item, options);
+      case 'resume':
+        await resumeBranch(cwd, item, options);
         break;
       case 'try':
         tryMergeBranch(cwd, item);

@@ -15,7 +15,7 @@ export { parseTaskFile, parseTaskFiles, type ParsedTask } from './parser.js';
 export {
   createSharedClone,
   removeClone,
-  createTempCloneForBranch,
+  createWorktreeForBranch,
   saveCloneMeta,
   removeCloneMeta,
   cleanupOrphanedClone,
