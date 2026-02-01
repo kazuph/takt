@@ -2,7 +2,7 @@
  * Workflow switching command
  */
 
-import { listWorkflows, loadWorkflow, getBuiltinWorkflow } from '../config/index.js';
+import { listWorkflows, loadWorkflow } from '../config/index.js';
 import { getCurrentWorkflow, setCurrentWorkflow } from '../config/paths.js';
 import { info, success, error } from '../utils/ui.js';
 import { selectOption } from '../prompt/index.js';
@@ -48,7 +48,7 @@ export async function switchWorkflow(cwd: string, workflowName?: string): Promis
   }
 
   // Check if workflow exists
-  const config = getBuiltinWorkflow(workflowName) || loadWorkflow(workflowName, cwd);
+  const config = loadWorkflow(workflowName, cwd);
 
   if (!config) {
     error(`Workflow "${workflowName}" not found`);
