@@ -170,7 +170,15 @@ export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
         stdio: 'pipe',
       });
     } catch {
-      warn(`Could not delete branch ${branch}. You may delete it manually.`);
+      try {
+        execFileSync('git', ['wt', '-D', branch], {
+          cwd: projectDir,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+      } catch {
+        warn(`Could not delete branch ${branch}. You may delete it manually.`);
+      }
     }
 
     // Clean up orphaned clone directory if it still exists
@@ -197,11 +205,19 @@ export function deleteBranch(projectDir: string, item: BranchListItem): boolean 
 
   try {
     // Force-delete the branch
-    execFileSync('git', ['branch', '-D', branch], {
-      cwd: projectDir,
-      encoding: 'utf-8',
-      stdio: 'pipe',
-    });
+    try {
+      execFileSync('git', ['branch', '-D', branch], {
+        cwd: projectDir,
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      });
+    } catch {
+      execFileSync('git', ['wt', '-D', branch], {
+        cwd: projectDir,
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      });
+    }
 
     // Clean up orphaned clone directory if it still exists
     cleanupOrphanedClone(projectDir, branch);
