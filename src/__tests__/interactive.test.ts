@@ -114,7 +114,7 @@ describe('interactiveMode', () => {
     setupMockProvider([]);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then
     expect(result.confirmed).toBe(false);
@@ -127,7 +127,7 @@ describe('interactiveMode', () => {
     setupMockProvider([]);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then
     expect(result.confirmed).toBe(false);
@@ -139,7 +139,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['What kind of login bug?']);
 
     // When
-    await interactiveMode('/project');
+    await interactiveMode('/project', '/project');
 
     // Then
     const mockProvider = mockGetProvider.mock.results[0]!.value as { call: ReturnType<typeof vi.fn> };
@@ -159,7 +159,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['What kind of authentication?']);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then
     expect(result.confirmed).toBe(true);
@@ -173,7 +173,7 @@ describe('interactiveMode', () => {
     setupMockProvider([]);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then: should not confirm (fell through to /cancel)
     expect(result.confirmed).toBe(false);
@@ -185,7 +185,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['Sure, what exactly?']);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then
     expect(result.confirmed).toBe(true);
@@ -199,7 +199,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['response to first', 'response to second']);
 
     // When
-    const result = await interactiveMode('/project');
+    const result = await interactiveMode('/project', '/project');
 
     // Then: task should contain all messages
     expect(result.confirmed).toBe(true);
@@ -215,7 +215,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['AI reply 1', 'AI reply 2']);
 
     // When
-    await interactiveMode('/project');
+    await interactiveMode('/project', '/project');
 
     // Then: each call receives only the current user input (session maintains context)
     const mockProvider = mockGetProvider.mock.results[0]!.value as { call: ReturnType<typeof vi.fn> };
@@ -229,7 +229,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['What do you mean by "a"?']);
 
     // When
-    const result = await interactiveMode('/project', 'a');
+    const result = await interactiveMode('/project', '/project', 'a');
 
     // Then: AI should have been called with initialInput
     const mockProvider = mockGetProvider.mock.results[0]!.value as { call: ReturnType<typeof vi.fn> };
@@ -248,7 +248,7 @@ describe('interactiveMode', () => {
     setupMockProvider(['What about "a"?', 'Got it, fixing login page.']);
 
     // When
-    const result = await interactiveMode('/project', 'a');
+    const result = await interactiveMode('/project', '/project', 'a');
 
     // Then: each call receives only its own input (session handles history)
     const mockProvider = mockGetProvider.mock.results[0]!.value as { call: ReturnType<typeof vi.fn> };

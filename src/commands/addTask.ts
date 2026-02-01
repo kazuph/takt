@@ -94,7 +94,7 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     }
   } else {
     // Interactive mode: AI conversation to refine task
-    const result = await interactiveMode(cwd);
+    const result = await interactiveMode(cwd, cwd);
     if (!result.confirmed) {
       info('Cancelled.');
       return;

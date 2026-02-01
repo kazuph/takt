@@ -133,7 +133,11 @@ export interface InteractiveModeResult {
  *   /cancel → exits without executing
  *   Ctrl+D  → exits without executing
  */
-export async function interactiveMode(cwd: string, initialInput?: string): Promise<InteractiveModeResult> {
+export async function interactiveMode(
+  cwd: string,
+  projectDir: string,
+  initialInput?: string,
+): Promise<InteractiveModeResult> {
   const globalConfig = loadGlobalConfig();
   const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
   const provider = getProvider(providerType);
@@ -141,7 +145,7 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
 
   const history: ConversationMessage[] = [];
   const agentName = 'interactive';
-  const savedSessions = loadAgentSessions(cwd, providerType);
+  const savedSessions = loadAgentSessions(projectDir, providerType);
   let sessionId: string | undefined = savedSessions[agentName];
 
   info('Interactive mode - describe your task. Commands: /go (execute), /cancel (exit)');
@@ -163,13 +167,13 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
         const retry = await callAI(provider, prompt, cwd, model, undefined, retryDisplay);
         if (retry.sessionId) {
           sessionId = retry.sessionId;
-          updateAgentSession(cwd, agentName, sessionId, providerType);
+          updateAgentSession(projectDir, agentName, sessionId, providerType);
         }
         return retry;
       }
       if (result.sessionId) {
         sessionId = result.sessionId;
-        updateAgentSession(cwd, agentName, sessionId, providerType);
+        updateAgentSession(projectDir, agentName, sessionId, providerType);
       }
       return result;
     } catch (e) {

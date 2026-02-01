@@ -165,7 +165,7 @@ describe('cloneAndIsolate git config propagation', () => {
       return originalImpl(cmd, args, opts);
     });
 
-    // When: creating a temp clone for a branch
+    // When: creating or reusing a worktree for a branch
     createWorktreeForBranch('/project', 'existing-branch');
 
     // Then: git config is propagated

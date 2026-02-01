@@ -29,6 +29,7 @@ import {
 import { clearAgentSessions, getCurrentWorkflow, isVerboseMode } from './config/paths.js';
 import { info, error, success, setLogLevel } from './utils/ui.js';
 import { initDebugLogger, createLogger, setVerboseConsole } from './utils/debug.js';
+import { resolveProjectRoot } from './utils/git.js';
 import {
   executeTask,
   runAllTasks,
@@ -64,6 +65,8 @@ checkForUpdates();
 
 /** Resolved cwd shared across commands via preAction hook */
 let resolvedCwd = '';
+/** Resolved project root (shared .git parent) */
+let projectRoot = '';
 
 /** Whether pipeline mode is active (--task specified, set in preAction) */
 let pipelineMode = false;
@@ -81,9 +84,9 @@ export interface WorktreeConfirmationResult {
  * Select a workflow interactively.
  * Returns the selected workflow name, or null if cancelled.
  */
-async function selectWorkflow(cwd: string): Promise<string | null> {
-  const availableWorkflows = listWorkflows(cwd);
-  const currentWorkflow = getCurrentWorkflow(cwd);
+async function selectWorkflow(projectDir: string): Promise<string | null> {
+  const availableWorkflows = listWorkflows(projectDir);
+  const currentWorkflow = getCurrentWorkflow(projectDir);
   const language = getLanguage();
 
   if (availableWorkflows.length === 0) {
@@ -95,7 +98,7 @@ async function selectWorkflow(cwd: string): Promise<string | null> {
     return availableWorkflows[0];
   }
 
-  const workflows = loadAllWorkflows(cwd);
+  const workflows = loadAllWorkflows(projectDir);
   const options = availableWorkflows.map((name) => {
     const workflow = workflows.get(name);
     const description = workflow?.description?.trim();
@@ -129,11 +132,12 @@ export interface SelectAndExecuteOptions {
 
 async function selectAndExecuteTask(
   cwd: string,
+  projectDir: string,
   task: string,
   options?: SelectAndExecuteOptions,
   agentOverrides?: TaskExecutionOptions,
 ): Promise<void> {
-  const workflowIdentifier = await determineWorkflow(cwd, options?.workflow);
+  const workflowIdentifier = await determineWorkflow(projectDir, options?.workflow);
 
   if (workflowIdentifier === null) {
     info('Cancelled');
@@ -147,7 +151,7 @@ async function selectAndExecuteTask(
   );
 
   log.info('Starting task execution', { workflow: workflowIdentifier, worktree: isWorktree });
-  const taskSuccess = await executeTask(task, execCwd, workflowIdentifier, cwd, agentOverrides);
+  const taskSuccess = await executeTask(task, execCwd, workflowIdentifier, projectDir, agentOverrides);
 
   if (taskSuccess && isWorktree) {
     const commitResult = autoCommitAndPush(execCwd, task, cwd);
@@ -190,14 +194,14 @@ async function selectAndExecuteTask(
  * - If override is a name, validate it exists in available workflows.
  * - If no override, prompt user to select interactively.
  */
-async function determineWorkflow(cwd: string, override?: string): Promise<string | null> {
+async function determineWorkflow(projectDir: string, override?: string): Promise<string | null> {
   if (override) {
     // Path-based: skip name validation (loader handles existence check)
     if (isWorkflowPath(override)) {
       return override;
     }
     // Name-based: validate workflow name exists
-    const availableWorkflows = listWorkflows(cwd);
+    const availableWorkflows = listWorkflows(projectDir);
     const knownWorkflows = availableWorkflows.length === 0 ? [DEFAULT_WORKFLOW_NAME] : availableWorkflows;
     if (!knownWorkflows.includes(override)) {
       error(`Workflow not found: ${override}`);
@@ -205,7 +209,7 @@ async function determineWorkflow(cwd: string, override?: string): Promise<string
     }
     return override;
   }
-  return selectWorkflow(cwd);
+  return selectWorkflow(projectDir);
 }
 
 export async function confirmAndCreateWorktree(
@@ -290,16 +294,17 @@ program
 // Common initialization for all commands
 program.hook('preAction', async () => {
   resolvedCwd = resolve(process.cwd());
+  projectRoot = resolveProjectRoot(resolvedCwd);
 
   // Pipeline mode: triggered by --pipeline flag
   const rootOpts = program.opts();
   pipelineMode = rootOpts.pipeline === true;
 
   await initGlobalDirs({ nonInteractive: pipelineMode });
-  initProjectDirs(resolvedCwd);
+  initProjectDirs(projectRoot);
 
-  const verbose = rootOpts.verbose === true || isVerboseMode(resolvedCwd);
-  let debugConfig = getEffectiveDebugConfig(resolvedCwd);
+  const verbose = rootOpts.verbose === true || isVerboseMode(projectRoot);
+  let debugConfig = getEffectiveDebugConfig(projectRoot);
 
   if (verbose && (!debugConfig || !debugConfig.enabled)) {
     debugConfig = { enabled: true };
@@ -320,7 +325,7 @@ program.hook('preAction', async () => {
   // Quiet mode: CLI flag takes precedence over config
   quietMode = rootOpts.quiet === true || config.minimalOutput === true;
 
-  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, verbose, pipelineMode, quietMode });
+  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, projectRoot, verbose, pipelineMode, quietMode });
 });
 
 /** Get whether quiet mode is active (CLI flag or config, resolved in preAction) */
@@ -334,15 +339,15 @@ program
   .command('run')
   .description('Run all pending tasks from .takt/tasks/')
   .action(async () => {
-    const workflow = getCurrentWorkflow(resolvedCwd);
-    await runAllTasks(resolvedCwd, workflow, resolveAgentOverrides());
+    const workflow = getCurrentWorkflow(projectRoot);
+    await runAllTasks(projectRoot, workflow, resolveAgentOverrides());
   });
 
 program
   .command('watch')
   .description('Watch for tasks and auto-execute')
   .action(async () => {
-    await watchTasks(resolvedCwd, resolveAgentOverrides());
+    await watchTasks(projectRoot, resolveAgentOverrides());
   });
 
 program
@@ -354,7 +359,7 @@ program
   .option('--no-follow', 'Do not follow (tail -f)')
   .action(async (opts: { session?: string; file?: string; lines?: string; follow?: boolean }) => {
     const lines = opts.lines ? Number.parseInt(opts.lines, 10) : 50;
-    await watchLog(resolvedCwd, {
+    await watchLog(projectRoot, {
       sessionId: opts.session,
       file: opts.file,
       lines: Number.isFinite(lines) ? lines : 50,
@@ -367,14 +372,14 @@ program
   .description('Add a new task (interactive AI conversation)')
   .argument('[task]', 'Task description or GitHub issue reference (e.g. "#28")')
   .action(async (task?: string) => {
-    await addTask(resolvedCwd, task);
+    await addTask(projectRoot, task);
   });
 
 program
   .command('list')
   .description('List task branches (merge/delete)')
   .action(async () => {
-    await listTasks(resolvedCwd, resolveAgentOverrides());
+    await listTasks(projectRoot, resolveAgentOverrides());
   });
 
 program
@@ -382,14 +387,14 @@ program
   .description('Switch workflow interactively')
   .argument('[workflow]', 'Workflow name')
   .action(async (workflow?: string) => {
-    await switchWorkflow(resolvedCwd, workflow);
+    await switchWorkflow(projectRoot, workflow);
   });
 
 program
   .command('clear')
   .description('Clear agent conversation sessions')
   .action(() => {
-    clearAgentSessions(resolvedCwd);
+    clearAgentSessions(projectRoot);
     success('Agent sessions cleared');
   });
 
@@ -406,7 +411,7 @@ program
   .description('Configure settings (permission mode)')
   .argument('[key]', 'Configuration key')
   .action(async (key?: string) => {
-    await switchConfig(resolvedCwd, key);
+    await switchConfig(projectRoot, key);
   });
 
 // --- Default action: task execution, interactive mode, or pipeline ---
@@ -471,7 +476,7 @@ program
     // Resolve --task option to task text
     const taskFromOption = opts.task as string | undefined;
     if (taskFromOption) {
-      await selectAndExecuteTask(resolvedCwd, taskFromOption, selectOptions, agentOverrides);
+      await selectAndExecuteTask(resolvedCwd, projectRoot, taskFromOption, selectOptions, agentOverrides);
       return;
     }
 
@@ -480,7 +485,7 @@ program
     if (issueFromOption) {
       try {
         const resolvedTask = resolveIssueTask(`#${issueFromOption}`);
-        await selectAndExecuteTask(resolvedCwd, resolvedTask, selectOptions, agentOverrides);
+        await selectAndExecuteTask(resolvedCwd, projectRoot, resolvedTask, selectOptions, agentOverrides);
       } catch (e) {
         error(e instanceof Error ? e.message : String(e));
         process.exit(1);
@@ -501,18 +506,18 @@ program
         }
       }
 
-      await selectAndExecuteTask(resolvedCwd, resolvedTask, selectOptions, agentOverrides);
+      await selectAndExecuteTask(resolvedCwd, projectRoot, resolvedTask, selectOptions, agentOverrides);
       return;
     }
 
     // Short single word or no task → interactive mode (with optional initial input)
-    const result = await interactiveMode(resolvedCwd, task);
+    const result = await interactiveMode(resolvedCwd, projectRoot, task);
 
     if (!result.confirmed) {
       return;
     }
 
-    await selectAndExecuteTask(resolvedCwd, result.task, selectOptions, agentOverrides);
+    await selectAndExecuteTask(resolvedCwd, projectRoot, result.task, selectOptions, agentOverrides);
   });
 
 program.parse();
