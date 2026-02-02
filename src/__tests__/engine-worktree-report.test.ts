@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { existsSync, rmSync, mkdirSync, symlinkSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, symlinkSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
@@ -128,6 +128,9 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
 
     expect(phaseCtx.reportDir).toBe(expectedPath);
     expect(phaseCtx.reportDir).not.toBe(unexpectedPath);
+
+    const logsLink = join(cloneCwd, '.takt', 'logs');
+    expect(lstatSync(logsLink).isSymbolicLink()).toBe(true);
   });
 
   it('should pass cwd-based reportDir to buildInstruction (used by {report_dir} placeholder)', async () => {

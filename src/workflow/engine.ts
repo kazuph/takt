@@ -85,15 +85,49 @@ export class WorkflowEngine extends EventEmitter {
       mkdirSync(reportDirPath, { recursive: true });
     }
 
-    // Worktree mode: create symlink so agents can access reports via relative path
     if (this.cwd !== this.projectCwd) {
-      const cwdReportsDir = join(this.cwd, '.takt', 'reports');
-      if (!existsSync(cwdReportsDir)) {
-        mkdirSync(join(this.cwd, '.takt'), { recursive: true });
-        symlinkSync(
-          join(this.projectCwd, '.takt', 'reports'),
-          cwdReportsDir,
-        );
+      this.ensureWorktreeTaktLinks();
+    }
+  }
+
+  /**
+   * Worktree mode: ensure .takt entries in the worktree point to project .takt.
+   * Avoids data divergence while keeping worktree free of real state.
+   */
+  private ensureWorktreeTaktLinks(): void {
+    const worktreeTaktDir = join(this.cwd, '.takt');
+    if (!existsSync(worktreeTaktDir)) {
+      mkdirSync(worktreeTaktDir, { recursive: true });
+    }
+
+    const entries = [
+      'reports',
+      'logs',
+      'tasks',
+      'completed',
+      'failed',
+      'workflows',
+      'config.yaml',
+      'worktrees',
+      'clone-meta',
+    ];
+
+    for (const entry of entries) {
+      const linkPath = join(worktreeTaktDir, entry);
+      if (existsSync(linkPath)) {
+        continue;
+      }
+
+      const targetPath = join(this.projectCwd, '.takt', entry);
+      try {
+        symlinkSync(targetPath, linkPath);
+      } catch (e) {
+        log.debug('Failed to create worktree .takt symlink', {
+          entry,
+          linkPath,
+          targetPath,
+          error: (e as Error).message,
+        });
       }
     }
   }
