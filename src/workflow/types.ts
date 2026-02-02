@@ -74,6 +74,8 @@ export interface WorkflowEngineOptions {
   bypassPermissions?: boolean;
   /** Project root directory (where .takt/ lives). Defaults to cwd if not specified. */
   projectCwd?: string;
+  /** Report directory override (relative path under project root) */
+  reportDir?: string;
   /** Language for instruction metadata. Defaults to 'en'. */
   language?: Language;
   provider?: ProviderType;

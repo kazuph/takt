@@ -3,11 +3,13 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { loadLatestSessionLog } from '../utils/session.js';
+import { loadLatestSessionLog, loadSessionLog } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
 import { info, warn, error, success } from '../utils/ui.js';
-import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch } from '../github/pr.js';
+import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch, buildPrBody } from '../github/pr.js';
 import { generatePrDraft } from '../github/pr-writer.js';
+import { loadCloneMeta } from '../task/clone.js';
+import { join } from 'node:path';
 
 const log = createLogger('pr-retry');
 
@@ -76,19 +78,34 @@ export async function retryPrCreation(cwd: string, projectDir: string, options: 
     success(`Pushed to origin/${branch}`);
   }
 
-  const latestLog = loadLatestSessionLog(projectDir);
-  const task = latestLog?.task ?? `PR for ${branch}`;
-  const workflow = latestLog?.workflowName ?? 'default';
+  const cloneMeta = loadCloneMeta(projectDir, branch);
+  const sessionLog = cloneMeta?.sessionId
+    ? loadSessionLog(join(projectDir, '.takt', 'logs', `${cloneMeta.sessionId}.jsonl`))
+    : loadLatestSessionLog(projectDir);
 
-  info('Generating pull request via LLM...');
-  const draft = await generatePrDraft({
-    cwd,
-    projectDir,
-    task,
-    workflow,
-    branch,
-    base,
-  });
+  const task = sessionLog?.task ?? `PR for ${branch}`;
+  const workflow = sessionLog?.workflowName ?? 'default';
+  const reportDir = cloneMeta?.reportDir ?? sessionLog?.reportDir;
+
+  let draft;
+  try {
+    info('Generating pull request via LLM...');
+    draft = await generatePrDraft({
+      cwd,
+      projectDir,
+      task,
+      workflow,
+      branch,
+      base,
+      reportDir,
+    });
+  } catch (err) {
+    warn(`PR draft generation failed, using fallback template: ${err instanceof Error ? err.message : String(err)}`);
+    draft = {
+      title: task.length > 100 ? `${task.slice(0, 97)}...` : task,
+      body: buildPrBody(undefined, `Workflow \`${workflow}\` completed successfully.`),
+    };
+  }
 
   info('Creating pull request...');
   const prResult = createPullRequest(cwd, {

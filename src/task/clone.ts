@@ -253,6 +253,53 @@ export function saveCloneMeta(projectDir: string, branch: string, clonePath: str
   log.info('Clone meta saved', { branch, clonePath });
 }
 
+export interface CloneSessionMeta {
+  sessionId: string;
+  reportDir?: string;
+  task?: string;
+  workflowName?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Update clone metadata with session info for a branch.
+ * No-op if the clone meta file does not exist.
+ */
+export function updateCloneMetaSession(projectDir: string, branch: string, meta: CloneSessionMeta): boolean {
+  const filePath = getCloneMetaPath(projectDir, branch);
+  if (!fs.existsSync(filePath)) return false;
+
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const current = JSON.parse(raw) as { branch: string; clonePath: string } & Partial<CloneSessionMeta>;
+    const next = {
+      ...current,
+      ...meta,
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(filePath, JSON.stringify(next));
+    log.info('Clone meta session updated', { branch, sessionId: meta.sessionId });
+    return true;
+  } catch (err) {
+    log.error('Failed to update clone meta session', { branch, error: String(err) });
+    return false;
+  }
+}
+
+/**
+ * Load clone metadata with session info.
+ */
+export function loadCloneMeta(projectDir: string, branch: string): (CloneSessionMeta & { branch?: string; clonePath?: string }) | null {
+  const filePath = getCloneMetaPath(projectDir, branch);
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw) as CloneSessionMeta & { branch?: string; clonePath?: string };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Remove clone metadata for a branch.
  */

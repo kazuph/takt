@@ -11,6 +11,7 @@ export interface SessionLog {
   task: string;
   projectDir: string;
   workflowName: string;
+  reportDir?: string;
   iterations: number;
   startTime: string;
   endTime?: string;
@@ -37,6 +38,7 @@ export interface NdjsonWorkflowStart {
   type: 'workflow_start';
   task: string;
   workflowName: string;
+  reportDir?: string;
   startTime: string;
 }
 
@@ -136,6 +138,7 @@ export function initNdjsonLog(
   task: string,
   workflowName: string,
   projectDir?: string,
+  reportDir?: string,
 ): string {
   const logsDir = projectDir
     ? getProjectLogsDir(projectDir)
@@ -147,6 +150,7 @@ export function initNdjsonLog(
     type: 'workflow_start',
     task,
     workflowName,
+    ...(reportDir ? { reportDir } : {}),
     startTime: new Date().toISOString(),
   };
   appendNdjsonLine(filepath, record);
@@ -177,6 +181,7 @@ export function loadNdjsonLog(filepath: string): SessionLog | null {
           task: record.task,
           projectDir: '',
           workflowName: record.workflowName,
+          ...(record.reportDir ? { reportDir: record.reportDir } : {}),
           iterations: 0,
           startTime: record.startTime,
           status: 'running',
@@ -365,6 +370,7 @@ export interface LatestLogPointer {
   logFile: string;
   task: string;
   workflowName: string;
+  reportDir?: string;
   status: SessionLog['status'];
   startTime: string;
   updatedAt: string;
@@ -400,6 +406,7 @@ export function updateLatestPointer(
     logFile: `${sessionId}.jsonl`,
     task: log.task,
     workflowName: log.workflowName,
+    ...(log.reportDir ? { reportDir: log.reportDir } : {}),
     status: log.status,
     startTime: log.startTime,
     updatedAt: new Date().toISOString(),

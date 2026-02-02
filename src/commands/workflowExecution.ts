@@ -26,6 +26,7 @@ import {
 } from '../utils/ui.js';
 import {
   generateSessionId,
+  generateReportDir,
   createSessionLog,
   finalizeSessionLog,
   updateLatestPointer,
@@ -38,12 +39,14 @@ import {
   type NdjsonUserInput,
   type NdjsonNeedsInput,
   type NdjsonReportPhase,
+  type SessionLog,
   loadLatestSessionLog,
 } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
 import { notifySuccess, notifyError } from '../utils/notification.js';
 import { selectOption, promptInput } from '../prompt/index.js';
 import { EXIT_SIGINT } from '../exitCodes.js';
+import { updateCloneMetaSession } from '../task/clone.js';
 
 const log = createLogger('workflow');
 
@@ -119,6 +122,8 @@ export interface WorkflowExecutionOptions {
   headerPrefix?: string;
   /** Project root directory (where .takt/ lives). Defaults to cwd. */
   projectCwd?: string;
+  /** Branch name for this workflow execution (if applicable) */
+  branch?: string;
   /** Language for instruction metadata */
   language?: Language;
   provider?: ProviderType;
@@ -147,11 +152,21 @@ export async function executeWorkflow(
   header(`${headerPrefix} ${workflowConfig.name}`);
 
   const workflowSessionId = generateSessionId();
-  let sessionLog = createSessionLog(task, projectCwd, workflowConfig.name);
+  const reportDirName = `.takt/reports/${generateReportDir(task)}`;
+  let sessionLog: SessionLog = { ...createSessionLog(task, projectCwd, workflowConfig.name), reportDir: reportDirName };
 
   // Initialize NDJSON log file + pointer at workflow start
-  const ndjsonLogPath = initNdjsonLog(workflowSessionId, task, workflowConfig.name, projectCwd);
+  const ndjsonLogPath = initNdjsonLog(workflowSessionId, task, workflowConfig.name, projectCwd, reportDirName);
   updateLatestPointer(sessionLog, workflowSessionId, projectCwd, { copyToPrevious: true });
+
+  if (options.branch) {
+    updateCloneMetaSession(projectCwd, options.branch, {
+      sessionId: workflowSessionId,
+      reportDir: reportDirName,
+      task,
+      workflowName: workflowConfig.name,
+    });
+  }
 
   // Track current display for streaming
   const displayRef: { current: StreamDisplay | null } = { current: null };
@@ -287,6 +302,7 @@ export async function executeWorkflow(
       return answers.join('\n');
     },
     projectCwd,
+    reportDir: reportDirName,
     language: options.language,
     provider: options.provider,
     model: options.model,

@@ -3,8 +3,8 @@
  */
 
 import { EventEmitter } from 'node:events';
-import { mkdirSync, existsSync, symlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, existsSync, symlinkSync, lstatSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import type {
   WorkflowConfig,
   WorkflowState,
@@ -66,7 +66,7 @@ export class WorkflowEngine extends EventEmitter {
     this.options = options;
     this.language = options.language;
     this.loopDetector = new LoopDetector(config.loopDetection);
-    this.reportDir = `.takt/reports/${generateReportDir(task)}`;
+    this.reportDir = options.reportDir ?? `.takt/reports/${generateReportDir(task)}`;
     this.ensureReportDirExists();
     this.validateConfig();
     this.state = createInitialState(config, options);
@@ -109,16 +109,40 @@ export class WorkflowEngine extends EventEmitter {
       'workflows',
       'config.yaml',
       'worktrees',
+      'worktree-sessions',
       'clone-meta',
     ];
 
     for (const entry of entries) {
       const linkPath = join(worktreeTaktDir, entry);
+      const targetPath = join(this.projectCwd, '.takt', entry);
+
       if (existsSync(linkPath)) {
-        continue;
+        try {
+          const stat = lstatSync(linkPath);
+          if (stat.isSymbolicLink()) {
+            continue;
+          }
+
+          if (stat.isDirectory()) {
+            this.mergeDirContents(linkPath, targetPath);
+            rmSync(linkPath, { recursive: true, force: true });
+          } else {
+            this.moveFileToProject(linkPath, targetPath);
+            if (existsSync(linkPath)) {
+              rmSync(linkPath, { force: true });
+            }
+          }
+        } catch (e) {
+          log.debug('Failed to reconcile worktree .takt entry', {
+            entry,
+            linkPath,
+            targetPath,
+            error: (e as Error).message,
+          });
+        }
       }
 
-      const targetPath = join(this.projectCwd, '.takt', entry);
       try {
         symlinkSync(targetPath, linkPath);
       } catch (e) {
@@ -130,6 +154,47 @@ export class WorkflowEngine extends EventEmitter {
         });
       }
     }
+  }
+
+  private mergeDirContents(sourceDir: string, targetDir: string): void {
+    if (!existsSync(targetDir)) {
+      mkdirSync(targetDir, { recursive: true });
+    }
+
+    const entries = readdirSync(sourceDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const sourcePath = join(sourceDir, entry.name);
+      const targetPath = join(targetDir, entry.name);
+
+      if (existsSync(targetPath)) {
+        if (entry.isDirectory()) {
+          const targetStat = lstatSync(targetPath);
+          if (targetStat.isDirectory()) {
+            this.mergeDirContents(sourcePath, targetPath);
+            rmSync(sourcePath, { recursive: true, force: true });
+            continue;
+          }
+        }
+
+        const backupPath = `${targetPath}.worktree-backup-${Date.now()}`;
+        renameSync(sourcePath, backupPath);
+        continue;
+      }
+
+      renameSync(sourcePath, targetPath);
+    }
+  }
+
+  private moveFileToProject(sourcePath: string, targetPath: string): void {
+    if (existsSync(targetPath)) {
+      const backupPath = `${targetPath}.worktree-backup-${Date.now()}`;
+      renameSync(sourcePath, backupPath);
+      return;
+    }
+
+    const targetDir = dirname(targetPath);
+    mkdirSync(targetDir, { recursive: true });
+    renameSync(sourcePath, targetPath);
   }
 
   /** Validate workflow configuration at construction time */

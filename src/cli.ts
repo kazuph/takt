@@ -53,8 +53,9 @@ import { summarizeTaskName } from './task/summarize.js';
 import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 import { checkForUpdates } from './utils/updateNotifier.js';
 import { resolveIssueTask, isIssueReference } from './github/issue.js';
-import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch } from './github/pr.js';
+import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch, buildPrBody } from './github/pr.js';
 import { generatePrDraft } from './github/pr-writer.js';
+import { loadLatestSessionLog } from './utils/session.js';
 import type { TaskExecutionOptions } from './commands/taskExecution.js';
 import type { ProviderType } from './providers/index.js';
 
@@ -153,7 +154,10 @@ async function selectAndExecuteTask(
   );
 
   log.info('Starting task execution', { workflow: workflowIdentifier, worktree: isWorktree });
-  const taskSuccess = await executeTask(task, execCwd, workflowIdentifier, projectDir, agentOverrides);
+  const taskSuccess = await executeTask(task, execCwd, workflowIdentifier, projectDir, {
+    ...agentOverrides,
+    branch: branch ?? agentOverrides?.branch,
+  });
 
   if (taskSuccess && isWorktree) {
     const commitResult = autoCommitAndPush(execCwd, task, cwd);
@@ -177,15 +181,28 @@ async function selectAndExecuteTask(
             success(`Pushed to origin/${branch}`);
           }
 
-          info('Generating pull request via LLM...');
-          const draft = await generatePrDraft({
-            cwd,
-            projectDir,
-            task,
-            workflow: workflowIdentifier,
-            branch,
-            base,
-          });
+          const latestLog = loadLatestSessionLog(projectDir);
+          const reportDir = latestLog?.reportDir;
+
+          let draft;
+          try {
+            info('Generating pull request via LLM...');
+            draft = await generatePrDraft({
+              cwd,
+              projectDir,
+              task,
+              workflow: workflowIdentifier,
+              branch,
+              base,
+              reportDir,
+            });
+          } catch (err) {
+            warn(`PR draft generation failed, using fallback template: ${err instanceof Error ? err.message : String(err)}`);
+            draft = {
+              title: task.length > 100 ? `${task.slice(0, 97)}...` : task,
+              body: buildPrBody(undefined, `Workflow \`${workflowIdentifier}\` completed successfully.`),
+            };
+          }
 
           info('Creating pull request...');
           const prResult = createPullRequest(execCwd, {

@@ -17,6 +17,7 @@ import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
 import { info, warn, error, success, status } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
+import { loadLatestSessionLog } from '../utils/session.js';
 import type { PipelineConfig } from '../models/types.js';
 import {
   EXIT_ISSUE_FETCH_FAILED,
@@ -192,7 +193,10 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
     ? { provider: options.provider, model: options.model }
     : undefined;
 
-  const taskSuccess = await executeTask(task, cwd, workflow, cwd, agentOverrides);
+  const taskSuccess = await executeTask(task, cwd, workflow, cwd, {
+    ...agentOverrides,
+    branch,
+  });
 
   if (!taskSuccess) {
     error(`Workflow '${workflow}' failed`);
@@ -238,17 +242,31 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
           success(`Pushed to origin/${branch}`);
         }
 
-        info('Generating pull request via LLM...');
-        const draft = await generatePrDraft({
-          cwd,
-          projectDir: cwd,
-          task,
-          workflow,
-          branch,
-          base,
-          issueTitle: issue?.title,
-          issueBody: issue?.body,
-        });
+        const latestLog = loadLatestSessionLog(cwd);
+        const reportDir = latestLog?.reportDir;
+
+        let draft;
+        try {
+          info('Generating pull request via LLM...');
+          draft = await generatePrDraft({
+            cwd,
+            projectDir: cwd,
+            task,
+            workflow,
+            branch,
+            base,
+            reportDir,
+            issueTitle: issue?.title,
+            issueBody: issue?.body,
+          });
+        } catch (err) {
+          warn(`PR draft generation failed, using fallback template: ${err instanceof Error ? err.message : String(err)}`);
+          const report = `Workflow \`${workflow}\` completed successfully.`;
+          draft = {
+            title: issue ? issue.title : (options.task ?? 'Pipeline task'),
+            body: buildPipelinePrBody(pipelineConfig, issue, report),
+          };
+        }
 
         const prResult = createPullRequest(cwd, {
           branch,

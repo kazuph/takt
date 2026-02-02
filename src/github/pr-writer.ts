@@ -24,6 +24,7 @@ export interface PrDraftInput {
   workflow: string;
   branch: string;
   base: string;
+  reportDir?: string;
   issueTitle?: string;
   issueBody?: string;
 }
@@ -126,8 +127,10 @@ export async function generatePrDraft(input: PrDraftInput): Promise<PrDraft> {
 
   const diffStat = getDiffStat(input.cwd, input.base, input.branch);
   const commitLog = getCommitLog(input.cwd, input.base, input.branch);
-  const latestReportDir = getLatestReportDir(input.projectDir);
-  const reportSnippets = latestReportDir ? readReportSnippets(latestReportDir) : '';
+  const reportBase = input.reportDir
+    ? join(input.projectDir, input.reportDir)
+    : getLatestReportDir(input.projectDir);
+  const reportSnippets = reportBase ? readReportSnippets(reportBase) : '';
 
   const promptParts = [
     `## Task\n${input.task}`,
