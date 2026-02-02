@@ -5,93 +5,24 @@
 import { existsSync, readFileSync, copyFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getProjectLogsDir, getGlobalLogsDir, ensureDir, writeFileAtomic } from '../config/paths.js';
+import type {
+  SessionLog,
+  NdjsonRecord,
+  NdjsonWorkflowStart,
+  LatestLogPointer,
+} from './types.js';
 
-/** Session log entry */
-export interface SessionLog {
-  task: string;
-  projectDir: string;
-  workflowName: string;
-  iterations: number;
-  startTime: string;
-  endTime?: string;
-  status: 'running' | 'completed' | 'aborted';
-  history: Array<{
-    step: string;
-    agent: string;
-    instruction: string;
-    status: string;
-    timestamp: string;
-    content: string;
-    error?: string;
-    /** Matched rule index (0-based) when rules-based detection was used */
-    matchedRuleIndex?: number;
-    /** How the rule match was detected */
-    matchedRuleMethod?: string;
-  }>;
-}
-
-// --- NDJSON log types ---
-
-export interface NdjsonWorkflowStart {
-  type: 'workflow_start';
-  task: string;
-  workflowName: string;
-  startTime: string;
-}
-
-export interface NdjsonStepStart {
-  type: 'step_start';
-  step: string;
-  agent: string;
-  iteration: number;
-  timestamp: string;
-  instruction?: string;
-}
-
-export interface NdjsonStepComplete {
-  type: 'step_complete';
-  step: string;
-  agent: string;
-  status: string;
-  content: string;
-  instruction: string;
-  matchedRuleIndex?: number;
-  matchedRuleMethod?: string;
-  error?: string;
-  timestamp: string;
-}
-
-export interface NdjsonWorkflowComplete {
-  type: 'workflow_complete';
-  iterations: number;
-  endTime: string;
-}
-
-export interface NdjsonWorkflowAbort {
-  type: 'workflow_abort';
-  iterations: number;
-  reason: string;
-  endTime: string;
-}
-
-export type NdjsonRecord =
-  | NdjsonWorkflowStart
-  | NdjsonStepStart
-  | NdjsonStepComplete
-  | NdjsonWorkflowComplete
-  | NdjsonWorkflowAbort;
-
-/** Pointer metadata for latest/previous log files */
-export interface LatestLogPointer {
-  sessionId: string;
-  logFile: string;
-  task: string;
-  workflowName: string;
-  status: SessionLog['status'];
-  startTime: string;
-  updatedAt: string;
-  iterations: number;
-}
+// Re-export types for backward compatibility
+export type {
+  SessionLog,
+  NdjsonWorkflowStart,
+  NdjsonStepStart,
+  NdjsonStepComplete,
+  NdjsonWorkflowComplete,
+  NdjsonWorkflowAbort,
+  NdjsonRecord,
+  LatestLogPointer,
+} from './types.js';
 
 /**
  * Manages session lifecycle: ID generation, NDJSON logging,
