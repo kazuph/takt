@@ -177,6 +177,22 @@ export async function executeWorkflow(
         .map((entry) => entry.content)
     : [];
 
+  if (!latestLog) {
+    info('前回セッションのログが見つからないため、新規タスクとして開始します。');
+  } else if (latestLog.task !== task) {
+    warn('前回セッションのタスクと一致しないため、回答履歴を引き継ぎません。');
+    log.debug('Latest session task mismatch', {
+      latestTask: latestLog.task,
+      currentTask: task,
+      latestStatus: latestLog.status,
+      latestIterations: latestLog.iterations,
+    });
+  } else if (initialUserInputs.length > 0) {
+    info(`前回セッションの回答を ${initialUserInputs.length} 件 引き継ぎました。`);
+  } else {
+    info('前回セッションの回答は見つかりませんでした。');
+  }
+
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
   const sessionUpdateHandler = isWorktree
