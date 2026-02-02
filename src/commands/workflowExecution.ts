@@ -64,18 +64,45 @@ function formatElapsedTime(startTime: string, endTime: string): string {
   return `${minutes}m ${seconds}s`;
 }
 
-function extractInfoQuestions(request: { response: { content: string } }): string[] {
+export function extractInfoQuestions(request: { response: { content: string } }): string[] {
   const lines = request.response.content.split(/\r?\n/);
   const questions: string[] = [];
+  let inBlock = false;
+
+  const isHeader = (line: string): boolean => {
+    return /^(確認事項|Questions?)[:：]?$/.test(line);
+  };
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('- ')) {
-      const q = trimmed.slice(2).trim();
+
+    if (isHeader(trimmed)) {
+      inBlock = true;
+      continue;
+    }
+
+    if (!inBlock) {
+      continue;
+    }
+
+    if (trimmed === '') {
+      continue;
+    }
+
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('・')) {
+      const q = trimmed
+        .replace(/^[-*]\s+/, '')
+        .replace(/^・\s*/, '')
+        .trim();
       if (q.length > 0) {
         questions.push(q);
       }
+      continue;
     }
+
+    inBlock = false;
   }
+
   return questions;
 }
 
