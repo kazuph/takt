@@ -7,24 +7,14 @@
 
 import { execFileSync } from 'node:child_process';
 import { createLogger } from '../utils/debug.js';
+import type { GitHubIssue, GhCliStatus } from './types.js';
+
+export type { GitHubIssue, GhCliStatus };
 
 const log = createLogger('github');
 
 /** Regex to match `#N` patterns (issue numbers) */
 const ISSUE_NUMBER_REGEX = /^#(\d+)$/;
-
-export interface GitHubIssue {
-  number: number;
-  title: string;
-  body: string;
-  labels: string[];
-  comments: Array<{ author: string; body: string }>;
-}
-
-export interface GhCliStatus {
-  available: boolean;
-  error?: string;
-}
 
 /**
  * Check if `gh` CLI is available and authenticated.

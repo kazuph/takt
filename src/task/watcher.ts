@@ -6,7 +6,8 @@
  */
 
 import { createLogger } from '../utils/debug.js';
-import { TaskRunner, type TaskInfo } from './runner.js';
+import { TaskRunner } from './runner.js';
+import type { TaskInfo } from './types.js';
 
 const log = createLogger('watcher');
 

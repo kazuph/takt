@@ -16,27 +16,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parseTaskFiles, parseTaskFile, type ParsedTask } from './parser.js';
-import type { TaskFileData } from './schema.js';
+import type { TaskInfo, TaskResult } from './types.js';
 
-/** タスク情報 */
-export interface TaskInfo {
-  filePath: string;
-  name: string;
-  content: string;
-  createdAt: string;
-  /** Structured data from YAML files (null for .md files) */
-  data: TaskFileData | null;
-}
-
-/** タスク実行結果 */
-export interface TaskResult {
-  task: TaskInfo;
-  success: boolean;
-  response: string;
-  executionLog: string[];
-  startedAt: string;
-  completedAt: string;
-}
+export type { TaskInfo, TaskResult };
 
 /**
  * タスク実行管理クラス

@@ -9,22 +9,11 @@
 import { execFileSync } from 'node:child_process';
 import { createLogger } from '../utils/debug.js';
 
+import type { BranchInfo, BranchListItem } from './types.js';
+
+export type { BranchInfo, BranchListItem };
+
 const log = createLogger('branchList');
-
-/** Branch info from `git branch --list` */
-export interface BranchInfo {
-  branch: string;
-  commit: string;
-}
-
-/** Branch with list metadata */
-export interface BranchListItem {
-  info: BranchInfo;
-  filesChanged: number;
-  taskSlug: string;
-  /** Original task instruction extracted from first commit message */
-  originalInstruction: string;
-}
 
 const TAKT_BRANCH_PREFIX = 'takt/';
 

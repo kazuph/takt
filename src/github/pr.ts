@@ -7,30 +7,12 @@
 import { execFileSync } from 'node:child_process';
 import { createLogger } from '../utils/debug.js';
 import { getErrorMessage } from '../utils/error.js';
-import { checkGhCli, type GitHubIssue } from './issue.js';
+import { checkGhCli } from './issue.js';
+import type { GitHubIssue, CreatePrOptions, CreatePrResult } from './types.js';
+
+export type { CreatePrOptions, CreatePrResult };
 
 const log = createLogger('github-pr');
-
-export interface CreatePrOptions {
-  /** Branch to create PR from */
-  branch: string;
-  /** PR title */
-  title: string;
-  /** PR body (markdown) */
-  body: string;
-  /** Base branch (default: repo default branch) */
-  base?: string;
-  /** Repository in owner/repo format (optional, uses current repo if omitted) */
-  repo?: string;
-}
-
-export interface CreatePrResult {
-  success: boolean;
-  /** PR URL on success */
-  url?: string;
-  /** Error message on failure */
-  error?: string;
-}
 
 /**
  * Push a branch to origin.

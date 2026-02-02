@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { TaskWatcher } from '../task/watcher.js';
-import type { TaskInfo } from '../task/runner.js';
+import type { TaskInfo } from '../task/types.js';
 
 describe('TaskWatcher', () => {
   const testDir = `/tmp/takt-watcher-test-${Date.now()}`;

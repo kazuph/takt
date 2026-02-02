@@ -17,7 +17,7 @@ import {
 } from '../../utils/ui.js';
 import { executeAndCompleteTask } from '../execution/taskExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
-import type { TaskExecutionOptions } from '../execution/taskExecution.js';
+import type { TaskExecutionOptions } from '../execution/types.js';
 
 /**
  * Watch for tasks and execute them as they appear.

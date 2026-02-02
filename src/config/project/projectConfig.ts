@@ -8,31 +8,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { copyProjectResourcesToDir } from '../../resources/index.js';
+import type { PermissionMode, ProjectPermissionMode, ProjectLocalConfig } from '../types.js';
 
-/** Permission mode for the project
- * - default: Uses Agent SDK's acceptEdits mode (auto-accepts file edits, minimal prompts)
- * - sacrifice-my-pc: Auto-approves all permission requests (bypassPermissions)
- *
- * Note: 'confirm' mode is planned but not yet implemented
- */
-export type PermissionMode = 'default' | 'sacrifice-my-pc';
-
-/** @deprecated Use PermissionMode instead */
-export type ProjectPermissionMode = PermissionMode;
-
-/** Project configuration stored in .takt/config.yaml */
-export interface ProjectLocalConfig {
-  /** Current workflow name */
-  workflow?: string;
-  /** Provider selection for agent runtime */
-  provider?: 'claude' | 'codex';
-  /** Permission mode setting */
-  permissionMode?: PermissionMode;
-  /** Verbose output mode */
-  verbose?: boolean;
-  /** Custom settings */
-  [key: string]: unknown;
-}
+export type { PermissionMode, ProjectPermissionMode, ProjectLocalConfig };
 
 /** Default project configuration */
 const DEFAULT_PROJECT_CONFIG: ProjectLocalConfig = {

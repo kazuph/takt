@@ -6,20 +6,12 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { StreamCallback, StreamEvent } from '../claude/process.js';
+import type { StreamEvent } from '../claude/process.js';
 import type { AgentResponse } from '../models/types.js';
 import { getScenarioQueue } from './scenario.js';
+import type { MockCallOptions } from './types.js';
 
-/** Options for mock calls */
-export interface MockCallOptions {
-  cwd: string;
-  sessionId?: string;
-  onStream?: StreamCallback;
-  /** Fixed response content (optional, defaults to generic mock response) */
-  mockResponse?: string;
-  /** Fixed status to return (optional, defaults to 'done') */
-  mockStatus?: 'done' | 'blocked' | 'approved' | 'rejected' | 'improve';
-}
+export type { MockCallOptions };
 
 /**
  * Generate a mock session ID

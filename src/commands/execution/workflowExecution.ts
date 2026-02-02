@@ -4,9 +4,12 @@
 
 import { readFileSync } from 'node:fs';
 import { WorkflowEngine } from '../../workflow/engine/WorkflowEngine.js';
-import type { WorkflowConfig, Language } from '../../models/types.js';
+import type { WorkflowConfig } from '../../models/types.js';
 import type { IterationLimitRequest } from '../../workflow/types.js';
-import type { ProviderType } from '../../providers/index.js';
+import type { WorkflowExecutionResult, WorkflowExecutionOptions } from './types.js';
+
+export type { WorkflowExecutionResult, WorkflowExecutionOptions };
+
 import {
   loadAgentSessions,
   updateAgentSession,
@@ -60,24 +63,6 @@ function formatElapsedTime(startTime: string, endTime: string): string {
   const minutes = Math.floor(elapsedSec / 60);
   const seconds = Math.floor(elapsedSec % 60);
   return `${minutes}m ${seconds}s`;
-}
-
-/** Result of workflow execution */
-export interface WorkflowExecutionResult {
-  success: boolean;
-  reason?: string;
-}
-
-/** Options for workflow execution */
-export interface WorkflowExecutionOptions {
-  /** Header prefix for display */
-  headerPrefix?: string;
-  /** Project root directory (where .takt/ lives). */
-  projectCwd: string;
-  /** Language for instruction metadata */
-  language?: Language;
-  provider?: ProviderType;
-  model?: string;
 }
 
 /**

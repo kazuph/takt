@@ -84,13 +84,9 @@ export function addToInputHistory(projectDir: string, input: string): void {
 
 // ============ Agent Sessions ============
 
-/** Agent session data for persistence */
-export interface AgentSessionData {
-  agentSessions: Record<string, string>;
-  updatedAt: string;
-  /** Provider that created these sessions (claude, codex, etc.) */
-  provider?: string;
-}
+import type { AgentSessionData } from '../types.js';
+
+export type { AgentSessionData };
 
 /** Get path for storing agent sessions */
 export function getAgentSessionsPath(projectDir: string): string {

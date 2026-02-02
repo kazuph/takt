@@ -45,11 +45,8 @@ import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 import { checkForUpdates } from './utils/updateNotifier.js';
 import { getErrorMessage } from './utils/error.js';
 import { resolveIssueTask, isIssueReference } from './github/issue.js';
-import {
-  selectAndExecuteTask,
-  type SelectAndExecuteOptions,
-} from './commands/execution/selectAndExecute.js';
-import type { TaskExecutionOptions } from './commands/execution/taskExecution.js';
+import { selectAndExecuteTask } from './commands/execution/selectAndExecute.js';
+import type { TaskExecutionOptions, SelectAndExecuteOptions } from './commands/execution/types.js';
 import type { ProviderType } from './providers/index.js';
 
 const require = createRequire(import.meta.url);

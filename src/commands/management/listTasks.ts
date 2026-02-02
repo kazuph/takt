@@ -13,7 +13,7 @@ import {
 import { selectOption, confirm } from '../../prompt/index.js';
 import { info } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
-import type { TaskExecutionOptions } from '../execution/taskExecution.js';
+import type { TaskExecutionOptions } from '../execution/types.js';
 import {
   type ListAction,
   showFullDiff,

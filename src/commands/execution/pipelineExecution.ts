@@ -10,10 +10,12 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { fetchIssue, formatIssueAsTask, checkGhCli, type GitHubIssue } from '../../github/issue.js';
+import { fetchIssue, formatIssueAsTask, checkGhCli } from '../../github/issue.js';
+import type { GitHubIssue } from '../../github/types.js';
 import { createPullRequest, pushBranch, buildPrBody } from '../../github/pr.js';
 import { stageAndCommit } from '../../task/git.js';
-import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
+import { executeTask } from './taskExecution.js';
+import type { TaskExecutionOptions, PipelineExecutionOptions } from './types.js';
 import { loadGlobalConfig } from '../../config/global/globalConfig.js';
 import { info, error, success, status, blankLine } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
@@ -25,30 +27,10 @@ import {
   EXIT_GIT_OPERATION_FAILED,
   EXIT_PR_CREATION_FAILED,
 } from '../../exitCodes.js';
-import type { ProviderType } from '../../providers/index.js';
+
+export type { PipelineExecutionOptions };
 
 const log = createLogger('pipeline');
-
-export interface PipelineExecutionOptions {
-  /** GitHub issue number */
-  issueNumber?: number;
-  /** Task content (alternative to issue) */
-  task?: string;
-  /** Workflow name or path to workflow file */
-  workflow: string;
-  /** Branch name (auto-generated if omitted) */
-  branch?: string;
-  /** Whether to create a PR after successful execution */
-  autoPr: boolean;
-  /** Repository in owner/repo format */
-  repo?: string;
-  /** Skip branch creation, commit, and push (workflow-only execution) */
-  skipGit?: boolean;
-  /** Working directory */
-  cwd: string;
-  provider?: ProviderType;
-  model?: string;
-}
 
 /**
  * Expand template variables in a string.

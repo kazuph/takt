@@ -8,6 +8,9 @@ import * as wanakana from 'wanakana';
 import { loadGlobalConfig } from '../config/global/globalConfig.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
 import { createLogger } from '../utils/debug.js';
+import type { SummarizeOptions } from './types.js';
+
+export type { SummarizeOptions };
 
 const log = createLogger('summarize');
 
@@ -24,15 +27,6 @@ Fix the login bug → fix-login-bug
 ユーザー登録にメール認証を追加 → add-email-verification
 worktreeを作るときブランチ名をAIで生成 → ai-branch-naming
 レビュー画面に元の指示を表示する → show-original-instruction`;
-
-export interface SummarizeOptions {
-  /** Working directory for Claude execution */
-  cwd: string;
-  /** Model to use (optional, defaults to config or haiku) */
-  model?: string;
-  /** Use LLM for summarization (default: true). If false, uses romanization. */
-  useLLM?: boolean;
-}
 
 /**
  * Sanitize a string for use as git branch name and directory name.

@@ -13,26 +13,11 @@ import { execFileSync } from 'node:child_process';
 import { createLogger } from '../utils/debug.js';
 import { slugify } from '../utils/slug.js';
 import { loadGlobalConfig } from '../config/global/globalConfig.js';
+import type { WorktreeOptions, WorktreeResult } from './types.js';
+
+export type { WorktreeOptions, WorktreeResult };
 
 const log = createLogger('clone');
-
-export interface WorktreeOptions {
-  /** worktree setting: true = auto path, string = custom path */
-  worktree: boolean | string;
-  /** Branch name (optional, auto-generated if omitted) */
-  branch?: string;
-  /** Task slug for auto-generated paths/branches */
-  taskSlug: string;
-  /** GitHub Issue number (optional, for formatting branch/path) */
-  issueNumber?: number;
-}
-
-export interface WorktreeResult {
-  /** Absolute path to the clone */
-  path: string;
-  /** Branch name used */
-  branch: string;
-}
 
 const CLONE_META_DIR = 'clone-meta';
 
@@ -112,11 +97,41 @@ export class CloneManager {
     }
   }
 
+  /**
+   * Resolve the main repository path (handles git worktree case).
+   * If projectDir is a worktree, returns the main repo path.
+   * Otherwise, returns projectDir as-is.
+   */
+  private static resolveMainRepo(projectDir: string): string {
+    const gitPath = path.join(projectDir, '.git');
+
+    try {
+      const stats = fs.statSync(gitPath);
+      if (stats.isFile()) {
+        const content = fs.readFileSync(gitPath, 'utf-8');
+        const match = content.match(/^gitdir:\s*(.+)$/m);
+        if (match && match[1]) {
+          const worktreePath = match[1].trim();
+          const gitDir = path.resolve(worktreePath, '..', '..');
+          const mainRepoPath = path.dirname(gitDir);
+          log.info('Detected worktree, using main repo', { worktree: projectDir, mainRepo: mainRepoPath });
+          return mainRepoPath;
+        }
+      }
+    } catch (err) {
+      log.debug('Failed to resolve main repo, using projectDir as-is', { error: String(err) });
+    }
+
+    return projectDir;
+  }
+
   /** Clone a repository and remove origin to isolate from the main repo */
   private static cloneAndIsolate(projectDir: string, clonePath: string): void {
+    const referenceRepo = CloneManager.resolveMainRepo(projectDir);
+
     fs.mkdirSync(path.dirname(clonePath), { recursive: true });
 
-    execFileSync('git', ['clone', '--reference', projectDir, '--dissociate', projectDir, clonePath], {
+    execFileSync('git', ['clone', '--reference', referenceRepo, '--dissociate', projectDir, clonePath], {
       cwd: projectDir,
       stdio: 'pipe',
     });

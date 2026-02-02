@@ -17,22 +17,11 @@ import { info, error, success } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
 import { createPullRequest, buildPrBody } from '../../github/pr.js';
 import { executeTask } from './taskExecution.js';
-import type { TaskExecutionOptions } from './taskExecution.js';
+import type { TaskExecutionOptions, WorktreeConfirmationResult, SelectAndExecuteOptions } from './types.js';
+
+export type { WorktreeConfirmationResult, SelectAndExecuteOptions };
 
 const log = createLogger('selectAndExecute');
-
-export interface WorktreeConfirmationResult {
-  execCwd: string;
-  isWorktree: boolean;
-  branch?: string;
-}
-
-export interface SelectAndExecuteOptions {
-  autoPr?: boolean;
-  repo?: string;
-  workflow?: string;
-  createWorktree?: boolean | undefined;
-}
 
 /**
  * Select a workflow interactively.

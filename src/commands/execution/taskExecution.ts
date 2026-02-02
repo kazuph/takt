@@ -19,27 +19,11 @@ import { createLogger } from '../../utils/debug.js';
 import { getErrorMessage } from '../../utils/error.js';
 import { executeWorkflow } from './workflowExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
-import type { ProviderType } from '../../providers/index.js';
+import type { TaskExecutionOptions, ExecuteTaskOptions } from './types.js';
+
+export type { TaskExecutionOptions, ExecuteTaskOptions };
 
 const log = createLogger('task');
-
-export interface TaskExecutionOptions {
-  provider?: ProviderType;
-  model?: string;
-}
-
-export interface ExecuteTaskOptions {
-  /** Task content */
-  task: string;
-  /** Working directory (may be a clone path) */
-  cwd: string;
-  /** Workflow name or path (auto-detected by isWorkflowPath) */
-  workflowIdentifier: string;
-  /** Project root (where .takt/ lives) */
-  projectCwd: string;
-  /** Agent provider/model overrides */
-  agentOverrides?: TaskExecutionOptions;
-}
 
 /**
  * Execute a single task with workflow.

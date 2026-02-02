@@ -2,17 +2,24 @@
  * Task execution module
  */
 
+// Types
+export type {
+  TaskInfo,
+  TaskResult,
+  WorktreeOptions,
+  WorktreeResult,
+  BranchInfo,
+  BranchListItem,
+  SummarizeOptions,
+} from './types.js';
+
 // Classes
 export { CloneManager } from './clone.js';
 export { AutoCommitter } from './autoCommit.js';
 export { TaskSummarizer } from './summarize.js';
 export { BranchManager } from './branchList.js';
 
-export {
-  TaskRunner,
-  type TaskInfo,
-  type TaskResult,
-} from './runner.js';
+export { TaskRunner } from './runner.js';
 
 export { showTaskList } from './display.js';
 
@@ -25,8 +32,6 @@ export {
   saveCloneMeta,
   removeCloneMeta,
   cleanupOrphanedClone,
-  type WorktreeOptions,
-  type WorktreeResult,
 } from './clone.js';
 export {
   detectDefaultBranch,
@@ -36,9 +41,7 @@ export {
   extractTaskSlug,
   getOriginalInstruction,
   buildListItems,
-  type BranchInfo,
-  type BranchListItem,
 } from './branchList.js';
 export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
-export { summarizeTaskName, type SummarizeOptions } from './summarize.js';
+export { summarizeTaskName } from './summarize.js';
 export { TaskWatcher, type TaskWatcherOptions } from './watcher.js';
