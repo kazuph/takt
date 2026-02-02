@@ -95,7 +95,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: Implementation complete
         next: ai_review

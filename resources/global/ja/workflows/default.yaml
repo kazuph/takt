@@ -90,7 +90,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: 実装完了
         next: ai_review
@@ -215,7 +215,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: edit
     pass_previous_response: true
     rules:
       - condition: AI問題の修正完了
@@ -395,7 +395,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: 修正完了
         next: reviewers

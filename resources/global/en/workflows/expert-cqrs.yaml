@@ -502,7 +502,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: Fix complete
         next: reviewers

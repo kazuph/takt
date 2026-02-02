@@ -7,7 +7,7 @@
 import { Codex } from '@openai/codex-sdk';
 import type { AgentResponse } from '../../core/models/index.js';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
-import type { CodexCallOptions } from './types.js';
+import { mapToCodexSandboxMode, type CodexCallOptions } from './types.js';
 import {
   type CodexEvent,
   type CodexItem,
@@ -39,9 +39,13 @@ export class CodexClient {
     options: CodexCallOptions,
   ): Promise<AgentResponse> {
     const codex = new Codex(options.openaiApiKey ? { apiKey: options.openaiApiKey } : undefined);
+    const sandboxMode = options.permissionMode
+      ? mapToCodexSandboxMode(options.permissionMode)
+      : 'workspace-write';
     const threadOptions = {
       model: options.model,
       workingDirectory: options.cwd,
+      sandboxMode,
     };
     const thread = options.sessionId
       ? await codex.resumeThread(options.sessionId, threadOptions)

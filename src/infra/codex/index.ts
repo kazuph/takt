@@ -3,4 +3,5 @@
  */
 
 export { CodexClient, callCodex, callCodexCustom } from './client.js';
-export type { CodexCallOptions } from './types.js';
+export { mapToCodexSandboxMode } from './types.js';
+export type { CodexCallOptions, CodexSandboxMode } from './types.js';

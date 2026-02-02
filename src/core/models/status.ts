@@ -25,5 +25,5 @@ export type RuleMatchMethod =
   | 'ai_judge'
   | 'ai_judge_fallback';
 
-/** Permission mode for tool execution */
-export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions';
+/** Permission mode for tool execution (provider-agnostic) */
+export type PermissionMode = 'readonly' | 'edit' | 'full';

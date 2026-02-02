@@ -15,6 +15,7 @@ export class CodexProvider implements Provider {
       sessionId: options.sessionId,
       model: options.model,
       systemPrompt: options.systemPrompt,
+      permissionMode: options.permissionMode,
       onStream: options.onStream,
       openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
     };
@@ -27,6 +28,7 @@ export class CodexProvider implements Provider {
       cwd: options.cwd,
       sessionId: options.sessionId,
       model: options.model,
+      permissionMode: options.permissionMode,
       onStream: options.onStream,
       openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
     };

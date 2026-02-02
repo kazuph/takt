@@ -53,7 +53,7 @@ export const StatusSchema = z.enum([
 ]);
 
 /** Permission mode schema for tool execution */
-export const PermissionModeSchema = z.enum(['default', 'acceptEdits', 'bypassPermissions']);
+export const PermissionModeSchema = z.enum(['readonly', 'edit', 'full']);
 
 /**
  * Report object schema (new structured format).

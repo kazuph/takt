@@ -152,8 +152,8 @@ export interface ClaudeSpawnOptions {
   onStream?: StreamCallback;
   /** Custom agents to register */
   agents?: Record<string, AgentDefinition>;
-  /** Permission mode for tool execution (default: 'default' for interactive) */
-  permissionMode?: SdkPermissionMode;
+  /** Permission mode for tool execution (TAKT abstract value, mapped to SDK value in SdkOptionsBuilder) */
+  permissionMode?: PermissionMode;
   /** Custom permission handler for interactive permission prompts */
   onPermissionRequest?: PermissionHandler;
   /** Custom handler for AskUserQuestion tool */

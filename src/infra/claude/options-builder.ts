@@ -14,8 +14,9 @@ import type {
   HookInput,
   HookJSONOutput,
   PreToolUseHookInput,
-  PermissionMode,
+  PermissionMode as SdkPermissionMode,
 } from '@anthropic-ai/claude-agent-sdk';
+import type { PermissionMode } from '../../core/models/index.js';
 import { createLogger } from '../../shared/utils/index.js';
 import type {
   PermissionHandler,
@@ -86,13 +87,23 @@ export class SdkOptionsBuilder {
     return sdkOptions;
   }
 
+  /** Map TAKT PermissionMode to Claude SDK PermissionMode */
+  static mapToSdkPermissionMode(mode: PermissionMode): SdkPermissionMode {
+    const mapping: Record<PermissionMode, SdkPermissionMode> = {
+      readonly: 'default',
+      edit: 'acceptEdits',
+      full: 'bypassPermissions',
+    };
+    return mapping[mode];
+  }
+
   /** Resolve permission mode with priority: bypassPermissions > explicit > callback-based > default */
-  private resolvePermissionMode(): PermissionMode {
+  private resolvePermissionMode(): SdkPermissionMode {
     if (this.options.bypassPermissions) {
       return 'bypassPermissions';
     }
     if (this.options.permissionMode) {
-      return this.options.permissionMode;
+      return SdkOptionsBuilder.mapToSdkPermissionMode(this.options.permissionMode);
     }
     if (this.options.onPermissionRequest) {
       return 'default';

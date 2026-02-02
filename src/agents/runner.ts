@@ -154,6 +154,26 @@ export class AgentRunner {
     return provider.callCustom(agentConfig.name, task, systemPrompt, callOptions);
   }
 
+  /** Build ProviderCallOptions from RunAgentOptions with optional systemPrompt override */
+  private static buildProviderCallOptions(
+    options: RunAgentOptions,
+    systemPrompt?: string,
+  ): ProviderCallOptions {
+    return {
+      cwd: options.cwd,
+      sessionId: options.sessionId,
+      allowedTools: options.allowedTools,
+      maxTurns: options.maxTurns,
+      model: AgentRunner.resolveModel(options.cwd, options),
+      systemPrompt,
+      permissionMode: options.permissionMode,
+      onStream: options.onStream,
+      onPermissionRequest: options.onPermissionRequest,
+      onAskUserQuestion: options.onAskUserQuestion,
+      bypassPermissions: options.bypassPermissions,
+    };
+  }
+
   /** Run an agent by name, path, inline prompt string, or no agent at all */
   async run(
     agentSpec: string | undefined,
@@ -174,25 +194,9 @@ export class AgentRunner {
     // 1. If agentPath is provided (resolved file exists), load prompt from file
     if (options.agentPath) {
       const systemPrompt = AgentRunner.loadAgentPromptFromPath(options.agentPath);
-
       const providerType = AgentRunner.resolveProvider(options.cwd, options);
       const provider = getProvider(providerType);
-
-      const callOptions: ProviderCallOptions = {
-        cwd: options.cwd,
-        sessionId: options.sessionId,
-        allowedTools: options.allowedTools,
-        maxTurns: options.maxTurns,
-        model: AgentRunner.resolveModel(options.cwd, options),
-        systemPrompt,
-        permissionMode: options.permissionMode,
-        onStream: options.onStream,
-        onPermissionRequest: options.onPermissionRequest,
-        onAskUserQuestion: options.onAskUserQuestion,
-        bypassPermissions: options.bypassPermissions,
-      };
-
-      return provider.call(agentName, task, callOptions);
+      return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options, systemPrompt));
     }
 
     // 2. If agentSpec is provided but no agentPath (file not found), try custom agent first,
@@ -207,42 +211,13 @@ export class AgentRunner {
       // Use agentSpec string as inline system prompt
       const providerType = AgentRunner.resolveProvider(options.cwd, options);
       const provider = getProvider(providerType);
-
-      const callOptions: ProviderCallOptions = {
-        cwd: options.cwd,
-        sessionId: options.sessionId,
-        allowedTools: options.allowedTools,
-        maxTurns: options.maxTurns,
-        model: AgentRunner.resolveModel(options.cwd, options),
-        systemPrompt: agentSpec,
-        permissionMode: options.permissionMode,
-        onStream: options.onStream,
-        onPermissionRequest: options.onPermissionRequest,
-        onAskUserQuestion: options.onAskUserQuestion,
-        bypassPermissions: options.bypassPermissions,
-      };
-
-      return provider.call(agentName, task, callOptions);
+      return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options, agentSpec));
     }
 
     // 3. No agent specified — run with instruction_template only (no system prompt)
     const providerType = AgentRunner.resolveProvider(options.cwd, options);
     const provider = getProvider(providerType);
-
-    const callOptions: ProviderCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      allowedTools: options.allowedTools,
-      maxTurns: options.maxTurns,
-      model: AgentRunner.resolveModel(options.cwd, options),
-      permissionMode: options.permissionMode,
-      onStream: options.onStream,
-      onPermissionRequest: options.onPermissionRequest,
-      onAskUserQuestion: options.onAskUserQuestion,
-      bypassPermissions: options.bypassPermissions,
-    };
-
-    return provider.call(agentName, task, callOptions);
+    return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options));
   }
 }
 

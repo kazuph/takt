@@ -43,14 +43,17 @@ describe('StatusSchema', () => {
 
 describe('PermissionModeSchema', () => {
   it('should accept valid permission modes', () => {
-    expect(PermissionModeSchema.parse('default')).toBe('default');
-    expect(PermissionModeSchema.parse('acceptEdits')).toBe('acceptEdits');
-    expect(PermissionModeSchema.parse('bypassPermissions')).toBe('bypassPermissions');
+    expect(PermissionModeSchema.parse('readonly')).toBe('readonly');
+    expect(PermissionModeSchema.parse('edit')).toBe('edit');
+    expect(PermissionModeSchema.parse('full')).toBe('full');
   });
 
   it('should reject invalid permission modes', () => {
     expect(() => PermissionModeSchema.parse('readOnly')).toThrow();
     expect(() => PermissionModeSchema.parse('admin')).toThrow();
+    expect(() => PermissionModeSchema.parse('default')).toThrow();
+    expect(() => PermissionModeSchema.parse('acceptEdits')).toThrow();
+    expect(() => PermissionModeSchema.parse('bypassPermissions')).toThrow();
   });
 });
 
@@ -87,7 +90,7 @@ describe('WorkflowConfigRawSchema', () => {
           name: 'implement',
           agent: 'coder',
           allowed_tools: ['Read', 'Edit', 'Write', 'Bash'],
-          permission_mode: 'acceptEdits',
+          permission_mode: 'edit',
           instruction: '{task}',
           rules: [
             { condition: 'Done', next: 'COMPLETE' },
@@ -97,7 +100,7 @@ describe('WorkflowConfigRawSchema', () => {
     };
 
     const result = WorkflowConfigRawSchema.parse(config);
-    expect(result.steps[0]?.permission_mode).toBe('acceptEdits');
+    expect(result.steps[0]?.permission_mode).toBe('edit');
   });
 
   it('should allow omitting permission_mode', () => {
