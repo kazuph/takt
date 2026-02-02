@@ -205,6 +205,21 @@ export class WorkflowEngine extends EventEmitter {
     }
   }
 
+  /** Resolve report file names for a step */
+  private getReportFileNames(step: WorkflowStep): string[] {
+    if (!step.report) return [];
+
+    if (typeof step.report === 'string') {
+      return [step.report];
+    }
+
+    if (isReportObjectConfig(step.report)) {
+      return [step.report.name];
+    }
+
+    return step.report.map((rc) => rc.path);
+  }
+
   /** Emit step:report if the report file exists */
   private emitIfReportExists(step: WorkflowStep, baseDir: string, fileName: string): void {
     const filePath = join(baseDir, fileName);
@@ -309,7 +324,10 @@ export class WorkflowEngine extends EventEmitter {
 
     // Phase 2: report output (resume same session, Write only)
     if (step.report) {
+      const reportFiles = this.getReportFileNames(step);
+      this.emit('phase:report:start', step, reportFiles);
       await runReportPhase(step, stepIteration, phaseCtx);
+      this.emit('phase:report:complete', step, reportFiles);
     }
 
     // Phase 3: status judgment (resume session, no tools, output status tag)
@@ -378,7 +396,10 @@ export class WorkflowEngine extends EventEmitter {
 
         // Phase 2: report output for sub-step
         if (subStep.report) {
+          const reportFiles = this.getReportFileNames(subStep);
+          this.emit('phase:report:start', subStep, reportFiles);
           await runReportPhase(subStep, subIteration, phaseCtx);
+          this.emit('phase:report:complete', subStep, reportFiles);
         }
 
         // Phase 3: status judgment for sub-step

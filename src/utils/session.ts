@@ -98,6 +98,16 @@ export interface NdjsonNeedsInput {
   timestamp: string;
 }
 
+/** NDJSON record: report phase progress */
+export interface NdjsonReportPhase {
+  type: 'report_phase';
+  phase: 'start' | 'complete';
+  step: string;
+  agent: string;
+  files: string[];
+  timestamp: string;
+}
+
 /** Union of all NDJSON record types */
 export type NdjsonRecord =
   | NdjsonWorkflowStart
@@ -106,7 +116,8 @@ export type NdjsonRecord =
   | NdjsonWorkflowComplete
   | NdjsonWorkflowAbort
   | NdjsonUserInput
-  | NdjsonNeedsInput;
+  | NdjsonNeedsInput
+  | NdjsonReportPhase;
 
 /**
  * Append a single NDJSON line to a log file.

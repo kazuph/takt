@@ -22,6 +22,7 @@ export type RuleMatchMethod =
   | 'aggregate'
   | 'phase3_tag'
   | 'phase1_tag'
+  | 'phase1_tag_conflict'
   | 'ai_judge'
   | 'ai_judge_fallback';
 

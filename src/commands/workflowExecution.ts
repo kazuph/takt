@@ -37,6 +37,7 @@ import {
   type NdjsonWorkflowAbort,
   type NdjsonUserInput,
   type NdjsonNeedsInput,
+  type NdjsonReportPhase,
   loadLatestSessionLog,
 } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
@@ -390,6 +391,32 @@ export async function executeWorkflow(
     const content = readFileSync(filePath, 'utf-8');
     console.log(`\n📄 Report: ${fileName}\n`);
     console.log(content);
+  });
+
+  engine.on('phase:report:start', (step, fileNames: string[]) => {
+    info(`レポート出力開始: ${step.name} (${fileNames.join(', ')})`);
+    const record: NdjsonReportPhase = {
+      type: 'report_phase',
+      phase: 'start',
+      step: step.name,
+      agent: step.agentDisplayName,
+      files: fileNames,
+      timestamp: new Date().toISOString(),
+    };
+    appendNdjsonLine(ndjsonLogPath, record);
+  });
+
+  engine.on('phase:report:complete', (step, fileNames: string[]) => {
+    info(`レポート出力完了: ${step.name} (${fileNames.join(', ')})`);
+    const record: NdjsonReportPhase = {
+      type: 'report_phase',
+      phase: 'complete',
+      step: step.name,
+      agent: step.agentDisplayName,
+      files: fileNames,
+      timestamp: new Date().toISOString(),
+    };
+    appendNdjsonLine(ndjsonLogPath, record);
   });
 
   engine.on('workflow:complete', (state) => {

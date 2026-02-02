@@ -59,20 +59,30 @@ export async function detectMatchedRule(
     return { index: aggIndex, method: 'aggregate' };
   }
 
+  const phase3Index = tagContent ? detectRuleIndex(tagContent, step.name) : -1;
+  const phase1Index = agentContent ? detectRuleIndex(agentContent, step.name) : -1;
+
+  if (
+    phase1Index >= 0 && phase1Index < step.rules.length &&
+    phase3Index >= 0 && phase3Index < step.rules.length &&
+    phase1Index !== phase3Index
+  ) {
+    log.info('Phase tag conflict detected, preferring phase1 tag', {
+      step: step.name,
+      phase1Index,
+      phase3Index,
+    });
+    return { index: phase1Index, method: 'phase1_tag_conflict' };
+  }
+
   // 2. Tag detection from Phase 3 output
-  if (tagContent) {
-    const ruleIndex = detectRuleIndex(tagContent, step.name);
-    if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-      return { index: ruleIndex, method: 'phase3_tag' };
-    }
+  if (phase3Index >= 0 && phase3Index < step.rules.length) {
+    return { index: phase3Index, method: 'phase3_tag' };
   }
 
   // 3. Tag detection from Phase 1 output (fallback)
-  if (agentContent) {
-    const ruleIndex = detectRuleIndex(agentContent, step.name);
-    if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-      return { index: ruleIndex, method: 'phase1_tag' };
-    }
+  if (phase1Index >= 0 && phase1Index < step.rules.length) {
+    return { index: phase1Index, method: 'phase1_tag' };
   }
 
   // 4. AI judge for ai() conditions only
