@@ -7,6 +7,8 @@
 
 import type { WorkflowStep, Language } from '../models/types.js';
 import { runAgent, type RunAgentOptions } from '../agents/runner.js';
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   buildReportInstruction as buildReportInstructionFromTemplate,
   buildStatusJudgmentInstruction as buildStatusJudgmentInstructionFromTemplate,
@@ -56,7 +58,7 @@ export async function runReportPhase(
 
   log.debug('Running report phase', { step: step.name, sessionId });
 
-  const reportInstruction = buildReportInstructionFromTemplate(step, {
+  const baseInstruction = buildReportInstructionFromTemplate(step, {
     cwd: ctx.cwd,
     reportDir: ctx.reportDir,
     stepIteration,
@@ -68,12 +70,47 @@ export async function runReportPhase(
     maxTurns: 3,
   });
 
-  const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
+  const reportConfig = step.report;
+  if (!reportConfig) {
+    throw new Error(`Report phase requires report config, but none found for step "${step.name}"`);
+  }
 
-  // Update session (phase 2 may update it)
-  ctx.updateAgentSession(step.agent, reportResponse.sessionId);
+  const reportPaths: string[] = [];
+  if (typeof reportConfig === 'string') {
+    reportPaths.push(reportConfig);
+  } else if (Array.isArray(reportConfig)) {
+    for (const rc of reportConfig) reportPaths.push(rc.path);
+  } else {
+    reportPaths.push(reportConfig.name);
+  }
 
-  log.debug('Report phase complete', { step: step.name, status: reportResponse.status });
+  const reportFiles = reportPaths.map((p) => join(ctx.reportDir, p));
+
+  const hasReportFiles = (): boolean => {
+    return reportFiles.every((file) => {
+      if (!existsSync(file)) return false;
+      const stat = statSync(file);
+      return stat.size > 0;
+    });
+  };
+
+  const attempts = [
+    baseInstruction,
+    `${baseInstruction}\n\n**重要:** レポートファイルに必ず Write してください。本文を直接出力せず、指定パスに保存してください。`,
+  ];
+
+  for (const [i, reportInstruction] of attempts.entries()) {
+    const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
+    ctx.updateAgentSession(step.agent, reportResponse.sessionId);
+
+    if (hasReportFiles()) {
+      log.debug('Report phase complete', { step: step.name, status: reportResponse.status, attempt: i + 1 });
+      return;
+    }
+    log.info('Report files missing after report phase', { step: step.name, attempt: i + 1 });
+  }
+
+  throw new Error(`Report phase failed: report files not written for step "${step.name}"`);
 }
 
 /**
