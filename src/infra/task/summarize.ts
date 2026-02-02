@@ -7,7 +7,7 @@
 import * as wanakana from 'wanakana';
 import { loadGlobalConfig } from '../config/global/globalConfig.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
-import { createLogger } from '../../shared/utils/debug.js';
+import { createLogger } from '../../shared/utils/index.js';
 import type { SummarizeOptions } from './types.js';
 
 export type { SummarizeOptions };

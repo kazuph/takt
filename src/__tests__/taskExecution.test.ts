@@ -11,20 +11,24 @@ vi.mock('../infra/config/index.js', () => ({
   loadGlobalConfig: vi.fn(() => ({})),
 }));
 
-vi.mock('../infra/task/index.js', () => ({
+vi.mock('../infra/task/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   TaskRunner: vi.fn(),
 }));
 
-vi.mock('../infra/task/clone.js', () => ({
+vi.mock('../infra/task/clone.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createSharedClone: vi.fn(),
   removeClone: vi.fn(),
 }));
 
-vi.mock('../infra/task/autoCommit.js', () => ({
+vi.mock('../infra/task/autoCommit.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   autoCommitAndPush: vi.fn(),
 }));
 
-vi.mock('../infra/task/summarize.js', () => ({
+vi.mock('../infra/task/summarize.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   summarizeTaskName: vi.fn(),
 }));
 
@@ -37,15 +41,13 @@ vi.mock('../shared/ui/index.js', () => ({
   blankLine: vi.fn(),
 }));
 
-vi.mock('../shared/utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
     error: vi.fn(),
   }),
-}));
-
-vi.mock('../shared/utils/error.js', () => ({
   getErrorMessage: vi.fn((e) => e.message),
 }));
 
@@ -53,11 +55,11 @@ vi.mock('../features/tasks/execute/workflowExecution.js', () => ({
   executeWorkflow: vi.fn(),
 }));
 
-vi.mock('../context.js', () => ({
+vi.mock('../shared/context.js', () => ({
   isQuietMode: vi.fn(() => false),
 }));
 
-vi.mock('../constants.js', () => ({
+vi.mock('../shared/constants.js', () => ({
   DEFAULT_WORKFLOW_NAME: 'default',
   DEFAULT_LANGUAGE: 'en',
 }));

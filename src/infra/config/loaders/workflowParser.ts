@@ -101,7 +101,13 @@ const AGGREGATE_CONDITION_REGEX = /^(all|any)\("(.+)"\)$/;
 /**
  * Parse a rule's condition for ai() and all()/any() expressions.
  */
-function normalizeRule(r: { condition: string; next?: string; appendix?: string }): WorkflowRule {
+function normalizeRule(r: {
+  condition: string;
+  next?: string;
+  appendix?: string;
+  requires_user_input?: boolean;
+  interactive_only?: boolean;
+}): WorkflowRule {
   const next = r.next ?? '';
   const aiMatch = r.condition.match(AI_CONDITION_REGEX);
   if (aiMatch?.[1]) {
@@ -109,6 +115,8 @@ function normalizeRule(r: { condition: string; next?: string; appendix?: string 
       condition: r.condition,
       next,
       appendix: r.appendix,
+      requiresUserInput: r.requires_user_input,
+      interactiveOnly: r.interactive_only,
       isAiCondition: true,
       aiConditionText: aiMatch[1],
     };
@@ -120,6 +128,8 @@ function normalizeRule(r: { condition: string; next?: string; appendix?: string 
       condition: r.condition,
       next,
       appendix: r.appendix,
+      requiresUserInput: r.requires_user_input,
+      interactiveOnly: r.interactive_only,
       isAggregateCondition: true,
       aggregateType: aggMatch[1] as 'all' | 'any',
       aggregateConditionText: aggMatch[2],
@@ -130,6 +140,8 @@ function normalizeRule(r: { condition: string; next?: string; appendix?: string 
     condition: r.condition,
     next,
     appendix: r.appendix,
+    requiresUserInput: r.requires_user_input,
+    interactiveOnly: r.interactive_only,
   };
 }
 

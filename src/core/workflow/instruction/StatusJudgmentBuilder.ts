@@ -28,6 +28,8 @@ const STATUS_JUDGMENT_STRINGS = {
 export interface StatusJudgmentContext {
   /** Language */
   language?: Language;
+  /** Whether interactive-only rules are enabled */
+  interactive?: boolean;
 }
 
 /**
@@ -52,7 +54,12 @@ export class StatusJudgmentBuilder {
     sections.push(s.header);
 
     // Status rules (criteria table + output format)
-    const generatedPrompt = generateStatusRulesFromRules(this.step.name, this.step.rules, language);
+    const generatedPrompt = generateStatusRulesFromRules(
+      this.step.name,
+      this.step.rules,
+      language,
+      { interactive: this.context.interactive },
+    );
     sections.push(generatedPrompt);
 
     return sections.join('\n\n');

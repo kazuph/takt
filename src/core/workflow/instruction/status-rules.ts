@@ -47,9 +47,14 @@ export function generateStatusRulesFromRules(
   stepName: string,
   rules: WorkflowRule[],
   language: Language,
+  options?: { interactive?: boolean },
 ): string {
   const tag = stepName.toUpperCase();
   const strings = RULES_PROMPT_STRINGS[language];
+  const interactiveEnabled = options?.interactive;
+  const visibleRules = rules
+    .map((rule, index) => ({ rule, index }))
+    .filter(({ rule }) => interactiveEnabled !== false || !rule.interactiveOnly);
 
   const lines: string[] = [];
 
@@ -58,8 +63,8 @@ export function generateStatusRulesFromRules(
   lines.push('');
   lines.push(`| ${strings.headerNum} | ${strings.headerCondition} | ${strings.headerTag} |`);
   lines.push('|---|------|------|');
-  for (const [i, rule] of rules.entries()) {
-    lines.push(`| ${i + 1} | ${rule.condition} | \`[${tag}:${i + 1}]\` |`);
+  for (const { rule, index } of visibleRules) {
+    lines.push(`| ${index + 1} | ${rule.condition} | \`[${tag}:${index + 1}]\` |`);
   }
   lines.push('');
 
@@ -68,18 +73,18 @@ export function generateStatusRulesFromRules(
   lines.push('');
   lines.push(strings.outputInstruction);
   lines.push('');
-  for (const [i, rule] of rules.entries()) {
-    lines.push(`- \`[${tag}:${i + 1}]\` — ${rule.condition}`);
+  for (const { rule, index } of visibleRules) {
+    lines.push(`- \`[${tag}:${index + 1}]\` — ${rule.condition}`);
   }
 
   // Appendix templates (if any rules have appendix)
-  const rulesWithAppendix = rules.filter((r) => r.appendix);
+  const rulesWithAppendix = visibleRules.filter(({ rule }) => rule.appendix);
   if (rulesWithAppendix.length > 0) {
     lines.push('');
     lines.push(strings.appendixHeading);
-    for (const [i, rule] of rules.entries()) {
+    for (const { rule, index } of visibleRules) {
       if (!rule.appendix) continue;
-      const tagStr = `[${tag}:${i + 1}]`;
+      const tagStr = `[${tag}:${index + 1}]`;
       lines.push('');
       lines.push(strings.appendixInstruction.replace('{tag}', tagStr));
       lines.push('```');

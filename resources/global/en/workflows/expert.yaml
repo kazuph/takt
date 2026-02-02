@@ -156,9 +156,13 @@ steps:
       - condition: Implementation is complete
         next: ai_review
       - condition: No implementation (report only)
-        next: plan
+        next: ai_review
       - condition: Cannot proceed with implementation
-        next: plan
+        next: ai_review
+      - condition: User input required
+        next: implement
+        requires_user_input: true
+        interactive_only: true
 
   # ===========================================
   # Phase 2: AI Review
@@ -271,7 +275,6 @@ steps:
       - {command and outcome}
 
       **No-implementation handling (required)**
-      - If you only produced reports and made no code changes, output the tag for "No implementation (report only)"
     pass_previous_response: true
     rules:
       - condition: AI Reviewer's issues have been fixed
@@ -522,6 +525,17 @@ steps:
       Address the feedback from the reviewers.
       The "Original User Request" is reference information, not the latest instruction.
       Review the session conversation history and fix the issues raised by the reviewers.
+
+
+      **Required output (include headings)**
+      ## Work done
+      - {summary of work performed}
+      ## Changes made
+      - {summary of code changes}
+      ## Test results
+      - {command and outcome}
+      ## Evidence
+      - {key files/grep/diff/log evidence you verified}
     pass_previous_response: true
 
   # ===========================================
@@ -637,6 +651,17 @@ steps:
 
       The supervisor has identified issues from a big-picture perspective.
       Address items in priority order.
+
+
+      **Required output (include headings)**
+      ## Work done
+      - {summary of work performed}
+      ## Changes made
+      - {summary of code changes}
+      ## Test results
+      - {command and outcome}
+      ## Evidence
+      - {key files/grep/diff/log evidence you verified}
     pass_previous_response: true
     rules:
       - condition: Supervisor's issues have been fixed

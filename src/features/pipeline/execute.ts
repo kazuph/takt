@@ -10,22 +10,27 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { fetchIssue, formatIssueAsTask, checkGhCli } from '../../infra/github/issue.js';
-import type { GitHubIssue } from '../../infra/github/types.js';
-import { createPullRequest, pushBranch, buildPrBody } from '../../infra/github/pr.js';
-import { stageAndCommit } from '../../infra/task/git.js';
+import {
+  fetchIssue,
+  formatIssueAsTask,
+  checkGhCli,
+  createPullRequest,
+  pushBranch,
+  buildPrBody,
+  type GitHubIssue,
+} from '../../infra/github/index.js';
+import { stageAndCommit } from '../../infra/task/index.js';
 import { executeTask, type TaskExecutionOptions, type PipelineExecutionOptions } from '../tasks/index.js';
-import { loadGlobalConfig } from '../../infra/config/global/globalConfig.js';
+import { loadGlobalConfig } from '../../infra/config/index.js';
 import { info, error, success, status, blankLine } from '../../shared/ui/index.js';
-import { createLogger } from '../../shared/utils/debug.js';
-import { getErrorMessage } from '../../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import type { PipelineConfig } from '../../core/models/index.js';
 import {
   EXIT_ISSUE_FETCH_FAILED,
   EXIT_WORKFLOW_FAILED,
   EXIT_GIT_OPERATION_FAILED,
   EXIT_PR_CREATION_FAILED,
-} from '../../exitCodes.js';
+} from '../../shared/exitCodes.js';
 
 export type { PipelineExecutionOptions };
 

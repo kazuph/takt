@@ -8,7 +8,7 @@ import type { Command } from 'commander';
 import type { TaskExecutionOptions } from '../../features/tasks/index.js';
 import type { ProviderType } from '../../infra/providers/index.js';
 import { error } from '../../shared/ui/index.js';
-import { isIssueReference } from '../../infra/github/issue.js';
+import { isIssueReference } from '../../infra/github/index.js';
 
 /**
  * Resolve --provider and --model options into TaskExecutionOptions.

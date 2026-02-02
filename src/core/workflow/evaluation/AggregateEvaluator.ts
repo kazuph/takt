@@ -5,7 +5,7 @@
  */
 
 import type { WorkflowStep, WorkflowState } from '../../models/types.js';
-import { createLogger } from '../../../shared/utils/debug.js';
+import { createLogger } from '../../../shared/utils/index.js';
 
 const log = createLogger('aggregate-evaluator');
 

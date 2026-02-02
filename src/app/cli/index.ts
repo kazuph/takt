@@ -6,7 +6,7 @@
  * Import order matters: program setup → commands → routing → parse.
  */
 
-import { checkForUpdates } from '../../shared/utils/updateNotifier.js';
+import { checkForUpdates } from '../../shared/utils/index.js';
 
 checkForUpdates();
 

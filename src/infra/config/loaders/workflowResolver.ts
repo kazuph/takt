@@ -11,8 +11,7 @@ import { homedir } from 'node:os';
 import type { WorkflowConfig } from '../../../core/models/index.js';
 import { getGlobalWorkflowsDir, getBuiltinWorkflowsDir, getProjectConfigDir } from '../paths.js';
 import { getLanguage, getDisabledBuiltins } from '../global/globalConfig.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { getErrorMessage } from '../../../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { loadWorkflowFromFile } from './workflowParser.js';
 
 const log = createLogger('workflow-resolver');

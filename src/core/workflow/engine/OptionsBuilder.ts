@@ -58,6 +58,8 @@ export class OptionsBuilder {
   ): RunAgentOptions {
     return {
       ...this.buildBaseOptions(step),
+      // Do not pass permission mode in report/status phases.
+      permissionMode: undefined,
       sessionId,
       allowedTools: overrides.allowedTools,
       maxTurns: overrides.maxTurns,
@@ -73,6 +75,7 @@ export class OptionsBuilder {
       cwd: this.getCwd(),
       reportDir: join(this.getProjectCwd(), this.getReportDir()),
       language: this.getLanguage(),
+      interactive: this.engineOptions.interactive,
       getSessionId: (agent: string) => state.agentSessions.get(agent),
       buildResumeOptions: this.buildResumeOptions.bind(this),
       updateAgentSession,

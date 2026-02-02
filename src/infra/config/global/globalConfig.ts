@@ -11,7 +11,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { GlobalConfigSchema } from '../../../core/models/index.js';
 import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/index.js';
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
-import { DEFAULT_LANGUAGE } from '../../../constants.js';
+import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
 
 /** Create default global configuration (fresh instance each call) */
 function createDefaultGlobalConfig(): GlobalConfig {

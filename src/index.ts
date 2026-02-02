@@ -7,8 +7,39 @@
 // Models
 export * from './core/models/index.js';
 
-// Configuration
-export * from './infra/config/index.js';
+// Configuration (PermissionMode excluded to avoid name conflict with core/models PermissionMode)
+export * from './infra/config/paths.js';
+export * from './infra/config/loaders/index.js';
+export * from './infra/config/global/index.js';
+export {
+  loadProjectConfig,
+  saveProjectConfig,
+  updateProjectConfig,
+  getCurrentWorkflow,
+  setCurrentWorkflow,
+  isVerboseMode,
+  type ProjectPermissionMode,
+  type ProjectLocalConfig,
+  writeFileAtomic,
+  getInputHistoryPath,
+  MAX_INPUT_HISTORY,
+  loadInputHistory,
+  saveInputHistory,
+  addToInputHistory,
+  type AgentSessionData,
+  getAgentSessionsPath,
+  loadAgentSessions,
+  saveAgentSessions,
+  updateAgentSession,
+  clearAgentSessions,
+  getWorktreeSessionsDir,
+  encodeWorktreePath,
+  getWorktreeSessionPath,
+  loadWorktreeSessions,
+  updateWorktreeSession,
+  getClaudeProjectSessionsDir,
+  clearClaudeProjectSessions,
+} from './infra/config/project/index.js';
 
 // Claude integration
 export {
@@ -40,7 +71,7 @@ export {
   detectJudgeIndex,
   buildJudgePrompt,
   isRegexSafe,
-} from './claude/index.js';
+} from './infra/claude/index.js';
 export type {
   StreamEvent,
   StreamCallback,
@@ -60,10 +91,10 @@ export type {
   ThinkingEventData,
   ResultEventData,
   ErrorEventData,
-} from './claude/index.js';
+} from './infra/claude/index.js';
 
 // Codex integration
-export * from './codex/index.js';
+export * from './infra/codex/index.js';
 
 // Agent execution
 export * from './agents/index.js';
@@ -117,6 +148,10 @@ export type {
 // Utilities
 export * from './shared/utils/index.js';
 export * from './shared/ui/index.js';
+export * from './shared/prompt/index.js';
+export * from './shared/constants.js';
+export * from './shared/context.js';
+export * from './shared/exitCodes.js';
 
 // Resources (embedded prompts and templates)
-export * from './resources/index.js';
+export * from './infra/resources/index.js';

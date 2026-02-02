@@ -23,7 +23,7 @@ vi.mock('../infra/config/global/globalConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { loadWorkflow } from '../infra/config/loaders/workflowLoader.js';
+import { loadWorkflow } from '../infra/config/index.js';
 
 // --- Test helpers ---
 

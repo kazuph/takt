@@ -369,6 +369,20 @@ describe('instruction-builder', () => {
 
       expect(result).toContain('`[AI_REVIEW:1]`');
     });
+
+    it('should omit interactive-only rules when interactive is false', () => {
+      const filteredRules: WorkflowRule[] = [
+        { condition: 'Clear', next: 'implement' },
+        { condition: 'User input required', next: 'implement', interactiveOnly: true },
+        { condition: 'Blocked', next: 'plan' },
+      ];
+      const result = generateStatusRulesFromRules('implement', filteredRules, 'en', { interactive: false });
+
+      expect(result).toContain('`[IMPLEMENT:1]`');
+      expect(result).toContain('`[IMPLEMENT:3]`');
+      expect(result).not.toContain('User input required');
+      expect(result).not.toContain('`[IMPLEMENT:2]`');
+    });
   });
 
   describe('buildInstruction with rules (Phase 1 — status rules injection)', () => {

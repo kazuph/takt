@@ -12,7 +12,8 @@ vi.mock('../infra/providers/index.js', () => ({
   getProvider: vi.fn(),
 }));
 
-vi.mock('../shared/utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -20,13 +21,15 @@ vi.mock('../shared/utils/debug.js', () => ({
   }),
 }));
 
-vi.mock('../context.js', () => ({
+vi.mock('../shared/context.js', () => ({
   isQuietMode: vi.fn(() => false),
 }));
 
-vi.mock('../infra/config/paths.js', () => ({
+vi.mock('../infra/config/paths.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   loadAgentSessions: vi.fn(() => ({})),
   updateAgentSession: vi.fn(),
+  getProjectConfigDir: vi.fn(() => '/tmp'),
 }));
 
 vi.mock('../shared/ui/index.js', () => ({
@@ -39,7 +42,7 @@ vi.mock('../shared/ui/index.js', () => ({
   })),
 }));
 
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   selectOption: vi.fn(),
 }));
 
@@ -51,7 +54,7 @@ vi.mock('node:readline', () => ({
 import { createInterface } from 'node:readline';
 import { getProvider } from '../infra/providers/index.js';
 import { interactiveMode } from '../features/interactive/index.js';
-import { selectOption } from '../prompt/index.js';
+import { selectOption } from '../shared/prompt/index.js';
 
 const mockGetProvider = vi.mocked(getProvider);
 const mockCreateInterface = vi.mocked(createInterface);

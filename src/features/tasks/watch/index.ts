@@ -5,9 +5,8 @@
  * Stays resident until Ctrl+C (SIGINT).
  */
 
-import { TaskRunner, type TaskInfo } from '../../../infra/task/index.js';
-import { TaskWatcher } from '../../../infra/task/watcher.js';
-import { getCurrentWorkflow } from '../../../infra/config/paths.js';
+import { TaskRunner, type TaskInfo, TaskWatcher } from '../../../infra/task/index.js';
+import { getCurrentWorkflow } from '../../../infra/config/index.js';
 import {
   header,
   info,
@@ -16,7 +15,7 @@ import {
   blankLine,
 } from '../../../shared/ui/index.js';
 import { executeAndCompleteTask } from '../execute/taskExecution.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../constants.js';
+import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
 import type { TaskExecutionOptions } from '../execute/types.js';
 
 /**

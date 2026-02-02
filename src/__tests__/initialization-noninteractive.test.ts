@@ -20,7 +20,7 @@ vi.mock('node:os', async () => {
 
 // Mock the prompt to track if it was called
 const mockSelectOption = vi.fn().mockResolvedValue('en');
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   selectOptionWithDefault: mockSelectOption,
 }));
 

@@ -19,7 +19,7 @@ import { InstructionBuilder, isReportObjectConfig } from '../instruction/Instruc
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { incrementStepIteration, getPreviousOutput } from './state-manager.js';
-import { createLogger } from '../../../shared/utils/debug.js';
+import { createLogger } from '../../../shared/utils/index.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
 
 const log = createLogger('step-executor');
@@ -30,6 +30,13 @@ export interface StepExecutorDeps {
   readonly getProjectCwd: () => string;
   readonly getReportDir: () => string;
   readonly getLanguage: () => Language | undefined;
+  readonly getInteractive: () => boolean;
+  readonly detectRuleIndex: (content: string, stepName: string) => number;
+  readonly callAiJudge: (
+    agentOutput: string,
+    conditions: Array<{ index: number; text: string }>,
+    options: { cwd: string }
+  ) => Promise<number>;
 }
 
 export class StepExecutor {
@@ -54,8 +61,9 @@ export class StepExecutor {
       projectCwd: this.deps.getProjectCwd(),
       userInputs: state.userInputs,
       previousOutput: getPreviousOutput(state),
-      reportDir: join(this.deps.getCwd(), this.deps.getReportDir()),
+      reportDir: join(this.deps.getProjectCwd(), this.deps.getReportDir()),
       language: this.deps.getLanguage(),
+      interactive: this.deps.getInteractive(),
     }).build();
   }
 
@@ -106,6 +114,9 @@ export class StepExecutor {
     const match = await detectMatchedRule(step, response.content, tagContent, {
       state,
       cwd: this.deps.getCwd(),
+      interactive: this.deps.getInteractive(),
+      detectRuleIndex: this.deps.detectRuleIndex,
+      callAiJudge: this.deps.callAiJudge,
     });
     if (match) {
       log.debug('Rule matched', { step: step.name, ruleIndex: match.index, method: match.method });

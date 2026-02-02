@@ -8,18 +8,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
-import { promptInput, confirm, selectOption } from '../../../prompt/index.js';
+import { promptInput, confirm, selectOption } from '../../../shared/prompt/index.js';
 import { success, info } from '../../../shared/ui/index.js';
-import { summarizeTaskName } from '../../../infra/task/summarize.js';
-import { loadGlobalConfig } from '../../../infra/config/global/globalConfig.js';
+import { summarizeTaskName, type TaskFileData } from '../../../infra/task/index.js';
+import { loadGlobalConfig, listWorkflows, getCurrentWorkflow } from '../../../infra/config/index.js';
 import { getProvider, type ProviderType } from '../../../infra/providers/index.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { getErrorMessage } from '../../../shared/utils/error.js';
-import { listWorkflows } from '../../../infra/config/loaders/workflowLoader.js';
-import { getCurrentWorkflow } from '../../../infra/config/paths.js';
+import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
+import { isIssueReference, resolveIssueTask, parseIssueNumbers } from '../../../infra/github/index.js';
 import { interactiveMode } from '../../interactive/index.js';
-import { isIssueReference, resolveIssueTask, parseIssueNumbers } from '../../../infra/github/issue.js';
-import type { TaskFileData } from '../../../infra/task/schema.js';
 
 const log = createLogger('add-task');
 

@@ -23,6 +23,7 @@ export type {
   StreamEvent,
   StreamCallback,
   PermissionHandler,
+  PermissionResult,
   AskUserQuestionHandler,
   ProviderType,
 } from './types.js';

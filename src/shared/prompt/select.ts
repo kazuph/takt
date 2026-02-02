@@ -5,7 +5,7 @@
  */
 
 import chalk from 'chalk';
-import { truncateText } from '../shared/utils/text.js';
+import { truncateText } from '../utils/index.js';
 
 /** Option type for selectOption */
 export interface SelectOptionItem<T extends string> {

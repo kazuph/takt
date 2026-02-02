@@ -10,8 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createLogger } from '../../shared/utils/debug.js';
-import { slugify } from '../../shared/utils/slug.js';
+import { createLogger, slugify } from '../../shared/utils/index.js';
 import { loadGlobalConfig } from '../config/global/globalConfig.js';
 import type { WorktreeOptions, WorktreeResult } from './types.js';
 

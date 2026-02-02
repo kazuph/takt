@@ -13,13 +13,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
 import type { WorkflowConfig, WorkflowStep, WorkflowRule } from '../core/models/index.js';
+import { callAiJudge, detectRuleIndex } from '../infra/claude/index.js';
 
 // --- Mocks ---
 
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
     callAiJudge: vi.fn().mockResolvedValue(-1),
@@ -36,7 +37,8 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: (...args: unknown[]) => mockRunStatusJudgmentPhase(...args),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
 }));
@@ -71,6 +73,14 @@ function createTestEnv(): { dir: string; agentPath: string } {
   writeFileSync(agentPath, 'You are an agent.');
 
   return { dir, agentPath };
+}
+
+function buildEngineOptions(projectCwd: string) {
+  return {
+    projectCwd,
+    detectRuleIndex,
+    callAiJudge,
+  };
 }
 
 function makeStep(
@@ -132,7 +142,7 @@ describe('Three-Phase Execution IT: phase1 only (no report, no tag rules)', () =
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -184,7 +194,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -213,7 +223,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -265,7 +275,7 @@ describe('Three-Phase Execution IT: phase1 + phase3 (tag rules defined)', () => 
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -316,7 +326,7 @@ describe('Three-Phase Execution IT: all three phases', () => {
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -379,7 +389,7 @@ describe('Three-Phase Execution IT: phase3 tag → rule match', () => {
     };
 
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 

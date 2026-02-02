@@ -5,8 +5,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { createLogger } from '../../shared/utils/debug.js';
-import { getErrorMessage } from '../../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { checkGhCli } from './issue.js';
 import type { GitHubIssue, CreatePrOptions, CreatePrResult } from './types.js';
 

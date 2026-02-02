@@ -13,6 +13,10 @@ export interface WorkflowRule {
   next?: string;
   /** Template for additional AI output */
   appendix?: string;
+  /** Require user input before continuing (interactive mode only) */
+  requiresUserInput?: boolean;
+  /** Rule applies only in interactive mode */
+  interactiveOnly?: boolean;
   /** Whether this condition uses ai() expression (set by loader) */
   isAiCondition?: boolean;
   /** The condition text inside ai("...") for AI judge evaluation (set by loader) */

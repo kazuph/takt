@@ -18,7 +18,7 @@ import { runAgent } from '../agents/runner.js';
 import { detectMatchedRule } from '../core/workflow/index.js';
 import type { RuleMatch } from '../core/workflow/index.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/workflow/index.js';
-import { generateReportDir } from '../shared/utils/reportDir.js';
+import { generateReportDir } from '../shared/utils/index.js';
 
 // --- Factory functions ---
 

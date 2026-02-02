@@ -2,7 +2,7 @@
  * Type definitions for Codex SDK integration
  */
 
-import type { StreamCallback } from '../claude/types.js';
+import type { StreamCallback } from '../claude/index.js';
 
 /** Options for calling Codex */
 export interface CodexCallOptions {

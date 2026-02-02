@@ -2,10 +2,9 @@
  * Workflow switching command
  */
 
-import { listWorkflows, loadWorkflow } from '../../infra/config/loaders/workflowLoader.js';
-import { getCurrentWorkflow, setCurrentWorkflow } from '../../infra/config/paths.js';
+import { listWorkflows, loadWorkflow, getCurrentWorkflow, setCurrentWorkflow } from '../../infra/config/index.js';
 import { info, success, error } from '../../shared/ui/index.js';
-import { selectOption } from '../../prompt/index.js';
+import { selectOption } from '../../shared/prompt/index.js';
 
 /**
  * Get all available workflow options

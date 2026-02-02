@@ -5,7 +5,7 @@
  * used throughout the takt codebase.
  */
 
-import type { StreamCallback } from '../claude/types.js';
+import type { StreamCallback } from '../claude/index.js';
 
 export type CodexEvent = {
   type: string;

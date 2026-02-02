@@ -15,7 +15,7 @@ import { ParallelLogger } from './parallel-logger.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { incrementStepIteration } from './state-manager.js';
-import { createLogger } from '../../../shared/utils/debug.js';
+import { createLogger } from '../../../shared/utils/index.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
 import type { StepExecutor } from './StepExecutor.js';
 import type { WorkflowEngineOptions } from '../types.js';
@@ -28,6 +28,13 @@ export interface ParallelRunnerDeps {
   readonly engineOptions: WorkflowEngineOptions;
   readonly getCwd: () => string;
   readonly getReportDir: () => string;
+  readonly getInteractive: () => boolean;
+  readonly detectRuleIndex: (content: string, stepName: string) => number;
+  readonly callAiJudge: (
+    agentOutput: string,
+    conditions: Array<{ index: number; text: string }>,
+    options: { cwd: string }
+  ) => Promise<number>;
 }
 
 export class ParallelRunner {
@@ -63,7 +70,13 @@ export class ParallelRunner {
       : undefined;
 
     const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, updateAgentSession);
-    const ruleCtx = { state, cwd: this.deps.getCwd() };
+    const ruleCtx = {
+      state,
+      cwd: this.deps.getCwd(),
+      interactive: this.deps.getInteractive(),
+      detectRuleIndex: this.deps.detectRuleIndex,
+      callAiJudge: this.deps.callAiJudge,
+    };
 
     // Run all sub-steps concurrently
     const subResults = await Promise.all(

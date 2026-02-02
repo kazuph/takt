@@ -21,6 +21,8 @@ export interface WorkflowExecutionOptions {
   language?: Language;
   provider?: ProviderType;
   model?: string;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
 }
 
 export interface TaskExecutionOptions {
@@ -39,6 +41,8 @@ export interface ExecuteTaskOptions {
   projectCwd: string;
   /** Agent provider/model overrides */
   agentOverrides?: TaskExecutionOptions;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
 }
 
 export interface PipelineExecutionOptions {
@@ -73,4 +77,6 @@ export interface SelectAndExecuteOptions {
   repo?: string;
   workflow?: string;
   createWorktree?: boolean | undefined;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
 }

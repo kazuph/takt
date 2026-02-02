@@ -28,19 +28,15 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
-}));
-
-vi.mock('../claude/query-manager.js', () => ({
-  interruptAllQueries: vi.fn().mockReturnValue(0),
 }));
 
 // --- Imports (after mocks) ---
 
 import { WorkflowEngine } from '../core/workflow/index.js';
 import { runAgent } from '../agents/runner.js';
-import { interruptAllQueries } from '../claude/query-manager.js';
 import {
   makeResponse,
   makeStep,
@@ -128,23 +124,11 @@ describe('WorkflowEngine: Abort (SIGINT)', () => {
       expect(state.status).toBe('aborted');
       expect(abortFn).toHaveBeenCalledOnce();
       expect(abortFn.mock.calls[0][1]).toContain('SIGINT');
-      expect(vi.mocked(interruptAllQueries)).toHaveBeenCalled();
-    });
-  });
-
-  describe('abort() calls interruptAllQueries', () => {
-    it('should call interruptAllQueries when abort() is called', () => {
-      const config = makeSimpleConfig();
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
-
-      engine.abort();
-
-      expect(vi.mocked(interruptAllQueries)).toHaveBeenCalledOnce();
     });
   });
 
   describe('abort() idempotency', () => {
-    it('should only call interruptAllQueries once on multiple abort() calls', () => {
+    it('should remain abort-requested on multiple abort() calls', () => {
       const config = makeSimpleConfig();
       const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
@@ -152,7 +136,7 @@ describe('WorkflowEngine: Abort (SIGINT)', () => {
       engine.abort();
       engine.abort();
 
-      expect(vi.mocked(interruptAllQueries)).toHaveBeenCalledOnce();
+      expect(engine.isAbortRequested()).toBe(true);
     });
   });
 

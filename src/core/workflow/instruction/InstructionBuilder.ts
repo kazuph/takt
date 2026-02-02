@@ -136,7 +136,12 @@ export class InstructionBuilder {
 
     // 7. Status Output Rules (for tag-based detection in Phase 1)
     if (hasTagBasedRules(this.step)) {
-      const statusRulesPrompt = generateStatusRulesFromRules(this.step.name, this.step.rules!, language);
+      const statusRulesPrompt = generateStatusRulesFromRules(
+        this.step.name,
+        this.step.rules!,
+        language,
+        { interactive: this.context.interactive },
+      );
       sections.push(statusRulesPrompt);
     }
 

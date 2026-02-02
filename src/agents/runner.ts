@@ -8,13 +8,11 @@ import {
   callClaudeAgent,
   callClaudeSkill,
   type ClaudeCallOptions,
-} from '../claude/client.js';
-import { loadCustomAgents, loadAgentPrompt } from '../infra/config/loaders/loader.js';
-import { loadGlobalConfig } from '../infra/config/global/globalConfig.js';
-import { loadProjectConfig } from '../infra/config/project/projectConfig.js';
+} from '../infra/claude/index.js';
+import { loadCustomAgents, loadAgentPrompt, loadGlobalConfig, loadProjectConfig } from '../infra/config/index.js';
 import { getProvider, type ProviderType, type ProviderCallOptions } from '../infra/providers/index.js';
 import type { AgentResponse, CustomAgentConfig } from '../core/models/index.js';
-import { createLogger } from '../shared/utils/debug.js';
+import { createLogger } from '../shared/utils/index.js';
 import type { RunAgentOptions } from './types.js';
 
 // Re-export for backward compatibility

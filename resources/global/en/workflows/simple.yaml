@@ -100,9 +100,13 @@ steps:
       - condition: Implementation complete
         next: ai_review
       - condition: No implementation (report only)
-        next: plan
+        next: ai_review
       - condition: Cannot proceed, insufficient info
-        next: plan
+        next: ai_review
+      - condition: User input required
+        next: implement
+        requires_user_input: true
+        interactive_only: true
     instruction_template: |
       Follow the plan from the plan step and implement.
       Refer to the plan report ({report:00-plan.md}) and proceed with implementation.
@@ -147,7 +151,6 @@ steps:
       - {command and outcome}
 
       **No-implementation handling (required)**
-      - If you only produced reports and made no code changes, output the tag for "No implementation (report only)"
 
       **Required output (include headings)**
       ## Work done

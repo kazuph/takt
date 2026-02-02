@@ -7,7 +7,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
-import { copyProjectResourcesToDir } from '../../../resources/index.js';
+import { copyProjectResourcesToDir } from '../../resources/index.js';
 import type { PermissionMode, ProjectPermissionMode, ProjectLocalConfig } from '../types.js';
 
 export type { PermissionMode, ProjectPermissionMode, ProjectLocalConfig };

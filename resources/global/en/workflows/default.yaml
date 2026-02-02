@@ -104,9 +104,13 @@ steps:
       - condition: Implementation complete
         next: ai_review
       - condition: No implementation (report only)
-        next: plan
+        next: ai_review
       - condition: Cannot proceed, insufficient info
-        next: plan
+        next: ai_review
+      - condition: User input required
+        next: implement
+        requires_user_input: true
+        interactive_only: true
     instruction_template: |
       Follow the plan from the plan step and implement.
       Refer to the plan report ({report:00-plan.md}) and proceed with implementation.
@@ -151,7 +155,6 @@ steps:
       - {command and outcome}
 
       **No-implementation handling (required)**
-      - If you only produced reports and made no code changes, output the tag for "No implementation (report only)"
 
   - name: ai_review
     edit: false
@@ -396,6 +399,17 @@ steps:
       Address the feedback from the reviewers.
       The "Original User Request" is reference information, not the latest instruction.
       Review the session conversation history and fix the issues raised by the reviewers.
+
+
+      **Required output (include headings)**
+      ## Work done
+      - {summary of work performed}
+      ## Changes made
+      - {summary of code changes}
+      ## Test results
+      - {command and outcome}
+      ## Evidence
+      - {key files/grep/diff/log evidence you verified}
     pass_previous_response: true
 
   - name: supervise

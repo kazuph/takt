@@ -6,12 +6,12 @@
  */
 
 import { info, error } from '../../shared/ui/index.js';
-import { getErrorMessage } from '../../shared/utils/error.js';
-import { resolveIssueTask, isIssueReference } from '../../infra/github/issue.js';
+import { getErrorMessage } from '../../shared/utils/index.js';
+import { resolveIssueTask, isIssueReference } from '../../infra/github/index.js';
 import { selectAndExecuteTask, type SelectAndExecuteOptions } from '../../features/tasks/index.js';
 import { executePipeline } from '../../features/pipeline/index.js';
 import { interactiveMode } from '../../features/interactive/index.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
+import { DEFAULT_WORKFLOW_NAME } from '../../shared/constants.js';
 import { program, resolvedCwd, pipelineMode } from './program.js';
 import { resolveAgentOverrides, parseCreateWorktreeOption, isDirectTask } from './helpers.js';
 
@@ -94,5 +94,6 @@ program
       return;
     }
 
+    selectOptions.interactiveUserInput = true;
     await selectAndExecuteTask(resolvedCwd, result.task, selectOptions, agentOverrides);
   });

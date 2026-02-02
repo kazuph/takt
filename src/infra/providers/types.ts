@@ -2,7 +2,7 @@
  * Type definitions for the provider abstraction layer
  */
 
-import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../../claude/types.js';
+import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../claude/index.js';
 import type { AgentResponse, PermissionMode } from '../../core/models/index.js';
 
 /** Common options for all providers */

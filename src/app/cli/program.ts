@@ -15,9 +15,9 @@ import {
   getEffectiveDebugConfig,
   isVerboseMode,
 } from '../../infra/config/index.js';
-import { setQuietMode } from '../../context.js';
+import { setQuietMode } from '../../shared/context.js';
 import { setLogLevel } from '../../shared/ui/index.js';
-import { initDebugLogger, createLogger, setVerboseConsole } from '../../shared/utils/debug.js';
+import { initDebugLogger, createLogger, setVerboseConsole } from '../../shared/utils/index.js';
 
 const require = createRequire(import.meta.url);
 const { version: cliVersion } = require('../../../package.json') as { version: string };

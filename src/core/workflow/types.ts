@@ -5,8 +5,8 @@
  * used by the workflow execution engine.
  */
 
+import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
 import type { WorkflowStep, AgentResponse, WorkflowState, Language } from '../models/types.js';
-import type { PermissionResult } from '../../claude/types.js';
 
 export type ProviderType = 'claude' | 'codex' | 'mock';
 
@@ -66,10 +66,12 @@ export type StreamCallback = (event: StreamEvent) => void;
 export interface PermissionRequest {
   toolName: string;
   input: Record<string, unknown>;
-  suggestions?: Array<Record<string, unknown>>;
+  suggestions?: PermissionUpdate[];
   blockedPath?: string;
   decisionReason?: string;
 }
+
+export type { PermissionResult, PermissionUpdate };
 
 export type PermissionHandler = (request: PermissionRequest) => Promise<PermissionResult>;
 
@@ -88,6 +90,19 @@ export interface AskUserQuestionInput {
 export type AskUserQuestionHandler = (
   input: AskUserQuestionInput
 ) => Promise<Record<string, string>>;
+
+export type RuleIndexDetector = (content: string, stepName: string) => number;
+
+export interface AiJudgeCondition {
+  index: number;
+  text: string;
+}
+
+export type AiJudgeCaller = (
+  agentOutput: string,
+  conditions: AiJudgeCondition[],
+  options: { cwd: string }
+) => Promise<number>;
 
 /** Events emitted by workflow engine */
 export interface WorkflowEvents {
@@ -157,6 +172,12 @@ export interface WorkflowEngineOptions {
   language?: Language;
   provider?: ProviderType;
   model?: string;
+  /** Enable interactive-only rules and user-input transitions */
+  interactive?: boolean;
+  /** Rule tag index detector (required for rules evaluation) */
+  detectRuleIndex?: RuleIndexDetector;
+  /** AI judge caller (required for rules evaluation) */
+  callAiJudge?: AiJudgeCaller;
 }
 
 /** Loop detection result */

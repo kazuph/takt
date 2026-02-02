@@ -2,8 +2,8 @@
  * Codex provider implementation
  */
 
-import { callCodex, callCodexCustom, type CodexCallOptions } from '../../codex/client.js';
-import { resolveOpenaiApiKey } from '../config/global/globalConfig.js';
+import { callCodex, callCodexCustom, type CodexCallOptions } from '../codex/index.js';
+import { resolveOpenaiApiKey } from '../config/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
 import type { Provider, ProviderCallOptions } from './types.js';
 

@@ -5,7 +5,7 @@
  * Uses polling (not fs.watch) for cross-platform reliability.
  */
 
-import { createLogger } from '../../shared/utils/debug.js';
+import { createLogger } from '../../shared/utils/index.js';
 import { TaskRunner } from './runner.js';
 import type { TaskInfo } from './types.js';
 

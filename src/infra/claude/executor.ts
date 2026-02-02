@@ -11,8 +11,7 @@ import {
   type SDKResultMessage,
   type SDKAssistantMessage,
 } from '@anthropic-ai/claude-agent-sdk';
-import { createLogger } from '../shared/utils/debug.js';
-import { getErrorMessage } from '../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import {
   generateQueryId,
   registerQuery,

@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync, existsSync, statSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import type { Language } from '../core/models/index.js';
+import type { Language } from '../../core/models/index.js';
 
 /**
  * Get the resources directory path
@@ -20,8 +20,8 @@ import type { Language } from '../core/models/index.js';
  */
 export function getResourcesDir(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  // From src/resources or dist/resources, go up to project root then into resources/
-  return join(currentDir, '..', '..', 'resources');
+  // From src/infra/resources or dist/infra/resources, go up to project root then into resources/
+  return join(currentDir, '..', '..', '..', 'resources');
 }
 
 /**

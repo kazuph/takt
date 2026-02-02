@@ -1,0 +1,28 @@
+/**
+ * Filesystem utilities - barrel exports
+ */
+
+export type {
+  SessionLog,
+  NdjsonWorkflowStart,
+  NdjsonStepStart,
+  NdjsonStepComplete,
+  NdjsonWorkflowComplete,
+  NdjsonWorkflowAbort,
+  NdjsonRecord,
+  LatestLogPointer,
+} from './session.js';
+
+export {
+  SessionManager,
+  appendNdjsonLine,
+  initNdjsonLog,
+  loadNdjsonLog,
+  generateSessionId,
+  generateReportDir,
+  createSessionLog,
+  finalizeSessionLog,
+  loadSessionLog,
+  loadProjectContext,
+  updateLatestPointer,
+} from './session.js';

@@ -11,7 +11,7 @@ import {
   EXIT_GIT_OPERATION_FAILED,
   EXIT_PR_CREATION_FAILED,
   EXIT_SIGINT,
-} from '../exitCodes.js';
+} from '../shared/exitCodes.js';
 
 describe('exit codes', () => {
   it('should have distinct values', () => {

@@ -73,3 +73,4 @@ Determine the implementation direction:
 **Keep analysis simple.** Overly detailed plans are unnecessary. Provide enough direction for Coder to proceed with implementation.
 
 **Make unclear points explicit.** Don't proceed with guesses, report unclear points.
+**Ask all clarification questions at once.** Do not ask follow-up questions in multiple rounds.

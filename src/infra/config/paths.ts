@@ -9,7 +9,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import type { Language } from '../../core/models/index.js';
-import { getLanguageResourcesDir } from '../../resources/index.js';
+import { getLanguageResourcesDir } from '../resources/index.js';
 
 /** Get takt global config directory (~/.takt) */
 export function getGlobalConfigDir(): string {

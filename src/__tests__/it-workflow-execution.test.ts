@@ -13,16 +13,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
 import type { WorkflowConfig, WorkflowStep, WorkflowRule } from '../core/models/index.js';
+import { callAiJudge, detectRuleIndex } from '../infra/claude/index.js';
 
 // --- Mocks (minimal — only infrastructure, not core logic) ---
 
 // Safety net: prevent callAiJudge from calling real Claude CLI.
 // Tag-based detection should always match in these tests; if it doesn't,
 // this mock surfaces the failure immediately instead of timing out.
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
     callAiJudge: vi.fn().mockResolvedValue(-1),
@@ -35,7 +36,8 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
 }));
@@ -87,6 +89,14 @@ function createTestEnv(): { dir: string; agentPaths: Record<string, string> } {
   }
 
   return { dir, agentPaths };
+}
+
+function buildEngineOptions(projectCwd: string) {
+  return {
+    projectCwd,
+    detectRuleIndex,
+    callAiJudge,
+  };
 }
 
 function buildSimpleWorkflow(agentPaths: Record<string, string>): WorkflowConfig {
@@ -168,7 +178,7 @@ describe('Workflow Engine IT: Happy Path', () => {
 
     const config = buildSimpleWorkflow(agentPaths);
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -185,7 +195,7 @@ describe('Workflow Engine IT: Happy Path', () => {
 
     const config = buildSimpleWorkflow(agentPaths);
     const engine = new WorkflowEngine(config, testDir, 'Vague task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -228,7 +238,7 @@ describe('Workflow Engine IT: Fix Loop', () => {
 
     const config = buildLoopWorkflow(agentPaths);
     const engine = new WorkflowEngine(config, testDir, 'Task needing fix', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -248,7 +258,7 @@ describe('Workflow Engine IT: Fix Loop', () => {
 
     const config = buildLoopWorkflow(agentPaths);
     const engine = new WorkflowEngine(config, testDir, 'Unfixable task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -286,7 +296,7 @@ describe('Workflow Engine IT: Max Iterations', () => {
     config.maxIterations = 5;
 
     const engine = new WorkflowEngine(config, testDir, 'Looping task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -322,7 +332,7 @@ describe('Workflow Engine IT: Step Output Tracking', () => {
 
     const config = buildSimpleWorkflow(agentPaths);
     const engine = new WorkflowEngine(config, testDir, 'Track outputs', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 

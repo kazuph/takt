@@ -4,7 +4,7 @@
  * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config).
  */
 
-import { clearAgentSessions, getCurrentWorkflow } from '../../infra/config/paths.js';
+import { clearAgentSessions, getCurrentWorkflow } from '../../infra/config/index.js';
 import { success } from '../../shared/ui/index.js';
 import { runAllTasks, addTask, watchTasks, listTasks } from '../../features/tasks/index.js';
 import { switchWorkflow, switchConfig, ejectBuiltin } from '../../features/config/index.js';

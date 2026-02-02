@@ -2,8 +2,7 @@
  * Session management helpers for agent execution
  */
 
-import { loadAgentSessions, updateAgentSession } from '../../../infra/config/paths.js';
-import { loadGlobalConfig } from '../../../infra/config/global/globalConfig.js';
+import { loadAgentSessions, updateAgentSession, loadGlobalConfig } from '../../../infra/config/index.js';
 import type { AgentResponse } from '../../../core/models/index.js';
 
 /**

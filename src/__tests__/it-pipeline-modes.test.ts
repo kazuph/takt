@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
 
 // --- Mocks ---
 
@@ -31,8 +31,8 @@ const {
   mockPushBranch: vi.fn(),
 }));
 
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
     callAiJudge: vi.fn().mockResolvedValue(-1),
@@ -73,12 +73,14 @@ vi.mock('../shared/ui/index.js', () => ({
   })),
 }));
 
-vi.mock('../shared/utils/notification.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
   createSessionLog: vi.fn().mockReturnValue({
     startTime: new Date().toISOString(),
@@ -122,11 +124,11 @@ vi.mock('../infra/config/project/projectConfig.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../context.js', () => ({
+vi.mock('../shared/context.js', () => ({
   isQuietMode: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   selectOption: vi.fn().mockResolvedValue('stop'),
   promptInput: vi.fn().mockResolvedValue(null),
 }));
@@ -144,7 +146,7 @@ import {
   EXIT_ISSUE_FETCH_FAILED,
   EXIT_WORKFLOW_FAILED,
   EXIT_PR_CREATION_FAILED,
-} from '../exitCodes.js';
+} from '../shared/exitCodes.js';
 
 // --- Test helpers ---
 

@@ -6,7 +6,11 @@
 
 import { existsSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { DebugConfig } from '../../core/models/index.js';
+/** Debug configuration (duplicated from core/models to avoid shared → core dependency) */
+interface DebugConfig {
+  enabled: boolean;
+  logFile?: string;
+}
 
 /**
  * Debug logger singleton.

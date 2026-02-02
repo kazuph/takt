@@ -14,7 +14,7 @@ import {
   debugLog,
   infoLog,
   errorLog,
-} from '../shared/utils/debug.js';
+} from '../shared/utils/index.js';
 import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

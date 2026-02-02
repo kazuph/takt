@@ -95,9 +95,13 @@ steps:
       - condition: 実装完了
         next: ai_review
       - condition: 実装未着手（レポートのみ）
-        next: plan
+        next: ai_review
       - condition: 判断できない、情報不足
-        next: plan
+        next: ai_review
+      - condition: ユーザー入力が必要
+        next: implement
+        requires_user_input: true
+        interactive_only: true
     instruction_template: |
       planステップで立てた計画に従って実装してください。
       計画レポート（{report:00-plan.md}）を参照し、実装を進めてください。
@@ -146,8 +150,6 @@ steps:
       ## テスト結果
       - {実行コマンドと結果}
 
-      **実装未着手の扱い（必須）**
-      - レポート出力のみ/実装変更なしの場合は「実装未着手（レポートのみ）」に対応するタグを出力する
 
   - name: ai_review
     edit: false
@@ -402,6 +404,17 @@ steps:
     instruction_template: |
       レビュアーのフィードバックに対応してください。
       セッションの会話履歴を確認し、レビュアーの指摘事項を修正してください。
+
+
+      **必須出力（見出しを含める）**
+      ## 作業結果
+      - {実施内容の要約}
+      ## 変更内容
+      - {変更内容の要約}
+      ## テスト結果
+      - {実行コマンドと結果}
+      ## 証拠
+      - {確認したファイル/検索/差分/ログの要点を列挙}
     pass_previous_response: true
 
   - name: supervise

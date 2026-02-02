@@ -31,6 +31,8 @@ export interface InstructionContext {
   reportDir?: string;
   /** Language for metadata rendering. Defaults to 'en'. */
   language?: Language;
+  /** Whether interactive-only rules are enabled */
+  interactive?: boolean;
 }
 
 /** Execution environment metadata prepended to agent instructions */

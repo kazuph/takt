@@ -22,13 +22,17 @@ const REPORT_PHASE_STRINGS = {
     noSourceEdit: '**Do NOT modify project source files.** Only output report files.',
     reportDirOnly: '**Use only the Report Directory files shown above.** Do not search or open reports outside that directory.',
     instructionBody: 'Output the results of your previous work as a report.',
-    reportJsonFormat: 'Output a JSON object mapping each report file name to its content.',
+    reportJsonFormat: 'JSON format is optional. If you use JSON, map report file names to content (file name key only).',
+    reportPlainAllowed: 'You may output plain text. If there are multiple report files, the same content will be written to each file.',
+    reportOnlyOutput: 'Output only the report content (no status tags, no commentary).',
   },
   ja: {
     noSourceEdit: '**プロジェクトのソースファイルを変更しないでください。** レポートファイルのみ出力してください。',
     reportDirOnly: '**上記のReport Directory内のファイルのみ使用してください。** 他のレポートディレクトリは検索/参照しないでください。',
     instructionBody: '前のステップの作業結果をレポートとして出力してください。',
-    reportJsonFormat: 'レポートファイル名→内容のJSONオブジェクトで出力してください。',
+    reportJsonFormat: 'JSON形式は任意です。JSONを使う場合は「レポートファイル名→内容」のオブジェクトにしてください（キーはファイル名のみ）。',
+    reportPlainAllowed: '本文のみの出力も可です。複数ファイルの場合は同じ内容が各ファイルに書き込まれます。',
+    reportOnlyOutput: 'レポート本文のみを出力してください（ステータスタグやコメントは禁止）。',
   },
 } as const;
 
@@ -103,6 +107,8 @@ export class ReportInstructionBuilder {
       r.instructionBody,
       r.reportJsonFormat,
     ];
+    instrParts.push(r.reportPlainAllowed);
+    instrParts.push(r.reportOnlyOutput);
 
     // Report output instruction (auto-generated or explicit order)
     const reportContext: InstructionContext = {

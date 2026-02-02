@@ -21,14 +21,6 @@ import type { WorkflowStep, WorkflowState, WorkflowRule, AgentResponse } from '.
 
 const mockCallAiJudge = vi.fn();
 
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
-  return {
-    ...original,
-    callAiJudge: (...args: unknown[]) => mockCallAiJudge(...args),
-  };
-});
-
 vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
@@ -41,6 +33,7 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 // --- Imports (after mocks) ---
 
 import { detectMatchedRule, evaluateAggregateConditions } from '../core/workflow/index.js';
+import { detectRuleIndex } from '../infra/claude/index.js';
 import type { RuleMatch, RuleEvaluatorContext } from '../core/workflow/index.js';
 
 // --- Test helpers ---
@@ -82,6 +75,8 @@ function makeCtx(stepOutputs?: Map<string, AgentResponse>): RuleEvaluatorContext
   return {
     state: makeState(stepOutputs),
     cwd: '/tmp/test',
+    detectRuleIndex,
+    callAiJudge: mockCallAiJudge,
   };
 }
 

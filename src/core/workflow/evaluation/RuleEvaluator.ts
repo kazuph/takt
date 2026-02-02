@@ -11,8 +11,8 @@ import type {
   WorkflowState,
   RuleMatchMethod,
 } from '../../models/types.js';
-import { detectRuleIndex, callAiJudge } from '../../../claude/client.js';
-import { createLogger } from '../../../shared/utils/debug.js';
+import type { AiJudgeCaller, RuleIndexDetector } from '../types.js';
+import { createLogger } from '../../../shared/utils/index.js';
 import { AggregateEvaluator } from './AggregateEvaluator.js';
 
 const log = createLogger('rule-evaluator');
@@ -27,6 +27,12 @@ export interface RuleEvaluatorContext {
   state: WorkflowState;
   /** Working directory (for AI judge calls) */
   cwd: string;
+  /** Whether interactive-only rules are enabled */
+  interactive?: boolean;
+  /** Rule tag index detector */
+  detectRuleIndex: RuleIndexDetector;
+  /** AI judge caller */
+  callAiJudge: AiJudgeCaller;
 }
 
 /**
@@ -50,6 +56,7 @@ export class RuleEvaluator {
 
   async evaluate(agentContent: string, tagContent: string): Promise<RuleMatch | undefined> {
     if (!this.step.rules || this.step.rules.length === 0) return undefined;
+    const interactiveEnabled = this.ctx.interactive === true;
 
     // 1. Aggregate conditions (all/any) — only meaningful for parallel parent steps
     const aggEvaluator = new AggregateEvaluator(this.step, this.ctx.state);
@@ -60,17 +67,27 @@ export class RuleEvaluator {
 
     // 2. Tag detection from Phase 3 output
     if (tagContent) {
-      const ruleIndex = detectRuleIndex(tagContent, this.step.name);
+      const ruleIndex = this.ctx.detectRuleIndex(tagContent, this.step.name);
       if (ruleIndex >= 0 && ruleIndex < this.step.rules.length) {
-        return { index: ruleIndex, method: 'phase3_tag' };
+        const rule = this.step.rules[ruleIndex];
+        if (rule?.interactiveOnly && !interactiveEnabled) {
+          // Skip interactive-only rule in non-interactive mode
+        } else {
+          return { index: ruleIndex, method: 'phase3_tag' };
+        }
       }
     }
 
     // 3. Tag detection from Phase 1 output (fallback)
     if (agentContent) {
-      const ruleIndex = detectRuleIndex(agentContent, this.step.name);
+      const ruleIndex = this.ctx.detectRuleIndex(agentContent, this.step.name);
       if (ruleIndex >= 0 && ruleIndex < this.step.rules.length) {
-        return { index: ruleIndex, method: 'phase1_tag' };
+        const rule = this.step.rules[ruleIndex];
+        if (rule?.interactiveOnly && !interactiveEnabled) {
+          // Skip interactive-only rule in non-interactive mode
+        } else {
+          return { index: ruleIndex, method: 'phase1_tag' };
+        }
       }
     }
 
@@ -99,6 +116,9 @@ export class RuleEvaluator {
     const aiConditions: { index: number; text: string }[] = [];
     for (let i = 0; i < this.step.rules.length; i++) {
       const rule = this.step.rules[i]!;
+      if (rule.interactiveOnly && this.ctx.interactive !== true) {
+        continue;
+      }
       if (rule.isAiCondition && rule.aiConditionText) {
         aiConditions.push({ index: i, text: rule.aiConditionText });
       }
@@ -112,7 +132,7 @@ export class RuleEvaluator {
     });
 
     const judgeConditions = aiConditions.map((c, i) => ({ index: i, text: c.text }));
-    const judgeResult = await callAiJudge(agentOutput, judgeConditions, { cwd: this.ctx.cwd });
+    const judgeResult = await this.ctx.callAiJudge(agentOutput, judgeConditions, { cwd: this.ctx.cwd });
 
     if (judgeResult >= 0 && judgeResult < aiConditions.length) {
       const matched = aiConditions[judgeResult]!;
@@ -136,14 +156,17 @@ export class RuleEvaluator {
   private async evaluateAllConditionsViaAiJudge(agentOutput: string): Promise<number> {
     if (!this.step.rules || this.step.rules.length === 0) return -1;
 
-    const conditions = this.step.rules.map((rule, i) => ({ index: i, text: rule.condition }));
+    const conditions = this.step.rules
+      .map((rule, i) => ({ index: i, text: rule.condition, interactiveOnly: rule.interactiveOnly }))
+      .filter((rule) => this.ctx.interactive === true || !rule.interactiveOnly)
+      .map((rule) => ({ index: rule.index, text: rule.text }));
 
     log.debug('Evaluating all conditions via AI judge (final fallback)', {
       step: this.step.name,
       conditionCount: conditions.length,
     });
 
-    const judgeResult = await callAiJudge(agentOutput, conditions, { cwd: this.ctx.cwd });
+    const judgeResult = await this.ctx.callAiJudge(agentOutput, conditions, { cwd: this.ctx.cwd });
 
     if (judgeResult >= 0 && judgeResult < conditions.length) {
       log.debug('AI judge (fallback) matched condition', {

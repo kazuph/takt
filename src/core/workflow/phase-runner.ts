@@ -13,7 +13,7 @@ import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder
 import { StatusJudgmentBuilder } from './instruction/StatusJudgmentBuilder.js';
 import { hasTagBasedRules } from './evaluation/rule-utils.js';
 import { isReportObjectConfig } from './instruction/InstructionBuilder.js';
-import { createLogger } from '../../shared/utils/debug.js';
+import { createLogger } from '../../shared/utils/index.js';
 
 const log = createLogger('phase-runner');
 
@@ -24,6 +24,8 @@ export interface PhaseRunnerContext {
   reportDir: string;
   /** Language for instructions */
   language?: Language;
+  /** Whether interactive-only rules are enabled */
+  interactive?: boolean;
   /** Get agent session ID */
   getSessionId: (agent: string) => string | undefined;
   /** Build resume options for a step */
@@ -76,6 +78,7 @@ function getReportFiles(report: WorkflowStep['report']): string[] {
 
 function resolveReportOutputs(
   report: WorkflowStep['report'],
+  reportDir: string,
   content: string,
 ): Map<string, string> {
   if (!report) return new Map();
@@ -83,12 +86,17 @@ function resolveReportOutputs(
   const files = getReportFiles(report);
   const json = parseReportJson(content);
   if (!json) {
-    throw new Error('Report output must be a JSON object mapping report file names to content.');
+    const raw = content;
+    if (!raw || raw.trim().length === 0) {
+      throw new Error('Report output is empty.');
+    }
+    return new Map(files.map((file) => [file, raw]));
   }
 
   const outputs = new Map<string, string>();
   for (const file of files) {
-    const value = json[file];
+    const absolutePath = resolve(reportDir, file);
+    const value = json[file] ?? json[absolutePath];
     if (typeof value !== 'string') {
       throw new Error(`Report output missing content for file: ${file}`);
     }
@@ -142,7 +150,7 @@ export async function runReportPhase(
   });
 
   const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
-  const outputs = resolveReportOutputs(step.report, reportResponse.content);
+  const outputs = resolveReportOutputs(step.report, ctx.reportDir, reportResponse.content);
   for (const [fileName, content] of outputs.entries()) {
     writeReportFile(ctx.reportDir, fileName, content);
   }
@@ -171,6 +179,7 @@ export async function runStatusJudgmentPhase(
 
   const judgmentInstruction = new StatusJudgmentBuilder(step, {
     language: ctx.language,
+    interactive: ctx.interactive,
   }).build();
 
   const judgmentOptions = ctx.buildResumeOptions(step, sessionId, {

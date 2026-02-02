@@ -7,7 +7,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { createLogger } from '../../shared/utils/debug.js';
+import { createLogger } from '../../shared/utils/index.js';
 
 import type { BranchInfo, BranchListItem } from './types.js';
 

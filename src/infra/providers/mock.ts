@@ -2,8 +2,7 @@
  * Mock provider implementation
  */
 
-import { callMock, callMockCustom } from '../../mock/client.js';
-import type { MockCallOptions } from '../../mock/types.js';
+import { callMock, callMockCustom, type MockCallOptions } from '../mock/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
 import type { Provider, ProviderCallOptions } from './types.js';
 

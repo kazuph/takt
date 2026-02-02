@@ -3,10 +3,7 @@
  */
 
 import { loadWorkflowByIdentifier, isWorkflowPath, loadGlobalConfig } from '../../../infra/config/index.js';
-import { TaskRunner, type TaskInfo } from '../../../infra/task/index.js';
-import { createSharedClone } from '../../../infra/task/clone.js';
-import { autoCommitAndPush } from '../../../infra/task/autoCommit.js';
-import { summarizeTaskName } from '../../../infra/task/summarize.js';
+import { TaskRunner, type TaskInfo, createSharedClone, autoCommitAndPush, summarizeTaskName } from '../../../infra/task/index.js';
 import {
   header,
   info,
@@ -15,10 +12,9 @@ import {
   status,
   blankLine,
 } from '../../../shared/ui/index.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { getErrorMessage } from '../../../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { executeWorkflow } from './workflowExecution.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../constants.js';
+import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
 import type { TaskExecutionOptions, ExecuteTaskOptions } from './types.js';
 
 export type { TaskExecutionOptions, ExecuteTaskOptions };
@@ -29,7 +25,7 @@ const log = createLogger('task');
  * Execute a single task with workflow.
  */
 export async function executeTask(options: ExecuteTaskOptions): Promise<boolean> {
-  const { task, cwd, workflowIdentifier, projectCwd, agentOverrides } = options;
+  const { task, cwd, workflowIdentifier, projectCwd, agentOverrides, interactiveUserInput } = options;
   const workflowConfig = loadWorkflowByIdentifier(workflowIdentifier, projectCwd);
 
   if (!workflowConfig) {
@@ -54,6 +50,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<boolean>
     language: globalConfig.language,
     provider: agentOverrides?.provider,
     model: agentOverrides?.model,
+    interactiveUserInput,
   });
   return result.success;
 }

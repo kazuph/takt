@@ -7,15 +7,15 @@
 
 import chalk from 'chalk';
 import { info, success } from '../../shared/ui/index.js';
-import { selectOption } from '../../prompt/index.js';
+import { selectOption } from '../../shared/prompt/index.js';
 import {
   loadProjectConfig,
   updateProjectConfig,
-  type PermissionMode,
-} from '../../infra/config/project/projectConfig.js';
+} from '../../infra/config/index.js';
+import type { PermissionMode } from '../../infra/config/index.js';
 
 // Re-export for convenience
-export type { PermissionMode } from '../../infra/config/project/projectConfig.js';
+export type { PermissionMode } from '../../infra/config/index.js';
 
 /**
  * Get permission mode options for selection

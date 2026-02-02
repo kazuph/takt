@@ -6,16 +6,13 @@
  * mixing CLI parsing with business logic.
  */
 
-import { getCurrentWorkflow } from '../../../infra/config/paths.js';
-import { listWorkflows, isWorkflowPath } from '../../../infra/config/loaders/workflowLoader.js';
-import { selectOptionWithDefault, confirm } from '../../../prompt/index.js';
-import { createSharedClone } from '../../../infra/task/clone.js';
-import { autoCommitAndPush } from '../../../infra/task/autoCommit.js';
-import { summarizeTaskName } from '../../../infra/task/summarize.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../constants.js';
+import { getCurrentWorkflow, listWorkflows, isWorkflowPath } from '../../../infra/config/index.js';
+import { selectOptionWithDefault, confirm } from '../../../shared/prompt/index.js';
+import { createSharedClone, autoCommitAndPush, summarizeTaskName } from '../../../infra/task/index.js';
+import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
 import { info, error, success } from '../../../shared/ui/index.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { createPullRequest, buildPrBody } from '../../../infra/github/pr.js';
+import { createLogger } from '../../../shared/utils/index.js';
+import { createPullRequest, buildPrBody } from '../../../infra/github/index.js';
 import { executeTask } from './taskExecution.js';
 import type { TaskExecutionOptions, WorktreeConfirmationResult, SelectAndExecuteOptions } from './types.js';
 
@@ -136,6 +133,7 @@ export async function selectAndExecuteTask(
     workflowIdentifier,
     projectCwd: cwd,
     agentOverrides,
+    interactiveUserInput: options?.interactiveUserInput === true,
   });
 
   if (taskSuccess && isWorktree) {

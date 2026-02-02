@@ -2,8 +2,8 @@
  * Claude provider implementation
  */
 
-import { callClaude, callClaudeCustom, type ClaudeCallOptions } from '../../claude/client.js';
-import { resolveAnthropicApiKey } from '../config/global/globalConfig.js';
+import { callClaude, callClaudeCustom, type ClaudeCallOptions } from '../claude/index.js';
+import { resolveAnthropicApiKey } from '../config/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
 import type { Provider, ProviderCallOptions } from './types.js';
 

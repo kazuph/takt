@@ -3,9 +3,10 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { WorkflowEngine, type IterationLimitRequest } from '../../../core/workflow/index.js';
+import { WorkflowEngine, type IterationLimitRequest, type UserInputRequest } from '../../../core/workflow/index.js';
 import type { WorkflowConfig } from '../../../core/models/index.js';
 import type { WorkflowExecutionResult, WorkflowExecutionOptions } from './types.js';
+import { callAiJudge, detectRuleIndex, interruptAllQueries } from '../../../infra/claude/index.js';
 
 export type { WorkflowExecutionResult, WorkflowExecutionOptions };
 
@@ -14,9 +15,9 @@ import {
   updateAgentSession,
   loadWorktreeSessions,
   updateWorktreeSession,
-} from '../../../infra/config/paths.js';
-import { loadGlobalConfig } from '../../../infra/config/global/globalConfig.js';
-import { isQuietMode } from '../../../context.js';
+  loadGlobalConfig,
+} from '../../../infra/config/index.js';
+import { isQuietMode } from '../../../shared/context.js';
 import {
   header,
   info,
@@ -38,11 +39,10 @@ import {
   type NdjsonStepComplete,
   type NdjsonWorkflowComplete,
   type NdjsonWorkflowAbort,
-} from '../../../infra/fs/session.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { notifySuccess, notifyError } from '../../../shared/utils/notification.js';
-import { selectOption, promptInput } from '../../../prompt/index.js';
-import { EXIT_SIGINT } from '../../../exitCodes.js';
+} from '../../../infra/fs/index.js';
+import { createLogger, notifySuccess, notifyError } from '../../../shared/utils/index.js';
+import { selectOption, promptInput } from '../../../shared/prompt/index.js';
+import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
 
 const log = createLogger('workflow');
 
@@ -75,6 +75,7 @@ export async function executeWorkflow(
 ): Promise<WorkflowExecutionResult> {
   const {
     headerPrefix = 'Running Workflow:',
+    interactiveUserInput = false,
   } = options;
 
   // projectCwd is where .takt/ lives (project root, not the clone)
@@ -164,8 +165,22 @@ export async function executeWorkflow(
     }
   };
 
+  const onUserInput = interactiveUserInput
+    ? async (request: UserInputRequest): Promise<string | null> => {
+        if (displayRef.current) {
+          displayRef.current.flush();
+          displayRef.current = null;
+        }
+        blankLine();
+        info(request.prompt.trim());
+        const input = await promptInput('追加の指示を入力してください（空で中止）');
+        return input && input.trim() ? input.trim() : null;
+      }
+    : undefined;
+
   const engine = new WorkflowEngine(workflowConfig, cwd, task, {
     onStream: streamHandler,
+    onUserInput,
     initialSessions: savedSessions,
     onSessionUpdate: sessionUpdateHandler,
     onIterationLimit: iterationLimitHandler,
@@ -173,6 +188,9 @@ export async function executeWorkflow(
     language: options.language,
     provider: options.provider,
     model: options.model,
+    interactive: interactiveUserInput,
+    detectRuleIndex,
+    callAiJudge,
   });
 
   let abortReason: string | undefined;
@@ -288,6 +306,7 @@ export async function executeWorkflow(
   });
 
   engine.on('workflow:abort', (state, reason) => {
+    interruptAllQueries();
     log.error('Workflow aborted', { reason, iterations: state.iteration });
     if (displayRef.current) {
       displayRef.current.flush();

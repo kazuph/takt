@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod/v4';
-import { DEFAULT_LANGUAGE } from '../../constants.js';
+import { DEFAULT_LANGUAGE } from '../../shared/constants.js';
 
 /** Agent model schema (opus, sonnet, haiku) */
 export const AgentModelSchema = z.enum(['opus', 'sonnet', 'haiku']).default('sonnet');
@@ -107,6 +107,10 @@ export const WorkflowRuleSchema = z.object({
   next: z.string().min(1).optional(),
   /** Template for additional AI output */
   appendix: z.string().optional(),
+  /** Require user input before continuing (interactive mode only) */
+  requires_user_input: z.boolean().optional(),
+  /** Rule applies only in interactive mode */
+  interactive_only: z.boolean().optional(),
 });
 
 /** Sub-step schema for parallel execution (agent is required) */

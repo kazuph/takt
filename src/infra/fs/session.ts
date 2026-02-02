@@ -4,14 +4,14 @@
 
 import { existsSync, readFileSync, copyFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { getProjectLogsDir, getGlobalLogsDir, ensureDir, writeFileAtomic } from '../config/paths.js';
-import { generateReportDir as buildReportDir } from '../../shared/utils/reportDir.js';
+import { getProjectLogsDir, getGlobalLogsDir, ensureDir, writeFileAtomic } from '../config/index.js';
+import { generateReportDir as buildReportDir } from '../../shared/utils/index.js';
 import type {
   SessionLog,
   NdjsonRecord,
   NdjsonWorkflowStart,
   LatestLogPointer,
-} from '../../shared/utils/types.js';
+} from '../../shared/utils/index.js';
 
 // Re-export types for backward compatibility
 export type {
@@ -23,7 +23,7 @@ export type {
   NdjsonWorkflowAbort,
   NdjsonRecord,
   LatestLogPointer,
-} from '../../shared/utils/types.js';
+} from '../../shared/utils/index.js';
 
 /**
  * Manages session lifecycle: ID generation, NDJSON logging,

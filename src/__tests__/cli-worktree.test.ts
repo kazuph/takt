@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   confirm: vi.fn(),
   selectOptionWithDefault: vi.fn(),
 }));
@@ -32,7 +32,8 @@ vi.mock('../shared/ui/index.js', () => ({
   setLogLevel: vi.fn(),
 }));
 
-vi.mock('../shared/utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -60,8 +61,8 @@ vi.mock('../infra/config/loaders/workflowLoader.js', () => ({
   listWorkflows: vi.fn(() => []),
 }));
 
-vi.mock('../constants.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../constants.js')>();
+vi.mock('../shared/constants.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../shared/constants.js')>();
   return {
     ...actual,
     DEFAULT_WORKFLOW_NAME: 'default',
@@ -73,11 +74,12 @@ vi.mock('../infra/github/issue.js', () => ({
   resolveIssueTask: vi.fn(),
 }));
 
-vi.mock('../shared/utils/updateNotifier.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   checkForUpdates: vi.fn(),
 }));
 
-import { confirm } from '../prompt/index.js';
+import { confirm } from '../shared/prompt/index.js';
 import { createSharedClone } from '../infra/task/clone.js';
 import { summarizeTaskName } from '../infra/task/summarize.js';
 import { info } from '../shared/ui/index.js';

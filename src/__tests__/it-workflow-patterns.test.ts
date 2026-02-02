@@ -12,12 +12,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
+import { callAiJudge, detectRuleIndex } from '../infra/claude/index.js';
 
 // --- Mocks ---
 
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
     callAiJudge: vi.fn().mockResolvedValue(-1),
@@ -30,7 +31,8 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
 }));
@@ -48,7 +50,7 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 // --- Imports (after mocks) ---
 
 import { WorkflowEngine } from '../core/workflow/index.js';
-import { loadWorkflow } from '../infra/config/loaders/workflowLoader.js';
+import { loadWorkflow } from '../infra/config/index.js';
 import type { WorkflowConfig } from '../core/models/index.js';
 
 // --- Test helpers ---
@@ -63,6 +65,8 @@ function createEngine(config: WorkflowConfig, dir: string, task: string): Workfl
   return new WorkflowEngine(config, dir, task, {
     projectCwd: dir,
     provider: 'mock',
+    detectRuleIndex,
+    callAiJudge,
   });
 }
 

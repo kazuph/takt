@@ -56,7 +56,8 @@ vi.mock('../shared/ui/index.js', () => ({
   debug: vi.fn(),
 }));
 // Mock debug logger
-vi.mock('../shared/utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),

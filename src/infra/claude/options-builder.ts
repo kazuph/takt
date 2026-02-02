@@ -16,7 +16,7 @@ import type {
   PreToolUseHookInput,
   PermissionMode,
 } from '@anthropic-ai/claude-agent-sdk';
-import { createLogger } from '../shared/utils/debug.js';
+import { createLogger } from '../../shared/utils/index.js';
 import type {
   PermissionHandler,
   AskUserQuestionInput,

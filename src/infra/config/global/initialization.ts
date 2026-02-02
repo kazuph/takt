@@ -9,15 +9,15 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Language } from '../../../core/models/index.js';
-import { DEFAULT_LANGUAGE } from '../../../constants.js';
-import { selectOptionWithDefault } from '../../../prompt/index.js';
+import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
+import { selectOptionWithDefault } from '../../../shared/prompt/index.js';
 import {
   getGlobalConfigDir,
   getGlobalConfigPath,
   getProjectConfigDir,
   ensureDir,
 } from '../paths.js';
-import { copyProjectResourcesToDir, getLanguageResourcesDir } from '../../../resources/index.js';
+import { copyProjectResourcesToDir, getLanguageResourcesDir } from '../../resources/index.js';
 import { setLanguage, setProvider } from './globalConfig.js';
 
 /**

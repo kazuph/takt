@@ -27,7 +27,8 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
 }));
 
@@ -130,7 +131,7 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
     expect(phaseCtx.reportDir).not.toBe(unexpectedPath);
   });
 
-  it('should pass cwd-based reportDir to buildInstruction (used by {report_dir} placeholder)', async () => {
+  it('should pass projectCwd-based reportDir to buildInstruction (used by {report_dir} placeholder)', async () => {
     // Given: worktree environment with a step that uses {report_dir} in template
     const config: WorkflowConfig = {
       name: 'worktree-test',
@@ -162,15 +163,15 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
     // When: run the workflow
     await engine.run();
 
-    // Then: the instruction should contain cwd-based reportDir
+    // Then: the instruction should contain projectCwd-based reportDir
     const runAgentMock = vi.mocked(runAgent);
     expect(runAgentMock).toHaveBeenCalled();
     const instruction = runAgentMock.mock.calls[0][1] as string;
 
-    const expectedPath = join(cloneCwd, '.takt/reports/test-report-dir');
+    const expectedPath = join(projectCwd, '.takt/reports/test-report-dir');
     expect(instruction).toContain(expectedPath);
-    // In worktree mode, projectCwd path should NOT appear
-    expect(instruction).not.toContain(join(projectCwd, '.takt/reports/test-report-dir'));
+    // In worktree mode, cloneCwd path should NOT appear
+    expect(instruction).not.toContain(join(cloneCwd, '.takt/reports/test-report-dir'));
   });
 
   it('should use same path in non-worktree mode (cwd === projectCwd)', async () => {

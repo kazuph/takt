@@ -25,10 +25,7 @@ import {
   addUserInput as addUserInputToState,
   incrementStepIteration,
 } from './state-manager.js';
-import { generateReportDir } from '../../../shared/utils/reportDir.js';
-import { getErrorMessage } from '../../../shared/utils/error.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { interruptAllQueries } from '../../../claude/query-manager.js';
+import { generateReportDir, getErrorMessage, createLogger } from '../../../shared/utils/index.js';
 import { OptionsBuilder } from './OptionsBuilder.js';
 import { StepExecutor } from './StepExecutor.js';
 import { ParallelRunner } from './ParallelRunner.js';
@@ -61,6 +58,12 @@ export class WorkflowEngine extends EventEmitter {
   private readonly optionsBuilder: OptionsBuilder;
   private readonly stepExecutor: StepExecutor;
   private readonly parallelRunner: ParallelRunner;
+  private readonly detectRuleIndex: (content: string, stepName: string) => number;
+  private readonly callAiJudge: (
+    agentOutput: string,
+    conditions: Array<{ index: number; text: string }>,
+    options: { cwd: string }
+  ) => Promise<number>;
 
   constructor(config: WorkflowConfig, cwd: string, task: string, options: WorkflowEngineOptions) {
     super();
@@ -74,6 +77,12 @@ export class WorkflowEngine extends EventEmitter {
     this.ensureReportDirExists();
     this.validateConfig();
     this.state = createInitialState(config, options);
+    this.detectRuleIndex = options.detectRuleIndex ?? (() => {
+      throw new Error('detectRuleIndex is required for rule evaluation');
+    });
+    this.callAiJudge = options.callAiJudge ?? (async () => {
+      throw new Error('callAiJudge is required for rule evaluation');
+    });
 
     // Initialize composed collaborators
     this.optionsBuilder = new OptionsBuilder(
@@ -91,6 +100,9 @@ export class WorkflowEngine extends EventEmitter {
       getProjectCwd: () => this.projectCwd,
       getReportDir: () => this.reportDir,
       getLanguage: () => this.options.language,
+      getInteractive: () => this.options.interactive === true,
+      detectRuleIndex: this.detectRuleIndex,
+      callAiJudge: this.callAiJudge,
     });
 
     this.parallelRunner = new ParallelRunner({
@@ -99,6 +111,9 @@ export class WorkflowEngine extends EventEmitter {
       engineOptions: this.options,
       getCwd: () => this.cwd,
       getReportDir: () => this.reportDir,
+      getInteractive: () => this.options.interactive === true,
+      detectRuleIndex: this.detectRuleIndex,
+      callAiJudge: this.callAiJudge,
     });
 
     log.debug('WorkflowEngine initialized', {
@@ -183,7 +198,6 @@ export class WorkflowEngine extends EventEmitter {
     if (this.abortRequested) return;
     this.abortRequested = true;
     log.info('Abort requested');
-    interruptAllQueries();
   }
 
   /** Check if abort has been requested */
@@ -345,6 +359,31 @@ export class WorkflowEngine extends EventEmitter {
           nextStep,
         });
 
+        if (response.matchedRuleIndex != null && step.rules) {
+          const matchedRule = step.rules[response.matchedRuleIndex];
+          if (matchedRule?.requiresUserInput) {
+            if (!this.options.onUserInput) {
+              this.state.status = 'aborted';
+              this.emit('workflow:abort', this.state, 'User input required but no handler is configured');
+              break;
+            }
+            const userInput = await this.options.onUserInput({
+              step,
+              response,
+              prompt: response.content,
+            });
+            if (userInput === null) {
+              this.state.status = 'aborted';
+              this.emit('workflow:abort', this.state, 'User input cancelled');
+              break;
+            }
+            this.addUserInput(userInput);
+            this.emit('step:user_input', step, userInput);
+            this.state.currentStep = step.name;
+            continue;
+          }
+        }
+
         if (nextStep === COMPLETE_STEP) {
           this.state.status = 'completed';
           this.emit('workflow:complete', this.state);
@@ -402,6 +441,29 @@ export class WorkflowEngine extends EventEmitter {
     const { response } = await this.runStep(step);
     const nextStep = this.resolveNextStep(step, response);
     const isComplete = nextStep === COMPLETE_STEP || nextStep === ABORT_STEP;
+
+    if (response.matchedRuleIndex != null && step.rules) {
+      const matchedRule = step.rules[response.matchedRuleIndex];
+      if (matchedRule?.requiresUserInput) {
+        if (!this.options.onUserInput) {
+          this.state.status = 'aborted';
+          return { response, nextStep: ABORT_STEP, isComplete: true, loopDetected: loopCheck.isLoop };
+        }
+        const userInput = await this.options.onUserInput({
+          step,
+          response,
+          prompt: response.content,
+        });
+        if (userInput === null) {
+          this.state.status = 'aborted';
+          return { response, nextStep: ABORT_STEP, isComplete: true, loopDetected: loopCheck.isLoop };
+        }
+        this.addUserInput(userInput);
+        this.emit('step:user_input', step, userInput);
+        this.state.currentStep = step.name;
+        return { response, nextStep: step.name, isComplete: false, loopDetected: loopCheck.isLoop };
+      }
+    }
 
     if (!isComplete) {
       this.state.currentStep = nextStep;

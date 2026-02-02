@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   detectRuleIndex,
   isRegexSafe,
-} from '../claude/client.js';
+} from '../infra/claude/client.js';
 
 describe('isRegexSafe', () => {
   it('should accept simple patterns', () => {

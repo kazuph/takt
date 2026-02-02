@@ -20,7 +20,7 @@ vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(() => ({ provider: 'claude' })),
 }));
 
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   promptInput: vi.fn(),
   confirm: vi.fn(),
   selectOption: vi.fn(),
@@ -36,7 +36,8 @@ vi.mock('../shared/ui/index.js', () => ({
   blankLine: vi.fn(),
 }));
 
-vi.mock('../shared/utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -69,7 +70,7 @@ vi.mock('../infra/github/issue.js', () => ({
 
 import { interactiveMode } from '../features/interactive/index.js';
 import { getProvider } from '../infra/providers/index.js';
-import { promptInput, confirm, selectOption } from '../prompt/index.js';
+import { promptInput, confirm, selectOption } from '../shared/prompt/index.js';
 import { summarizeTaskName } from '../infra/task/summarize.js';
 import { listWorkflows } from '../infra/config/loaders/workflowLoader.js';
 import { resolveIssueTask } from '../infra/github/issue.js';

@@ -12,21 +12,19 @@ import {
   removeClone,
   removeCloneMeta,
   cleanupOrphanedClone,
-} from '../../../infra/task/clone.js';
+} from '../../../infra/task/index.js';
 import {
   detectDefaultBranch,
   type BranchListItem,
-} from '../../../infra/task/branchList.js';
-import { autoCommitAndPush } from '../../../infra/task/autoCommit.js';
-import { selectOption, promptInput } from '../../../prompt/index.js';
+  autoCommitAndPush,
+} from '../../../infra/task/index.js';
+import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { info, success, error as logError, warn, header, blankLine } from '../../../shared/ui/index.js';
-import { createLogger } from '../../../shared/utils/debug.js';
-import { getErrorMessage } from '../../../shared/utils/error.js';
+import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { executeTask } from '../execute/taskExecution.js';
 import type { TaskExecutionOptions } from '../execute/types.js';
-import { listWorkflows } from '../../../infra/config/loaders/workflowLoader.js';
-import { getCurrentWorkflow } from '../../../infra/config/paths.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../constants.js';
+import { listWorkflows, getCurrentWorkflow } from '../../../infra/config/index.js';
+import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
 
 const log = createLogger('list-tasks');
 

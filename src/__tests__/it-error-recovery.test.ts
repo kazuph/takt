@@ -12,13 +12,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
 import type { WorkflowConfig, WorkflowStep, WorkflowRule } from '../core/models/index.js';
+import { callAiJudge, detectRuleIndex } from '../infra/claude/index.js';
 
 // --- Mocks ---
 
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
     callAiJudge: vi.fn().mockResolvedValue(-1),
@@ -31,7 +32,8 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../shared/utils/reportDir.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
 }));
@@ -87,6 +89,14 @@ function createTestEnv(): { dir: string; agentPaths: Record<string, string> } {
   return { dir, agentPaths };
 }
 
+function buildEngineOptions(projectCwd: string) {
+  return {
+    projectCwd,
+    detectRuleIndex,
+    callAiJudge,
+  };
+}
+
 function buildWorkflow(agentPaths: Record<string, string>, maxIterations: number): WorkflowConfig {
   return {
     name: 'it-error',
@@ -133,7 +143,7 @@ describe('Error Recovery IT: agent blocked response', () => {
 
     const config = buildWorkflow(agentPaths, 10);
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -150,7 +160,7 @@ describe('Error Recovery IT: agent blocked response', () => {
 
     const config = buildWorkflow(agentPaths, 10);
     const engine = new WorkflowEngine(config, testDir, 'Test task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -187,7 +197,7 @@ describe('Error Recovery IT: max iterations reached', () => {
 
     const config = buildWorkflow(agentPaths, 2);
     const engine = new WorkflowEngine(config, testDir, 'Task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -207,7 +217,7 @@ describe('Error Recovery IT: max iterations reached', () => {
 
     const config = buildWorkflow(agentPaths, 4);
     const engine = new WorkflowEngine(config, testDir, 'Looping task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -242,7 +252,7 @@ describe('Error Recovery IT: scenario queue exhaustion', () => {
 
     const config = buildWorkflow(agentPaths, 10);
     const engine = new WorkflowEngine(config, testDir, 'Task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -279,7 +289,7 @@ describe('Error Recovery IT: step events on error paths', () => {
 
     const config = buildWorkflow(agentPaths, 3);
     const engine = new WorkflowEngine(config, testDir, 'Task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -300,7 +310,7 @@ describe('Error Recovery IT: step events on error paths', () => {
 
     const config = buildWorkflow(agentPaths, 10);
     const engine = new WorkflowEngine(config, testDir, 'Task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 
@@ -347,7 +357,7 @@ describe('Error Recovery IT: programmatic abort', () => {
 
     const config = buildWorkflow(agentPaths, 10);
     const engine = new WorkflowEngine(config, testDir, 'Task', {
-      projectCwd: testDir,
+      ...buildEngineOptions(testDir),
       provider: 'mock',
     });
 

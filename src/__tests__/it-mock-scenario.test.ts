@@ -13,7 +13,7 @@ import {
   getScenarioQueue,
   resetScenario,
   type ScenarioEntry,
-} from '../mock/scenario.js';
+} from '../infra/mock/index.js';
 
 describe('ScenarioQueue', () => {
   it('should consume entries in order when no agent specified', () => {

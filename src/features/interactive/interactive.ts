@@ -15,14 +15,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import chalk from 'chalk';
 import type { Language } from '../../core/models/index.js';
-import { loadGlobalConfig } from '../../infra/config/global/globalConfig.js';
-import { isQuietMode } from '../../context.js';
-import { loadAgentSessions, updateAgentSession } from '../../infra/config/paths.js';
+import { loadGlobalConfig, loadAgentSessions, updateAgentSession } from '../../infra/config/index.js';
+import { isQuietMode } from '../../shared/context.js';
 import { getProvider, type ProviderType } from '../../infra/providers/index.js';
-import { selectOption } from '../../prompt/index.js';
-import { getLanguageResourcesDir } from '../../resources/index.js';
-import { createLogger } from '../../shared/utils/debug.js';
-import { getErrorMessage } from '../../shared/utils/error.js';
+import { selectOption } from '../../shared/prompt/index.js';
+import { getLanguageResourcesDir } from '../../infra/resources/index.js';
+import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { info, error, blankLine, StreamDisplay } from '../../shared/ui/index.js';
 const log = createLogger('interactive');
 
@@ -363,14 +361,18 @@ export async function interactiveMode(cwd: string, initialInput?: string): Promi
     }
 
     // Handle slash commands
-    if (trimmed === '/go') {
-      const summaryPrompt = buildSummaryPrompt(
+    if (trimmed.startsWith('/go')) {
+      const userNote = trimmed.slice(3).trim();
+      let summaryPrompt = buildSummaryPrompt(
         history,
         !!sessionId,
         prompts.summaryPrompt,
         prompts.noTranscript,
         prompts.conversationLabel,
       );
+      if (summaryPrompt && userNote) {
+        summaryPrompt = `${summaryPrompt}\n\nUser Note:\n${userNote}`;
+      }
       if (!summaryPrompt) {
         info(prompts.ui.noConversation);
         continue;
