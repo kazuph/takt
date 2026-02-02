@@ -43,6 +43,7 @@ import {
   interactiveMode,
   executePipeline,
 } from './commands/index.js';
+import { retryPrCreation } from './commands/prRetry.js';
 import { listWorkflows, loadAllWorkflows, isWorkflowPath } from './config/workflowLoader.js';
 import { getLanguage } from './config/globalConfig.js';
 import { selectOptionWithDefault, confirm } from './prompt/index.js';
@@ -434,6 +435,20 @@ program
   .argument('[key]', 'Configuration key')
   .action(async (key?: string) => {
     await switchConfig(projectRoot, key);
+  });
+
+program
+  .command('pr')
+  .description('Retry pull request creation for latest task branch')
+  .option('-b, --branch <name>', 'Branch name to create PR from')
+  .option('--base <name>', 'Base branch (default: origin/HEAD)')
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .action(async (opts: { branch?: string; base?: string; repo?: string }) => {
+    await retryPrCreation(projectRoot, projectRoot, {
+      branch: opts.branch,
+      base: opts.base,
+      repo: opts.repo,
+    });
   });
 
 // --- Default action: task execution, interactive mode, or pipeline ---
