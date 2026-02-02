@@ -11,10 +11,11 @@
 
 import { execFileSync } from 'node:child_process';
 import { fetchIssue, formatIssueAsTask, checkGhCli, type GitHubIssue } from '../github/issue.js';
-import { createPullRequest, pushBranch, buildPrBody } from '../github/pr.js';
+import { createPullRequest, pushBranch, buildPrBody, getDefaultBranch, hasCommitsBetween, hasRemoteBranch } from '../github/pr.js';
+import { generatePrDraft } from '../github/pr-writer.js';
 import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
-import { info, error, success, status } from '../utils/ui.js';
+import { info, warn, error, success, status } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
 import type { PipelineConfig } from '../models/types.js';
 import {
@@ -227,22 +228,41 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
       info('--auto-pr is ignored when --skip-git is specified (no push was performed)');
     } else if (branch) {
       info('Creating pull request...');
-      const prTitle = issue ? issue.title : (options.task ?? 'Pipeline task');
-      const report = `Workflow \`${workflow}\` completed successfully.`;
-      const prBody = buildPipelinePrBody(pipelineConfig, issue, report);
-
-      const prResult = createPullRequest(cwd, {
-        branch,
-        title: prTitle,
-        body: prBody,
-        repo: options.repo,
-      });
-
-      if (prResult.success) {
-        success(`PR created: ${prResult.url}`);
+      const base = getDefaultBranch(cwd);
+      if (!hasCommitsBetween(cwd, base, branch)) {
+        warn(`No commits between ${base} and ${branch}. Skipping PR creation.`);
       } else {
-        error(`PR creation failed: ${prResult.error}`);
-        return EXIT_PR_CREATION_FAILED;
+        if (!hasRemoteBranch(cwd, branch)) {
+          info(`Pushing ${branch} to origin...`);
+          pushBranch(cwd, branch);
+          success(`Pushed to origin/${branch}`);
+        }
+
+        info('Generating pull request via LLM...');
+        const draft = await generatePrDraft({
+          cwd,
+          projectDir: cwd,
+          task,
+          workflow,
+          branch,
+          base,
+          issueTitle: issue?.title,
+          issueBody: issue?.body,
+        });
+
+        const prResult = createPullRequest(cwd, {
+          branch,
+          title: draft.title,
+          body: draft.body,
+          repo: options.repo,
+        });
+
+        if (prResult.success) {
+          success(`PR created: ${prResult.url}`);
+        } else {
+          error(`PR creation failed: ${prResult.error}`);
+          return EXIT_PR_CREATION_FAILED;
+        }
       }
     }
   }

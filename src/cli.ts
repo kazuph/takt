@@ -27,7 +27,7 @@ import {
   getEffectiveDebugConfig,
 } from './config/index.js';
 import { clearAgentSessions, getCurrentWorkflow, isVerboseMode } from './config/paths.js';
-import { info, error, success, setLogLevel } from './utils/ui.js';
+import { info, warn, error, success, setLogLevel } from './utils/ui.js';
 import { initDebugLogger, createLogger, setVerboseConsole } from './utils/debug.js';
 import { resolveProjectRoot } from './utils/git.js';
 import {
@@ -52,7 +52,8 @@ import { summarizeTaskName } from './task/summarize.js';
 import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 import { checkForUpdates } from './utils/updateNotifier.js';
 import { resolveIssueTask, isIssueReference } from './github/issue.js';
-import { createPullRequest, buildPrBody } from './github/pr.js';
+import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch } from './github/pr.js';
+import { generatePrDraft } from './github/pr-writer.js';
 import type { TaskExecutionOptions } from './commands/taskExecution.js';
 import type { ProviderType } from './providers/index.js';
 
@@ -165,18 +166,39 @@ async function selectAndExecuteTask(
     if (commitResult.success && commitResult.commitHash && branch) {
       const shouldCreatePr = options?.autoPr === true || await confirm('Create pull request?', false);
       if (shouldCreatePr) {
-        info('Creating pull request...');
-        const prBody = buildPrBody(undefined, `Workflow \`${workflowIdentifier}\` completed successfully.`);
-        const prResult = createPullRequest(execCwd, {
-          branch,
-          title: task.length > 100 ? `${task.slice(0, 97)}...` : task,
-          body: prBody,
-          repo: options?.repo,
-        });
-        if (prResult.success) {
-          success(`PR created: ${prResult.url}`);
+        const base = getDefaultBranch(cwd);
+        if (!hasCommitsBetween(cwd, base, branch)) {
+          warn(`No commits between ${base} and ${branch}. Skipping PR creation.`);
         } else {
-          error(`PR creation failed: ${prResult.error}`);
+          if (!hasRemoteBranch(cwd, branch)) {
+            info(`Pushing ${branch} to origin...`);
+            pushBranch(cwd, branch);
+            success(`Pushed to origin/${branch}`);
+          }
+
+          info('Generating pull request via LLM...');
+          const draft = await generatePrDraft({
+            cwd,
+            projectDir,
+            task,
+            workflow: workflowIdentifier,
+            branch,
+            base,
+          });
+
+          info('Creating pull request...');
+          const prResult = createPullRequest(execCwd, {
+            branch,
+            title: draft.title,
+            body: draft.body,
+            repo: options?.repo,
+          });
+
+          if (prResult.success) {
+            success(`PR created: ${prResult.url}`);
+          } else {
+            error(`PR creation failed: ${prResult.error}`);
+          }
         }
       }
     }

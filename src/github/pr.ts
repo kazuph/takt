@@ -31,6 +31,48 @@ export interface CreatePrResult {
   error?: string;
 }
 
+/** Resolve default branch name from origin/HEAD (fallback: main). */
+export function getDefaultBranch(cwd: string): string {
+  try {
+    const ref = execFileSync('git', ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    }).trim();
+    return ref.replace(/^origin\//, '') || 'main';
+  } catch {
+    return 'main';
+  }
+}
+
+/** Check whether origin has the branch. */
+export function hasRemoteBranch(cwd: string, branch: string): boolean {
+  try {
+    const output = execFileSync('git', ['ls-remote', '--heads', 'origin', branch], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    }).trim();
+    return output.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Check whether there are commits between base and branch. */
+export function hasCommitsBetween(cwd: string, base: string, branch: string): boolean {
+  try {
+    const output = execFileSync('git', ['rev-list', '--count', `${base}..${branch}`], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    }).trim();
+    return Number.parseInt(output, 10) > 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Push a branch to origin.
  * Throws on failure.
