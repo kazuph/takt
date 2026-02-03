@@ -1,10 +1,11 @@
 # =============================================================================
 # TAKT Prompt Definitions — 日本語
 # =============================================================================
+# AI向けプロンプト定義のみ。UIラベルは ../i18n/ を参照。
 # テンプレート変数は {variableName} 形式を使用します。
 # =============================================================================
 
-# ===== Interactive Mode =====
+# ===== Interactive Mode — 対話モードのAIプロンプト =====
 interactive:
   systemPrompt: |
     あなたはTAKT（AIエージェントワークフローオーケストレーションツール）の対話モードを担当しています。
@@ -82,17 +83,7 @@ interactive:
 
   noTranscript: "（ローカル履歴なし。現在のセッション文脈を要約してください。）"
 
-  ui:
-    intro: "対話モード - タスク内容を入力してください。コマンド: /go（実行）, /cancel（終了）"
-    resume: "前回のセッションを再開します"
-    noConversation: "まだ会話がありません。まずタスク内容を入力してください。"
-    summarizeFailed: "会話の要約に失敗しました。再度お試しください。"
-    continuePrompt: "続けてタスク内容を入力してください。"
-    proposed: "提案されたタスク指示:"
-    confirm: "このタスク指示で進めますか？"
-    cancelled: "キャンセルしました"
-
-# ===== Summarize =====
+# ===== Summarize — スラグ生成 =====
 summarize:
   slugGenerator: |
     You are a slug generator. Given a task description, output ONLY a slug.
@@ -109,7 +100,7 @@ summarize:
     worktreeを作るときブランチ名をAIで生成 → ai-branch-naming
     レビュー画面に元の指示を表示する → show-original-instruction
 
-# ===== Claude Client =====
+# ===== Claude Client — エージェント・ジャッジプロンプト =====
 claude:
   agentDefault: "You are the {agentName} agent. Follow the standard {agentName} workflow."
   judgePrompt: |
@@ -132,7 +123,7 @@ claude:
     Output ONLY the tag `[JUDGE:N]` where N is the number of the best matching condition.
     Do not output anything else.
 
-# ===== Instruction Builders =====
+# ===== Instruction Builders — ワークフローステップのプロンプト構成 =====
 instruction:
   metadata:
     heading: "## 実行コンテキスト"
@@ -192,20 +183,3 @@ instruction:
     outputInstruction: "判定に対応するタグを出力してください:"
     appendixHeading: "### 追加出力テンプレート"
     appendixInstruction: "`[{tag}]` を出力する場合、以下を追記してください:"
-
-# ===== Workflow Execution =====
-workflow:
-  iterationLimit:
-    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
-    currentStep: "現在のステップ: {currentStep}"
-    continueQuestion: "続行しますか？"
-    continueLabel: "続行する（追加イテレーション数を入力）"
-    continueDescription: "入力した回数だけ上限を増やします"
-    stopLabel: "終了する"
-    inputPrompt: "追加するイテレーション数を入力してください（1以上）"
-    invalidInput: "1以上の整数を入力してください。"
-    userInputPrompt: "追加の指示を入力してください（空で中止）"
-  notifyComplete: "ワークフロー完了 ({iteration} iterations)"
-  notifyAbort: "中断: {reason}"
-  sigintGraceful: "Ctrl+C: ワークフローを中断しています..."
-  sigintForce: "Ctrl+C: 強制終了します"

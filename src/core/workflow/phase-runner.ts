@@ -47,67 +47,11 @@ export function needsStatusJudgmentPhase(step: WorkflowStep): boolean {
   return hasTagBasedRules(step);
 }
 
-function extractJsonPayload(content: string): string | null {
-  const trimmed = content.trim();
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    return trimmed;
-  }
-  const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  return match ? match[1]!.trim() : null;
-}
-
-function parseReportJson(content: string): Record<string, string> | null {
-  const payload = extractJsonPayload(content);
-  if (!payload) return null;
-  try {
-    const parsed = JSON.parse(payload);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const obj = parsed as Record<string, unknown>;
-      for (const value of Object.values(obj)) {
-        if (typeof value !== 'string') return null;
-      }
-      return obj as Record<string, string>;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function getReportFiles(report: WorkflowStep['report']): string[] {
   if (!report) return [];
   if (typeof report === 'string') return [report];
   if (isReportObjectConfig(report)) return [report.name];
   return report.map((rc) => rc.path);
-}
-
-function resolveReportOutputs(
-  report: WorkflowStep['report'],
-  reportDir: string,
-  content: string,
-): Map<string, string> {
-  if (!report) return new Map();
-
-  const files = getReportFiles(report);
-  const json = parseReportJson(content);
-  if (!json) {
-    const raw = content;
-    if (!raw || raw.trim().length === 0) {
-      throw new Error('Report output is empty.');
-    }
-    return new Map(files.map((file) => [file, raw]));
-  }
-
-  const outputs = new Map<string, string>();
-  for (const file of files) {
-    const absolutePath = resolve(reportDir, file);
-    const value = json[file] ?? json[absolutePath];
-    if (typeof value !== 'string') {
-      throw new Error(`Report output missing content for file: ${file}`);
-    }
-    outputs.set(file, value);
-  }
-  return outputs;
 }
 
 function writeReportFile(reportDir: string, fileName: string, content: string): void {
@@ -128,7 +72,8 @@ function writeReportFile(reportDir: string, fileName: string, content: string): 
 /**
  * Phase 2: Report output.
  * Resumes the agent session with no tools to request report content.
- * The engine writes the report files to the Report Directory.
+ * Each report file is generated individually in a loop.
+ * Plain text responses are written directly to files (no JSON parsing).
  */
 export async function runReportPhase(
   step: WorkflowStep,
@@ -136,53 +81,73 @@ export async function runReportPhase(
   ctx: PhaseRunnerContext,
 ): Promise<void> {
   const sessionKey = step.agent ?? step.name;
-  const sessionId = ctx.getSessionId(sessionKey);
-  if (!sessionId) {
+  let currentSessionId = ctx.getSessionId(sessionKey);
+  if (!currentSessionId) {
     throw new Error(`Report phase requires a session to resume, but no sessionId found for agent "${sessionKey}" in step "${step.name}"`);
   }
 
-  log.debug('Running report phase', { step: step.name, sessionId });
+  log.debug('Running report phase', { step: step.name, sessionId: currentSessionId });
 
-  const reportInstruction = new ReportInstructionBuilder(step, {
-    cwd: ctx.cwd,
-    reportDir: ctx.reportDir,
-    stepIteration,
-    language: ctx.language,
-  }).build();
-
-  ctx.onPhaseStart?.(step, 2, 'report', reportInstruction);
-
-  const reportOptions = ctx.buildResumeOptions(step, sessionId, {
-    allowedTools: [],
-    maxTurns: 3,
-  });
-
-  let reportResponse;
-  try {
-    reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
-    throw error;
+  const reportFiles = getReportFiles(step.report);
+  if (reportFiles.length === 0) {
+    log.debug('No report files configured, skipping report phase');
+    return;
   }
 
-  // Check for errors in report phase
-  if (reportResponse.status !== 'done') {
-    const errorMsg = reportResponse.error || reportResponse.content || 'Unknown error';
-    ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status, errorMsg);
-    throw new Error(`Report phase failed: ${errorMsg}`);
-  }
+  for (const fileName of reportFiles) {
+    if (!fileName) {
+      throw new Error(`Invalid report file name: ${fileName}`);
+    }
 
-  const outputs = resolveReportOutputs(step.report, ctx.reportDir, reportResponse.content);
-  for (const [fileName, content] of outputs.entries()) {
+    log.debug('Generating report file', { step: step.name, fileName });
+
+    const reportInstruction = new ReportInstructionBuilder(step, {
+      cwd: ctx.cwd,
+      reportDir: ctx.reportDir,
+      stepIteration,
+      language: ctx.language,
+      targetFile: fileName,
+    }).build();
+
+    ctx.onPhaseStart?.(step, 2, 'report', reportInstruction);
+
+    const reportOptions = ctx.buildResumeOptions(step, currentSessionId, {
+      allowedTools: [],
+      maxTurns: 3,
+    });
+
+    let reportResponse;
+    try {
+      reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
+      throw error;
+    }
+
+    if (reportResponse.status !== 'done') {
+      const errorMsg = reportResponse.error || reportResponse.content || 'Unknown error';
+      ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status, errorMsg);
+      throw new Error(`Report phase failed for ${fileName}: ${errorMsg}`);
+    }
+
+    const content = reportResponse.content.trim();
+    if (content.length === 0) {
+      throw new Error(`Report output is empty for file: ${fileName}`);
+    }
+
     writeReportFile(ctx.reportDir, fileName, content);
+
+    if (reportResponse.sessionId) {
+      currentSessionId = reportResponse.sessionId;
+      ctx.updateAgentSession(sessionKey, currentSessionId);
+    }
+
+    ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
+    log.debug('Report file generated', { step: step.name, fileName });
   }
 
-  // Update session (phase 2 may update it)
-  ctx.updateAgentSession(sessionKey, reportResponse.sessionId);
-
-  ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
-  log.debug('Report phase complete', { step: step.name, status: reportResponse.status });
+  log.debug('Report phase complete', { step: step.name, filesGenerated: reportFiles.length });
 }
 
 /**

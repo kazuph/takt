@@ -51,6 +51,87 @@
       color: #858585;
     }
 
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    .action-btn {
+      padding: 10px 20px;
+      background: #007acc;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #005a9e;
+    }
+
+    .action-btn:disabled {
+      background: #3e3e42;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    .action-btn.secondary {
+      background: #252526;
+      border: 1px solid #3e3e42;
+    }
+
+    .action-btn.secondary:hover:not(:disabled) {
+      background: #2d2d30;
+      border-color: #007acc;
+    }
+
+    .navigation {
+      display: none;
+      background: #252526;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .navigation.active {
+      display: flex;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      background: #007acc;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: #005a9e;
+    }
+
+    .nav-btn:disabled {
+      background: #3e3e42;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    .current-file {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      color: #d4d4d4;
+      padding: 0 10px;
+    }
+
     .file-info {
       background: #252526;
       padding: 15px;
@@ -236,6 +317,19 @@
       <input type="file" id="fileInput" accept=".jsonl,.json" style="display: none;">
     </div>
 
+    <div class="quick-actions">
+      <button class="action-btn" id="loadLatestBtn">📂 セッションディレクトリを指定する</button>
+      <button class="action-btn secondary" id="clearDirBtn" style="display: none;">🗑️ 保存したディレクトリをクリア</button>
+    </div>
+
+    <div class="navigation" id="navigation">
+      <button class="nav-btn" id="oldestBtn">⏮️ Oldest</button>
+      <button class="nav-btn" id="prevBtn">◀️ Prev</button>
+      <div class="current-file" id="currentFile"></div>
+      <button class="nav-btn" id="nextBtn">Next ▶️</button>
+      <button class="nav-btn" id="latestBtn">Latest ⏭️</button>
+    </div>
+
     <div class="file-info" id="fileInfo">
       <div class="stats" id="stats"></div>
     </div>
@@ -246,9 +340,85 @@
   <script>
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
+    const loadLatestBtn = document.getElementById('loadLatestBtn');
+    const clearDirBtn = document.getElementById('clearDirBtn');
+    const navigation = document.getElementById('navigation');
+    const currentFileDiv = document.getElementById('currentFile');
+    const oldestBtn = document.getElementById('oldestBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const latestBtn = document.getElementById('latestBtn');
     const fileInfo = document.getElementById('fileInfo');
     const statsDiv = document.getElementById('stats');
     const recordsDiv = document.getElementById('records');
+
+    let sessionFiles = [];
+    let currentFileIndex = -1;
+    let lastLogDirectory = null;
+
+    // IndexedDB setup
+    const DB_NAME = 'TaktSessionViewerDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'directories';
+    let db = null;
+
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME);
+          }
+        };
+      });
+    }
+
+    async function saveDirectoryHandle(handle) {
+      if (!db) await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.put(handle, 'sessionDirectory');
+      return tx.complete;
+    }
+
+    async function getDirectoryHandle() {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get('sessionDirectory');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function clearDirectoryHandle() {
+      if (!db) await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete('sessionDirectory');
+      return tx.complete;
+    }
+
+    // Initialize
+    initDB().then(async () => {
+      const savedHandle = await getDirectoryHandle();
+      if (savedHandle) {
+        clearDirBtn.style.display = 'inline-block';
+        loadLatestBtn.textContent = '🔄 最新のセッションを読み込む';
+        try {
+          await loadFromDirectoryHandle(savedHandle);
+        } catch (err) {
+          console.log('Saved directory handle is no longer valid:', err);
+        }
+      }
+    });
 
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', (e) => {
@@ -269,6 +439,110 @@
       if (file) handleFile(file);
     });
 
+    oldestBtn.addEventListener('click', () => loadFileByIndex(sessionFiles.length - 1));
+    prevBtn.addEventListener('click', () => loadFileByIndex(currentFileIndex + 1));
+    nextBtn.addEventListener('click', () => loadFileByIndex(currentFileIndex - 1));
+    latestBtn.addEventListener('click', () => loadFileByIndex(0));
+
+    clearDirBtn.addEventListener('click', async () => {
+      await clearDirectoryHandle();
+      clearDirBtn.style.display = 'none';
+      loadLatestBtn.textContent = '📂 セッションディレクトリを指定する';
+      sessionFiles = [];
+      currentFileIndex = -1;
+      navigation.classList.remove('active');
+      recordsDiv.innerHTML = '';
+      fileInfo.classList.remove('active');
+    });
+
+    loadLatestBtn.addEventListener('click', async () => {
+      try {
+        if (!('showDirectoryPicker' in window)) {
+          alert('お使いのブラウザはこの機能に対応していません。Chrome、Edge、Brave、またはOperaをご使用ください。');
+          return;
+        }
+
+        const savedHandle = await getDirectoryHandle();
+        let dirHandle;
+
+        if (savedHandle) {
+          try {
+            const permission = await savedHandle.queryPermission({ mode: 'read' });
+            if (permission === 'granted') {
+              dirHandle = savedHandle;
+            } else {
+              const newPermission = await savedHandle.requestPermission({ mode: 'read' });
+              if (newPermission === 'granted') {
+                dirHandle = savedHandle;
+              }
+            }
+          } catch (err) {
+            console.log('Saved handle is invalid, requesting new directory');
+          }
+        }
+
+        if (!dirHandle) {
+          dirHandle = await window.showDirectoryPicker({
+            id: 'takt-sessions',
+            startIn: 'documents',
+            mode: 'read'
+          });
+
+          await saveDirectoryHandle(dirHandle);
+          clearDirBtn.style.display = 'inline-block';
+          loadLatestBtn.textContent = '🔄 最新のセッションを読み込む';
+        }
+
+        await loadFromDirectoryHandle(dirHandle);
+
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('User cancelled directory selection');
+        } else {
+          console.error('Error loading latest session:', err);
+          recordsDiv.innerHTML = `<div class="error">Error loading latest session: ${err.message}</div>`;
+        }
+      }
+    });
+
+    async function loadFromDirectoryHandle(dirHandle) {
+      lastLogDirectory = dirHandle;
+      sessionFiles = [];
+
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && (entry.name.endsWith('.jsonl') || entry.name.endsWith('.json'))) {
+          const fileHandle = entry;
+          const file = await fileHandle.getFile();
+          sessionFiles.push({ name: entry.name, file, modifiedTime: file.lastModified });
+        }
+      }
+
+      if (sessionFiles.length === 0) {
+        alert('JSONLファイルが見つかりませんでした。');
+        return;
+      }
+
+      sessionFiles.sort((a, b) => b.modifiedTime - a.modifiedTime);
+      loadFileByIndex(0);
+    }
+
+    function loadFileByIndex(index) {
+      if (index < 0 || index >= sessionFiles.length) return;
+
+      currentFileIndex = index;
+      const fileData = sessionFiles[index];
+      handleFile(fileData.file);
+
+      // Update navigation
+      navigation.classList.add('active');
+      currentFileDiv.textContent = `${fileData.name} (${index + 1} / ${sessionFiles.length})`;
+
+      oldestBtn.disabled = index === sessionFiles.length - 1;
+      prevBtn.disabled = index === sessionFiles.length - 1;
+      nextBtn.disabled = index === 0;
+      latestBtn.disabled = index === 0;
+    }
+
     function handleFile(file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -285,7 +559,6 @@
     }
 
     function displayRecords(records) {
-      // Calculate stats
       const stats = {
         total: records.length,
         steps: records.filter(r => r.type === 'step_start').length,
@@ -309,7 +582,6 @@
 
       fileInfo.classList.add('active');
 
-      // Display records
       recordsDiv.innerHTML = records.map((record, index) => {
         const hasInstruction = record.instruction && record.instruction.length > 0;
         const instructionId = `instruction-${index}`;

@@ -47,7 +47,7 @@ import {
 import { createLogger, notifySuccess, notifyError } from '../../../shared/utils/index.js';
 import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
-import { getPrompt } from '../../../shared/prompts/index.js';
+import { getLabel } from '../../../shared/i18n/index.js';
 
 const log = createLogger('workflow');
 
@@ -154,20 +154,20 @@ export async function executeWorkflow(
 
     blankLine();
     warn(
-      getPrompt('workflow.iterationLimit.maxReached', undefined, {
+      getLabel('workflow.iterationLimit.maxReached', undefined, {
         currentIteration: String(request.currentIteration),
         maxIterations: String(request.maxIterations),
       })
     );
-    info(getPrompt('workflow.iterationLimit.currentStep', undefined, { currentStep: request.currentStep }));
+    info(getLabel('workflow.iterationLimit.currentStep', undefined, { currentStep: request.currentStep }));
 
-    const action = await selectOption(getPrompt('workflow.iterationLimit.continueQuestion'), [
+    const action = await selectOption(getLabel('workflow.iterationLimit.continueQuestion'), [
       {
-        label: getPrompt('workflow.iterationLimit.continueLabel'),
+        label: getLabel('workflow.iterationLimit.continueLabel'),
         value: 'continue',
-        description: getPrompt('workflow.iterationLimit.continueDescription'),
+        description: getLabel('workflow.iterationLimit.continueDescription'),
       },
-      { label: getPrompt('workflow.iterationLimit.stopLabel'), value: 'stop' },
+      { label: getLabel('workflow.iterationLimit.stopLabel'), value: 'stop' },
     ]);
 
     if (action !== 'continue') {
@@ -175,7 +175,7 @@ export async function executeWorkflow(
     }
 
     while (true) {
-      const input = await promptInput(getPrompt('workflow.iterationLimit.inputPrompt'));
+      const input = await promptInput(getLabel('workflow.iterationLimit.inputPrompt'));
       if (!input) {
         return null;
       }
@@ -186,7 +186,7 @@ export async function executeWorkflow(
         return additionalIterations;
       }
 
-      warn(getPrompt('workflow.iterationLimit.invalidInput'));
+      warn(getLabel('workflow.iterationLimit.invalidInput'));
     }
   };
 
@@ -198,7 +198,7 @@ export async function executeWorkflow(
         }
         blankLine();
         info(request.prompt.trim());
-        const input = await promptInput(getPrompt('workflow.iterationLimit.userInputPrompt'));
+        const input = await promptInput(getLabel('workflow.iterationLimit.userInputPrompt'));
         return input && input.trim() ? input.trim() : null;
       }
     : undefined;
@@ -355,7 +355,7 @@ export async function executeWorkflow(
 
     success(`Workflow completed (${state.iteration} iterations${elapsedDisplay})`);
     info(`Session log: ${ndjsonLogPath}`);
-    notifySuccess('TAKT', getPrompt('workflow.notifyComplete', undefined, { iteration: String(state.iteration) }));
+    notifySuccess('TAKT', getLabel('workflow.notifyComplete', undefined, { iteration: String(state.iteration) }));
   });
 
   engine.on('workflow:abort', (state, reason) => {
@@ -385,7 +385,7 @@ export async function executeWorkflow(
 
     error(`Workflow aborted after ${state.iteration} iterations${elapsedDisplay}: ${reason}`);
     info(`Session log: ${ndjsonLogPath}`);
-    notifyError('TAKT', getPrompt('workflow.notifyAbort', undefined, { reason }));
+    notifyError('TAKT', getLabel('workflow.notifyAbort', undefined, { reason }));
   });
 
   // SIGINT handler: 1st Ctrl+C = graceful abort, 2nd = force exit
@@ -394,11 +394,11 @@ export async function executeWorkflow(
     sigintCount++;
     if (sigintCount === 1) {
       blankLine();
-      warn(getPrompt('workflow.sigintGraceful'));
+      warn(getLabel('workflow.sigintGraceful'));
       engine.abort();
     } else {
       blankLine();
-      error(getPrompt('workflow.sigintForce'));
+      error(getLabel('workflow.sigintForce'));
       process.exit(EXIT_SIGINT);
     }
   };

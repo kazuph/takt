@@ -1,0 +1,35 @@
+# =============================================================================
+# TAKT UI Labels — English
+# =============================================================================
+# User-facing display strings (not AI prompts).
+# Template variables use {variableName} syntax.
+# =============================================================================
+
+# ===== Interactive Mode UI =====
+interactive:
+  ui:
+    intro: "Interactive mode - describe your task. Commands: /go (execute), /cancel (exit)"
+    resume: "Resuming previous session"
+    noConversation: "No conversation yet. Please describe your task first."
+    summarizeFailed: "Failed to summarize conversation. Please try again."
+    continuePrompt: "Okay, continue describing your task."
+    proposed: "Proposed task instruction:"
+    confirm: "Use this task instruction?"
+    cancelled: "Cancelled"
+
+# ===== Workflow Execution UI =====
+workflow:
+  iterationLimit:
+    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
+    currentStep: "現在のステップ: {currentStep}"
+    continueQuestion: "続行しますか？"
+    continueLabel: "続行する（追加イテレーション数を入力）"
+    continueDescription: "入力した回数だけ上限を増やします"
+    stopLabel: "終了する"
+    inputPrompt: "追加するイテレーション数を入力してください（1以上）"
+    invalidInput: "1以上の整数を入力してください。"
+    userInputPrompt: "追加の指示を入力してください（空で中止）"
+  notifyComplete: "ワークフロー完了 ({iteration} iterations)"
+  notifyAbort: "中断: {reason}"
+  sigintGraceful: "Ctrl+C: ワークフローを中断しています..."
+  sigintForce: "Ctrl+C: 強制終了します"

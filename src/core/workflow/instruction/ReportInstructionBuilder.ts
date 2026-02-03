@@ -45,6 +45,8 @@ export interface ReportInstructionContext {
   stepIteration: number;
   /** Language */
   language?: Language;
+  /** Target report file name (when generating a single report) */
+  targetFile?: string;
 }
 
 /**
@@ -85,21 +87,30 @@ export class ReportInstructionBuilder {
     execLines.push('');
     sections.push(execLines.join('\n'));
 
-    // 2. Workflow Context (report info only)
-    const workflowLines = [
-      s.workflowContext,
-      renderReportContext(this.step.report, this.context.reportDir, language),
-    ];
+    // 2. Workflow Context (single file info when targetFile is specified)
+    const workflowLines = [s.workflowContext];
+    if (this.context.targetFile) {
+      const sectionStr = getPromptObject<{ reportDirectory: string; reportFile: string }>('instruction.sections', language);
+      workflowLines.push(`- ${sectionStr.reportDirectory}: ${this.context.reportDir}/`);
+      workflowLines.push(`- ${sectionStr.reportFile}: ${this.context.reportDir}/${this.context.targetFile}`);
+    } else {
+      workflowLines.push(renderReportContext(this.step.report, this.context.reportDir, language));
+    }
     sections.push(workflowLines.join('\n'));
 
-    // 3. Instructions + report output instruction + format
-    const instrParts: string[] = [
-      s.instructions,
-      r.instructionBody,
-      r.reportJsonFormat,
-    ];
-    instrParts.push(r.reportPlainAllowed);
-    instrParts.push(r.reportOnlyOutput);
+    // 3. Instructions (simplified when targetFile is specified)
+    const instrParts: string[] = [s.instructions];
+
+    if (this.context.targetFile) {
+      instrParts.push(r.instructionBody);
+      instrParts.push(`**このフェーズではツールは使えません。レポート内容をテキストとして直接回答してください。**`);
+      instrParts.push(`**レポート本文のみを回答してください。** ファイル名やJSON形式は不要です。`);
+    } else {
+      instrParts.push(r.instructionBody);
+      instrParts.push(r.reportJsonFormat);
+      instrParts.push(r.reportPlainAllowed);
+      instrParts.push(r.reportOnlyOutput);
+    }
 
     // Report output instruction (auto-generated or explicit order)
     const reportContext: InstructionContext = {
@@ -118,7 +129,7 @@ export class ReportInstructionBuilder {
       const processedOrder = replaceTemplatePlaceholders(this.step.report.order.trimEnd(), this.step, reportContext);
       instrParts.push('');
       instrParts.push(processedOrder);
-    } else {
+    } else if (!this.context.targetFile) {
       const reportInstruction = renderReportOutputInstruction(this.step, reportContext, language);
       if (reportInstruction) {
         instrParts.push('');

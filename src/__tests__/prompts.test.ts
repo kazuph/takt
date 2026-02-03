@@ -51,11 +51,12 @@ describe('getPrompt', () => {
     });
 
     it('replaces multiple different variables', () => {
-      const result = getPrompt('workflow.iterationLimit.maxReached', undefined, {
-        currentIteration: '5',
-        maxIterations: '10',
+      const result = getPrompt('claude.judgePrompt', undefined, {
+        agentOutput: 'test output',
+        conditionList: '| 1 | Success |',
       });
-      expect(result).toContain('(5/10)');
+      expect(result).toContain('test output');
+      expect(result).toContain('| 1 | Success |');
     });
   });
 });
@@ -69,11 +70,6 @@ describe('getPromptObject', () => {
   it('returns a Japanese object when lang is "ja"', () => {
     const result = getPromptObject<{ heading: string }>('instruction.metadata', 'ja');
     expect(result.heading).toBe('## 実行コンテキスト');
-  });
-
-  it('returns interactive UI text object', () => {
-    const result = getPromptObject<{ intro: string }>('interactive.ui', 'en');
-    expect(result.intro).toContain('Interactive mode');
   });
 
   it('throws for a non-existent key', () => {
@@ -103,7 +99,6 @@ describe('YAML content integrity', () => {
     expect(() => getPrompt('interactive.workflowInfo', 'en')).not.toThrow();
     expect(() => getPrompt('interactive.conversationLabel', 'en')).not.toThrow();
     expect(() => getPrompt('interactive.noTranscript', 'en')).not.toThrow();
-    expect(() => getPromptObject('interactive.ui', 'en')).not.toThrow();
     expect(() => getPrompt('summarize.slugGenerator')).not.toThrow();
     expect(() => getPrompt('claude.agentDefault')).not.toThrow();
     expect(() => getPrompt('claude.judgePrompt')).not.toThrow();
@@ -114,7 +109,6 @@ describe('YAML content integrity', () => {
     expect(() => getPromptObject('instruction.reportSections', 'en')).not.toThrow();
     expect(() => getPrompt('instruction.statusJudgment.header', 'en')).not.toThrow();
     expect(() => getPromptObject('instruction.statusRules', 'en')).not.toThrow();
-    expect(() => getPrompt('workflow.iterationLimit.maxReached')).not.toThrow();
   });
 
   it('contains all expected top-level keys in ja', () => {
@@ -123,7 +117,6 @@ describe('YAML content integrity', () => {
     expect(() => getPrompt('interactive.workflowInfo', 'ja')).not.toThrow();
     expect(() => getPrompt('interactive.conversationLabel', 'ja')).not.toThrow();
     expect(() => getPrompt('interactive.noTranscript', 'ja')).not.toThrow();
-    expect(() => getPromptObject('interactive.ui', 'ja')).not.toThrow();
     expect(() => getPrompt('summarize.slugGenerator', 'ja')).not.toThrow();
     expect(() => getPrompt('claude.agentDefault', 'ja')).not.toThrow();
     expect(() => getPrompt('claude.judgePrompt', 'ja')).not.toThrow();
@@ -134,7 +127,6 @@ describe('YAML content integrity', () => {
     expect(() => getPromptObject('instruction.reportSections', 'ja')).not.toThrow();
     expect(() => getPrompt('instruction.statusJudgment.header', 'ja')).not.toThrow();
     expect(() => getPromptObject('instruction.statusRules', 'ja')).not.toThrow();
-    expect(() => getPrompt('workflow.iterationLimit.maxReached', 'ja')).not.toThrow();
   });
 
   it('instruction.metadata has all required fields', () => {
@@ -169,14 +161,12 @@ describe('YAML content integrity', () => {
       'interactive.systemPrompt',
       'summarize.slugGenerator',
       'claude.agentDefault',
-      'workflow.iterationLimit.maxReached',
     ];
     for (const key of stringKeys) {
       expect(() => getPrompt(key, 'en')).not.toThrow();
       expect(() => getPrompt(key, 'ja')).not.toThrow();
     }
     const objectKeys = [
-      'interactive.ui',
       'instruction.metadata',
       'instruction.sections',
     ];

@@ -19,7 +19,8 @@ import { getProvider, type ProviderType } from '../../infra/providers/index.js';
 import { selectOption } from '../../shared/prompt/index.js';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { info, error, blankLine, StreamDisplay } from '../../shared/ui/index.js';
-import { getPrompt, getPromptObject } from '../../shared/prompts/index.js';
+import { getPrompt } from '../../shared/prompts/index.js';
+import { getLabelObject } from '../../shared/i18n/index.js';
 const log = createLogger('interactive');
 
 /** Shape of interactive UI text */
@@ -58,7 +59,7 @@ function getInteractivePrompts(lang: 'en' | 'ja', workflowContext?: WorkflowCont
     summaryPrompt,
     conversationLabel: getPrompt('interactive.conversationLabel', lang),
     noTranscript: getPrompt('interactive.noTranscript', lang),
-    ui: getPromptObject<InteractiveUIText>('interactive.ui', lang),
+    ui: getLabelObject<InteractiveUIText>('interactive.ui', lang),
   };
 }
 

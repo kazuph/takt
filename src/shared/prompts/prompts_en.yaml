@@ -1,10 +1,11 @@
 # =============================================================================
 # TAKT Prompt Definitions — English
 # =============================================================================
+# AI-facing prompt definitions only. UI labels live in ../i18n/.
 # Template variables use {variableName} syntax.
 # =============================================================================
 
-# ===== Interactive Mode =====
+# ===== Interactive Mode — AI prompts for conversation and summarization =====
 interactive:
   systemPrompt: |
     You are a task planning assistant. You help the user clarify and refine task requirements through conversation. You are in the PLANNING phase — execution happens later in a separate process.
@@ -69,17 +70,7 @@ interactive:
 
   noTranscript: "(No local transcript. Summarize the current session context.)"
 
-  ui:
-    intro: "Interactive mode - describe your task. Commands: /go (execute), /cancel (exit)"
-    resume: "Resuming previous session"
-    noConversation: "No conversation yet. Please describe your task first."
-    summarizeFailed: "Failed to summarize conversation. Please try again."
-    continuePrompt: "Okay, continue describing your task."
-    proposed: "Proposed task instruction:"
-    confirm: "Use this task instruction?"
-    cancelled: "Cancelled"
-
-# ===== Summarize =====
+# ===== Summarize — slug generation for task descriptions =====
 summarize:
   slugGenerator: |
     You are a slug generator. Given a task description, output ONLY a slug.
@@ -96,7 +87,7 @@ summarize:
     worktreeを作るときブランチ名をAIで生成 → ai-branch-naming
     レビュー画面に元の指示を表示する → show-original-instruction
 
-# ===== Claude Client =====
+# ===== Claude Client — agent and judge prompts =====
 claude:
   agentDefault: "You are the {agentName} agent. Follow the standard {agentName} workflow."
   judgePrompt: |
@@ -119,7 +110,7 @@ claude:
     Output ONLY the tag `[JUDGE:N]` where N is the number of the best matching condition.
     Do not output anything else.
 
-# ===== Instruction Builders =====
+# ===== Instruction Builders — prompt construction for workflow steps =====
 instruction:
   metadata:
     heading: "## Execution Context"
@@ -179,20 +170,3 @@ instruction:
     outputInstruction: "Output the tag corresponding to your decision:"
     appendixHeading: "### Appendix Template"
     appendixInstruction: "When outputting `[{tag}]`, append the following:"
-
-# ===== Workflow Execution =====
-workflow:
-  iterationLimit:
-    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
-    currentStep: "現在のステップ: {currentStep}"
-    continueQuestion: "続行しますか？"
-    continueLabel: "続行する（追加イテレーション数を入力）"
-    continueDescription: "入力した回数だけ上限を増やします"
-    stopLabel: "終了する"
-    inputPrompt: "追加するイテレーション数を入力してください（1以上）"
-    invalidInput: "1以上の整数を入力してください。"
-    userInputPrompt: "追加の指示を入力してください（空で中止）"
-  notifyComplete: "ワークフロー完了 ({iteration} iterations)"
-  notifyAbort: "中断: {reason}"
-  sigintGraceful: "Ctrl+C: ワークフローを中断しています..."
-  sigintForce: "Ctrl+C: 強制終了します"
