@@ -272,18 +272,16 @@ describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should load and execute builtin simple workflow by name', async () => {
+  it('should load and execute builtin minimal workflow by name', async () => {
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
       { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo issues.' },
-      { agent: 'architecture-reviewer', status: 'done', content: '[REVIEW:1]\n\nNo issues found.' },
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:0]\n\nNo AI-specific issues.' },
+      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:0]\n\nAll checks passed.' },
     ]);
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: 'simple',
+      workflow: 'minimal',
       autoPr: false,
       skipGit: true,
       cwd: testDir,

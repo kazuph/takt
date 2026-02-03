@@ -23,6 +23,12 @@ export interface ProjectLocalConfig {
   permissionMode?: PermissionMode;
   /** Verbose output mode */
   verbose?: boolean;
+  /** Workflow categories (name -> workflow list) */
+  workflow_categories?: Record<string, string[]>;
+  /** Show uncategorized workflows under Others category */
+  show_others_category?: boolean;
+  /** Display name for Others category */
+  others_category_name?: string;
   /** Custom settings */
   [key: string]: unknown;
 }

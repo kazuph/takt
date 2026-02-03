@@ -219,6 +219,14 @@ export const GlobalConfigSchema = z.object({
   pipeline: PipelineConfigSchema.optional(),
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
   minimal_output: z.boolean().optional().default(false),
+  /** Bookmarked workflow names for quick access in selection UI */
+  bookmarked_workflows: z.array(z.string()).optional().default([]),
+  /** Workflow categories (name -> workflow list) */
+  workflow_categories: z.record(z.string(), z.array(z.string())).optional(),
+  /** Show uncategorized workflows under Others category */
+  show_others_category: z.boolean().optional(),
+  /** Display name for Others category */
+  others_category_name: z.string().min(1).optional(),
 });
 
 /** Project config schema */

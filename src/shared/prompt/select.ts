@@ -23,6 +23,7 @@ export function renderMenu<T extends string>(
   options: SelectOptionItem<T>[],
   selectedIndex: number,
   hasCancelOption: boolean,
+  cancelLabel = 'Cancel',
 ): string[] {
   const maxWidth = process.stdout.columns || 80;
   const labelPrefix = 4;
@@ -54,7 +55,7 @@ export function renderMenu<T extends string>(
   if (hasCancelOption) {
     const isCancelSelected = selectedIndex === options.length;
     const cursor = isCancelSelected ? chalk.cyan('❯') : ' ';
-    const label = isCancelSelected ? chalk.cyan.bold('Cancel') : chalk.gray('Cancel');
+    const label = isCancelSelected ? chalk.cyan.bold(cancelLabel) : chalk.gray(cancelLabel);
     lines.push(`  ${cursor} ${label}`);
   }
 
@@ -84,6 +85,7 @@ export type KeyInputResult =
   | { action: 'move'; newIndex: number }
   | { action: 'confirm'; selectedIndex: number }
   | { action: 'cancel'; cancelIndex: number }
+  | { action: 'bookmark'; selectedIndex: number }
   | { action: 'exit' }
   | { action: 'none' };
 
@@ -113,14 +115,20 @@ export function handleKeyInput(
   if (key === '\x1B') {
     return { action: 'cancel', cancelIndex: hasCancelOption ? optionCount : -1 };
   }
+  if (key === 'b') {
+    return { action: 'bookmark', selectedIndex: currentIndex };
+  }
   return { action: 'none' };
 }
 
 /** Print the menu header (message + hint). */
-function printHeader(message: string): void {
+function printHeader(message: string, showBookmarkHint: boolean): void {
   console.log();
   console.log(chalk.cyan(message));
-  console.log(chalk.gray('  (↑↓ to move, Enter to select)'));
+  const hint = showBookmarkHint
+    ? '  (↑↓ to move, Enter to select, b to bookmark)'
+    : '  (↑↓ to move, Enter to select)';
+  console.log(chalk.gray(hint));
   console.log();
 }
 
@@ -145,12 +153,28 @@ function redrawMenu<T extends string>(
   options: SelectOptionItem<T>[],
   selectedIndex: number,
   hasCancelOption: boolean,
-  totalLines: number,
-): void {
-  process.stdout.write(`\x1B[${totalLines}A`);
+  prevTotalLines: number,
+  cancelLabel?: string,
+): number {
+  process.stdout.write(`\x1B[${prevTotalLines}A`);
   process.stdout.write('\x1B[J');
-  const newLines = renderMenu(options, selectedIndex, hasCancelOption);
+  const newLines = renderMenu(options, selectedIndex, hasCancelOption, cancelLabel);
   process.stdout.write(newLines.join('\n') + '\n');
+  return newLines.length;
+}
+
+/** Callbacks for interactive select behavior */
+export interface InteractiveSelectCallbacks<T extends string> {
+  /** Called when 'b' key is pressed. Returns updated options for re-render. */
+  onBookmark?: (value: T, index: number) => SelectOptionItem<T>[];
+  /** Custom label for cancel option (default: "Cancel") */
+  cancelLabel?: string;
+}
+
+/** Result of interactive selection */
+interface InteractiveSelectResult<T extends string> {
+  selectedIndex: number;
+  finalOptions: SelectOptionItem<T>[];
 }
 
 /** Interactive cursor-based menu selection. */
@@ -159,22 +183,25 @@ function interactiveSelect<T extends string>(
   options: SelectOptionItem<T>[],
   initialIndex: number,
   hasCancelOption: boolean,
-): Promise<number> {
+  callbacks?: InteractiveSelectCallbacks<T>,
+): Promise<InteractiveSelectResult<T>> {
   return new Promise((resolve) => {
-    const totalItems = hasCancelOption ? options.length + 1 : options.length;
+    let currentOptions = options;
+    let totalItems = hasCancelOption ? currentOptions.length + 1 : currentOptions.length;
     let selectedIndex = initialIndex;
+    const cancelLabel = callbacks?.cancelLabel ?? 'Cancel';
 
-    printHeader(message);
+    printHeader(message, !!callbacks?.onBookmark);
 
     process.stdout.write('\x1B[?7l');
 
-    const totalLines = countRenderedLines(options, hasCancelOption);
-    const lines = renderMenu(options, selectedIndex, hasCancelOption);
+    let totalLines = countRenderedLines(currentOptions, hasCancelOption);
+    const lines = renderMenu(currentOptions, selectedIndex, hasCancelOption, cancelLabel);
     process.stdout.write(lines.join('\n') + '\n');
 
     if (!process.stdin.isTTY) {
       process.stdout.write('\x1B[?7h');
-      resolve(initialIndex);
+      resolve({ selectedIndex: initialIndex, finalOptions: currentOptions });
       return;
     }
 
@@ -191,22 +218,38 @@ function interactiveSelect<T extends string>(
         selectedIndex,
         totalItems,
         hasCancelOption,
-        options.length,
+        currentOptions.length,
       );
 
       switch (result.action) {
         case 'move':
           selectedIndex = result.newIndex;
-          redrawMenu(options, selectedIndex, hasCancelOption, totalLines);
+          totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
           break;
         case 'confirm':
           cleanup(onKeypress);
-          resolve(result.selectedIndex);
+          resolve({ selectedIndex: result.selectedIndex, finalOptions: currentOptions });
           break;
         case 'cancel':
           cleanup(onKeypress);
-          resolve(result.cancelIndex);
+          resolve({ selectedIndex: result.cancelIndex, finalOptions: currentOptions });
           break;
+        case 'bookmark': {
+          if (!callbacks?.onBookmark) break;
+          // Only bookmark actual options, not the cancel row
+          if (result.selectedIndex >= currentOptions.length) break;
+          const item = currentOptions[result.selectedIndex];
+          if (!item) break;
+          const newOptions = callbacks.onBookmark(item.value, result.selectedIndex);
+          // Find the same value in the new options to preserve cursor position
+          const currentValue = item.value;
+          currentOptions = newOptions;
+          totalItems = hasCancelOption ? currentOptions.length + 1 : currentOptions.length;
+          const newIdx = currentOptions.findIndex((o) => o.value === currentValue);
+          selectedIndex = newIdx >= 0 ? newIdx : Math.min(selectedIndex, currentOptions.length - 1);
+          totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
+          break;
+        }
         case 'exit':
           cleanup(onKeypress);
           process.exit(130);
@@ -222,21 +265,23 @@ function interactiveSelect<T extends string>(
 
 /**
  * Prompt user to select from a list of options using cursor navigation.
+ * @param callbacks.onBookmark - Called when 'b' key is pressed. Returns updated options for re-render.
  * @returns Selected option or null if cancelled
  */
 export async function selectOption<T extends string>(
   message: string,
   options: SelectOptionItem<T>[],
+  callbacks?: InteractiveSelectCallbacks<T>,
 ): Promise<T | null> {
   if (options.length === 0) return null;
 
-  const selectedIndex = await interactiveSelect(message, options, 0, true);
+  const { selectedIndex, finalOptions } = await interactiveSelect(message, options, 0, true, callbacks);
 
-  if (selectedIndex === options.length || selectedIndex === -1) {
+  if (selectedIndex === finalOptions.length || selectedIndex === -1) {
     return null;
   }
 
-  const selected = options[selectedIndex];
+  const selected = finalOptions[selectedIndex];
   if (selected) {
     console.log(chalk.green(`  ✓ ${selected.label}`));
     return selected.value;
@@ -264,7 +309,7 @@ export async function selectOptionWithDefault<T extends string>(
     label: opt.value === defaultValue ? `${opt.label} ${chalk.green('(default)')}` : opt.label,
   }));
 
-  const selectedIndex = await interactiveSelect(message, decoratedOptions, initialIndex, true);
+  const { selectedIndex } = await interactiveSelect(message, decoratedOptions, initialIndex, true);
 
   if (selectedIndex === options.length || selectedIndex === -1) {
     return null;

@@ -208,10 +208,10 @@ describe('loadWorkflow (builtin fallback)', () => {
     expect(workflow).toBeNull();
   });
 
-  it('should load builtin workflows like simple, research', () => {
-    const simple = loadWorkflow('simple', process.cwd());
-    expect(simple).not.toBeNull();
-    expect(simple!.name).toBe('simple');
+  it('should load builtin workflows like minimal, research', () => {
+    const minimal = loadWorkflow('minimal', process.cwd());
+    expect(minimal).not.toBeNull();
+    expect(minimal!.name).toBe('minimal');
 
     const research = loadWorkflow('research', process.cwd());
     expect(research).not.toBeNull();
@@ -236,7 +236,7 @@ describe('listWorkflows (builtin fallback)', () => {
   it('should include builtin workflows', () => {
     const workflows = listWorkflows(testDir);
     expect(workflows).toContain('default');
-    expect(workflows).toContain('simple');
+    expect(workflows).toContain('minimal');
   });
 
   it('should return sorted list', () => {
@@ -263,7 +263,7 @@ describe('loadAllWorkflows (builtin fallback)', () => {
   it('should include builtin workflows in the map', () => {
     const workflows = loadAllWorkflows(testDir);
     expect(workflows.has('default')).toBe(true);
-    expect(workflows.has('simple')).toBe(true);
+    expect(workflows.has('minimal')).toBe(true);
   });
 });
 

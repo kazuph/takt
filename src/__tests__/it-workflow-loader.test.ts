@@ -44,7 +44,7 @@ describe('Workflow Loader IT: builtin workflow loading', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  const builtinNames = ['default', 'simple', 'expert', 'expert-cqrs', 'research', 'magi', 'review-only'];
+  const builtinNames = ['default', 'minimal', 'expert', 'expert-cqrs', 'research', 'magi', 'review-only', 'review-fix-minimal'];
 
   for (const name of builtinNames) {
     it(`should load builtin workflow: ${name}`, () => {
@@ -119,7 +119,7 @@ describe('Workflow Loader IT: agent path resolution', () => {
   });
 
   it('should resolve relative agent paths from workflow YAML location', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
 
     for (const step of config!.steps) {
@@ -186,7 +186,7 @@ describe('Workflow Loader IT: rule syntax parsing', () => {
   });
 
   it('should parse standard rules with next step', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
 
     const planStep = config!.steps.find((s) => s.name === 'plan');
@@ -214,14 +214,14 @@ describe('Workflow Loader IT: workflow config validation', () => {
   });
 
   it('should set max_iterations from YAML', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
     expect(typeof config!.maxIterations).toBe('number');
     expect(config!.maxIterations).toBeGreaterThan(0);
   });
 
   it('should set initial_step from YAML', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
     expect(typeof config!.initialStep).toBe('string');
 
@@ -253,7 +253,7 @@ describe('Workflow Loader IT: workflow config validation', () => {
   });
 
   it('should set passPreviousResponse from YAML', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
 
     // At least some steps should have passPreviousResponse set
@@ -320,7 +320,7 @@ describe('Workflow Loader IT: report config loading', () => {
   });
 
   it('should load single report config', () => {
-    const config = loadWorkflow('simple', testDir);
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
 
     // simple workflow: plan step has a report config

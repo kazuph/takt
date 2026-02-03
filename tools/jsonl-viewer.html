@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAKT JSONL Session Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    .drop-zone {
+      border: 2px dashed #007acc;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      background: #252526;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      background: #2d2d30;
+      border-color: #0098ff;
+    }
+
+    .drop-zone-text {
+      font-size: 16px;
+      color: #858585;
+    }
+
+    .file-info {
+      background: #252526;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .file-info.active {
+      display: block;
+    }
+
+    .records {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .record {
+      background: #252526;
+      border-radius: 8px;
+      padding: 15px;
+      border-left: 4px solid #007acc;
+    }
+
+    .record.workflow_start {
+      border-left-color: #4ec9b0;
+    }
+
+    .record.step_start {
+      border-left-color: #dcdcaa;
+    }
+
+    .record.step_complete {
+      border-left-color: #608b4e;
+    }
+
+    .record.workflow_complete {
+      border-left-color: #4ec9b0;
+    }
+
+    .record.workflow_abort {
+      border-left-color: #f48771;
+    }
+
+    .record.done {
+      border-left-color: #608b4e;
+    }
+
+    .record.blocked {
+      border-left-color: #f48771;
+    }
+
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .record-type {
+      font-weight: 600;
+      font-size: 14px;
+      color: #4ec9b0;
+    }
+
+    .record-timestamp {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    .record-content {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .record-field {
+      margin-bottom: 8px;
+    }
+
+    .field-label {
+      color: #9cdcfe;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .field-value {
+      color: #ce9178;
+    }
+
+    .instruction {
+      background: #1e1e1e;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #3e3e42;
+    }
+
+    .toggle-instruction {
+      color: #007acc;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    .toggle-instruction:hover {
+      text-decoration: underline;
+    }
+
+    .instruction.collapsed {
+      display: none;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      background: #f48771;
+      color: #1e1e1e;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3e3e42;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4e4e52;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TAKT JSONL Session Viewer</h1>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-text">
+        ここにJSONLファイルをドラッグ&ドロップ<br>
+        またはクリックしてファイルを選択
+      </div>
+      <input type="file" id="fileInput" accept=".jsonl,.json" style="display: none;">
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="records" id="records"></div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const statsDiv = document.getElementById('stats');
+    const recordsDiv = document.getElementById('records');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target.result;
+          const lines = content.trim().split('\n');
+          const records = lines.map(line => JSON.parse(line));
+          displayRecords(records);
+        } catch (err) {
+          recordsDiv.innerHTML = `<div class="error">Error parsing JSONL: ${err.message}</div>`;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function displayRecords(records) {
+      // Calculate stats
+      const stats = {
+        total: records.length,
+        steps: records.filter(r => r.type === 'step_start').length,
+        completed: records.filter(r => r.type === 'step_complete' || r.status === 'done').length,
+      };
+
+      statsDiv.innerHTML = `
+        <div class="stat">
+          <span class="stat-label">Total Records</span>
+          <span class="stat-value">${stats.total}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Steps Started</span>
+          <span class="stat-value">${stats.steps}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Steps Completed</span>
+          <span class="stat-value">${stats.completed}</span>
+        </div>
+      `;
+
+      fileInfo.classList.add('active');
+
+      // Display records
+      recordsDiv.innerHTML = records.map((record, index) => {
+        const hasInstruction = record.instruction && record.instruction.length > 0;
+        const instructionId = `instruction-${index}`;
+        const recordType = record.type || record.status || 'unknown';
+        const recordClass = record.type || record.status || 'unknown';
+
+        return `
+          <div class="record ${recordClass}">
+            <div class="record-header">
+              <span class="record-type">${recordType}</span>
+              <span class="record-timestamp">${record.timestamp || ''}</span>
+            </div>
+            <div class="record-content">
+              ${formatRecordContent(record)}
+              ${hasInstruction ? `
+                <div class="toggle-instruction" onclick="toggleInstruction('${instructionId}')">
+                  📄 Show instruction (${record.instruction.length} chars)
+                </div>
+                <div class="instruction collapsed" id="${instructionId}">${escapeHtml(record.instruction)}</div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatRecordContent(record) {
+      const fields = [];
+
+      if (record.workflow) {
+        fields.push(`<div class="record-field"><span class="field-label">Workflow:</span><span class="field-value">${escapeHtml(record.workflow)}</span></div>`);
+      }
+      if (record.step) {
+        fields.push(`<div class="record-field"><span class="field-label">Step:</span><span class="field-value">${escapeHtml(record.step)}</span></div>`);
+      }
+      if (record.iteration !== undefined) {
+        fields.push(`<div class="record-field"><span class="field-label">Iteration:</span><span class="field-value">${record.iteration}</span></div>`);
+      }
+      if (record.status) {
+        fields.push(`<div class="record-field"><span class="field-label">Status:</span><span class="field-value">${escapeHtml(record.status)}</span></div>`);
+      }
+      if (record.matched_condition) {
+        fields.push(`<div class="record-field"><span class="field-label">Matched Condition:</span><span class="field-value">${escapeHtml(record.matched_condition)}</span></div>`);
+      }
+      if (record.next_step) {
+        fields.push(`<div class="record-field"><span class="field-label">Next Step:</span><span class="field-value">${escapeHtml(record.next_step)}</span></div>`);
+      }
+      if (record.match_method) {
+        fields.push(`<div class="record-field"><span class="field-label">Match Method:</span><span class="field-value">${escapeHtml(record.match_method)}</span></div>`);
+      }
+      if (record.reason) {
+        fields.push(`<div class="record-field"><span class="field-label">Reason:</span><span class="field-value">${escapeHtml(record.reason)}</span></div>`);
+      }
+      if (record.task) {
+        fields.push(`<div class="record-field"><span class="field-label">Task:</span><span class="field-value">${escapeHtml(record.task.substring(0, 200))}${record.task.length > 200 ? '...' : ''}</span></div>`);
+      }
+
+      return fields.join('');
+    }
+
+    function escapeHtml(text) {
+      if (typeof text !== 'string') return String(text);
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function toggleInstruction(id) {
+      const element = document.getElementById(id);
+      element.classList.toggle('collapsed');
+    }
+  </script>
+</body>
+</html>

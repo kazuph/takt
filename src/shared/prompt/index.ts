@@ -8,6 +8,7 @@
 
 export {
   type SelectOptionItem,
+  type InteractiveSelectCallbacks,
   renderMenu,
   countRenderedLines,
   type KeyInputResult,

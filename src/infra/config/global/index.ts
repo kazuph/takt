@@ -17,6 +17,8 @@ export {
   resolveOpenaiApiKey,
   loadProjectDebugConfig,
   getEffectiveDebugConfig,
+  getBookmarkedWorkflows,
+  toggleBookmark,
 } from './globalConfig.js';
 
 export {

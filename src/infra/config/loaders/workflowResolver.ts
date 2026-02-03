@@ -59,7 +59,21 @@ function loadWorkflowFromPath(
 }
 
 /**
+ * Resolve a workflow YAML file path by trying both .yaml and .yml extensions.
+ * For category/name identifiers (e.g. "frontend/react"), resolves to
+ * {workflowsDir}/frontend/react.yaml (or .yml).
+ */
+function resolveWorkflowFile(workflowsDir: string, name: string): string | null {
+  for (const ext of ['.yaml', '.yml']) {
+    const filePath = join(workflowsDir, `${name}${ext}`);
+    if (existsSync(filePath)) return filePath;
+  }
+  return null;
+}
+
+/**
  * Load workflow by name (name-based loading only, no path detection).
+ * Supports category/name identifiers (e.g. "frontend/react").
  *
  * Priority:
  * 1. Project-local workflows → .takt/workflows/{name}.yaml
@@ -71,15 +85,15 @@ export function loadWorkflow(
   projectCwd: string,
 ): WorkflowConfig | null {
   const projectWorkflowsDir = join(getProjectConfigDir(projectCwd), 'workflows');
-  const projectWorkflowPath = join(projectWorkflowsDir, `${name}.yaml`);
-  if (existsSync(projectWorkflowPath)) {
-    return loadWorkflowFromFile(projectWorkflowPath);
+  const projectMatch = resolveWorkflowFile(projectWorkflowsDir, name);
+  if (projectMatch) {
+    return loadWorkflowFromFile(projectMatch);
   }
 
   const globalWorkflowsDir = getGlobalWorkflowsDir();
-  const workflowYamlPath = join(globalWorkflowsDir, `${name}.yaml`);
-  if (existsSync(workflowYamlPath)) {
-    return loadWorkflowFromFile(workflowYamlPath);
+  const globalMatch = resolveWorkflowFile(globalWorkflowsDir, name);
+  if (globalMatch) {
+    return loadWorkflowFromFile(globalMatch);
   }
 
   return getBuiltinWorkflow(name);
@@ -113,13 +127,18 @@ export function loadWorkflowByIdentifier(
 }
 
 /** Entry for a workflow file found in a directory */
-interface WorkflowDirEntry {
+export interface WorkflowDirEntry {
+  /** Workflow name (e.g. "react") */
   name: string;
+  /** Full file path */
   path: string;
+  /** Category (subdirectory name), undefined for root-level workflows */
+  category?: string;
 }
 
 /**
- * Iterate workflow YAML files in a directory, yielding name and path.
+ * Iterate workflow YAML files in a directory, yielding name, path, and category.
+ * Scans root-level files (no category) and 1-level subdirectories (category = dir name).
  * Shared by both loadAllWorkflows and listWorkflows to avoid DRY violation.
  */
 function* iterateWorkflowDir(
@@ -128,12 +147,29 @@ function* iterateWorkflowDir(
 ): Generator<WorkflowDirEntry> {
   if (!existsSync(dir)) return;
   for (const entry of readdirSync(dir)) {
-    if (!entry.endsWith('.yaml') && !entry.endsWith('.yml')) continue;
     const entryPath = join(dir, entry);
-    if (!statSync(entryPath).isFile()) continue;
-    const workflowName = entry.replace(/\.ya?ml$/, '');
-    if (disabled?.includes(workflowName)) continue;
-    yield { name: workflowName, path: entryPath };
+    const stat = statSync(entryPath);
+
+    if (stat.isFile() && (entry.endsWith('.yaml') || entry.endsWith('.yml'))) {
+      const workflowName = entry.replace(/\.ya?ml$/, '');
+      if (disabled?.includes(workflowName)) continue;
+      yield { name: workflowName, path: entryPath };
+      continue;
+    }
+
+    // 1-level subdirectory scan: directory name becomes the category
+    if (stat.isDirectory()) {
+      const category = entry;
+      for (const subEntry of readdirSync(entryPath)) {
+        if (!subEntry.endsWith('.yaml') && !subEntry.endsWith('.yml')) continue;
+        const subEntryPath = join(entryPath, subEntry);
+        if (!statSync(subEntryPath).isFile()) continue;
+        const workflowName = subEntry.replace(/\.ya?ml$/, '');
+        const qualifiedName = `${category}/${workflowName}`;
+        if (disabled?.includes(qualifiedName)) continue;
+        yield { name: qualifiedName, path: subEntryPath, category };
+      }
+    }
   }
 }
 
@@ -174,6 +210,7 @@ export function loadAllWorkflows(cwd: string): Map<string, WorkflowConfig> {
 
 /**
  * List available workflow names (builtin + user + project-local, excluding disabled).
+ * Category workflows use qualified names like "frontend/react".
  */
 export function listWorkflows(cwd: string): string[] {
   const workflows = new Set<string>();
@@ -185,4 +222,24 @@ export function listWorkflows(cwd: string): string[] {
   }
 
   return Array.from(workflows).sort();
+}
+
+/**
+ * List available workflows with category information for UI display.
+ * Returns entries grouped by category for 2-stage selection.
+ *
+ * Root-level workflows (no category) and category names are presented
+ * at the same level. Selecting a category drills into its workflows.
+ */
+export function listWorkflowEntries(cwd: string): WorkflowDirEntry[] {
+  // Later entries override earlier (project-local > user > builtin)
+  const workflows = new Map<string, WorkflowDirEntry>();
+
+  for (const { dir, disabled } of getWorkflowDirs(cwd)) {
+    for (const entry of iterateWorkflowDir(dir, disabled)) {
+      workflows.set(entry.name, entry);
+    }
+  }
+
+  return Array.from(workflows.values());
 }

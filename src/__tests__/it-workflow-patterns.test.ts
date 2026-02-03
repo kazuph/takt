@@ -70,7 +70,7 @@ function createEngine(config: WorkflowConfig, dir: string, task: string): Workfl
   });
 }
 
-describe('Workflow Patterns IT: simple workflow', () => {
+describe('Workflow Patterns IT: minimal workflow', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -83,30 +83,28 @@ describe('Workflow Patterns IT: simple workflow', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should complete: plan → implement → ai_review → review → supervise → COMPLETE', async () => {
-    const config = loadWorkflow('simple', testDir);
+  it('should complete: implement → reviewers (parallel: ai_review + supervise) → COMPLETE', async () => {
+    const config = loadWorkflow('minimal', testDir);
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo AI-specific issues.' },
-      { agent: 'architecture-reviewer', status: 'done', content: '[REVIEW:1]\n\nNo issues found.' },
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'coder', status: 'done', content: '[IMPLEMENT:0]\n\nImplementation complete.' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:0]\n\nNo AI-specific issues.' },
+      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:0]\n\nAll checks passed.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Test task');
     const state = await engine.run();
 
     expect(state.status).toBe('completed');
-    expect(state.iteration).toBe(5);
+    expect(state.iteration).toBe(3);
   });
 
-  it('should ABORT when plan returns rule 3 (requirements unclear)', async () => {
-    const config = loadWorkflow('simple', testDir);
+  it('should ABORT when implement cannot proceed', async () => {
+    const config = loadWorkflow('minimal', testDir);
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:3]\n\nRequirements unclear.' },
+      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nCannot proceed, insufficient info.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Vague task');
@@ -116,19 +114,6 @@ describe('Workflow Patterns IT: simple workflow', () => {
     expect(state.iteration).toBe(1);
   });
 
-  it('should COMPLETE when plan detects a question (rule 2)', async () => {
-    const config = loadWorkflow('simple', testDir);
-
-    setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nUser is asking a question.' },
-    ]);
-
-    const engine = createEngine(config!, testDir, 'What is X?');
-    const state = await engine.run();
-
-    expect(state.status).toBe('completed');
-    expect(state.iteration).toBe(1);
-  });
 });
 
 describe('Workflow Patterns IT: default workflow (parallel reviewers)', () => {

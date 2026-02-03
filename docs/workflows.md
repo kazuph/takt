@@ -15,6 +15,11 @@ A workflow is a YAML file that defines a sequence of steps executed by AI agents
 - `~/.takt/workflows/` — User workflows (override builtins with the same name)
 - Use `takt eject <workflow>` to copy a builtin to `~/.takt/workflows/` for customization
 
+## Workflow Categories
+
+ワークフローの選択 UI をカテゴリ分けしたい場合は、`workflow_categories` を設定します。  
+詳細は `docs/workflow-categories.md` を参照してください。
+
 ## Workflow Schema
 
 ```yaml

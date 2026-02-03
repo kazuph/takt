@@ -54,6 +54,14 @@ export interface GlobalConfig {
   pipeline?: PipelineConfig;
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
   minimalOutput?: boolean;
+  /** Bookmarked workflow names for quick access in selection UI */
+  bookmarkedWorkflows?: string[];
+  /** Workflow category configuration (name -> workflow list) */
+  workflowCategories?: Record<string, string[]>;
+  /** Show uncategorized workflows under Others category */
+  showOthersCategory?: boolean;
+  /** Display name for Others category */
+  othersCategoryName?: string;
 }
 
 /** Project-level configuration */

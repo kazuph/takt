@@ -221,20 +221,18 @@ describe('Pipeline Integration Tests', () => {
   });
 
   it('should complete pipeline with workflow name + skip-git + mock scenario', async () => {
-    // Use builtin 'simple' workflow
+    // Use builtin 'minimal' workflow
     // agent field: extractAgentName result (from .md filename)
     // tag in content: [STEP_NAME:N] where STEP_NAME is the step name uppercased
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear and implementable.' },
       { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo AI-specific issues.' },
-      { agent: 'architecture-reviewer', status: 'done', content: '[REVIEW:1]\n\nNo issues found.' },
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:0]\n\nNo AI-specific issues.' },
+      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:0]\n\nAll checks passed.' },
     ]);
 
     const exitCode = await executePipeline({
       task: 'Add a hello world function',
-      workflow: 'simple',
+      workflow: 'minimal',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
