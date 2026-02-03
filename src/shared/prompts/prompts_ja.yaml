@@ -169,12 +169,12 @@ instruction:
     appendRule: "- ファイルが存在する場合: `## Iteration {step_iteration}` セクションを追記"
 
   reportPhase:
-    noSourceEdit: "**プロジェクトのソースファイルを変更しないでください。** レポートファイルのみ出力してください。"
+    noSourceEdit: "**プロジェクトのソースファイルを変更しないでください。** レポート内容のみを回答してください。"
     reportDirOnly: "**上記のReport Directory内のファイルのみ使用してください。** 他のレポートディレクトリは検索/参照しないでください。"
-    instructionBody: "前のステップの作業結果をレポートとして出力してください。"
+    instructionBody: "あなたが今行った作業の結果をレポートとして回答してください。**このフェーズではツールは使えません。レポート内容をテキストとして直接回答してください。**"
     reportJsonFormat: "JSON形式は任意です。JSONを使う場合は「レポートファイル名→内容」のオブジェクトにしてください（キーはファイル名のみ）。"
-    reportPlainAllowed: "本文のみの出力も可です。複数ファイルの場合は同じ内容が各ファイルに書き込まれます。"
-    reportOnlyOutput: "レポート本文のみを出力してください（ステータスタグやコメントは禁止）。"
+    reportPlainAllowed: "本文のみの回答も可です。複数ファイルの場合は同じ内容が各ファイルに書き込まれます。"
+    reportOnlyOutput: "**レポート本文のみを回答してください（ステータスタグやコメントは禁止）。Writeツールやその他のツールは使用できません。**"
 
   reportSections:
     workflowContext: "## Workflow Context"

@@ -821,7 +821,7 @@ describe('instruction-builder', () => {
       const result = buildReportInstruction(step, ctx);
 
       expect(result).toContain('## Instructions');
-      expect(result).toContain('Output the results of your previous work as a report');
+      expect(result).toContain('Respond with the results of the work you just completed as a report');
     });
 
     it('should NOT include user request, previous response, or status rules', () => {
@@ -847,7 +847,7 @@ describe('instruction-builder', () => {
 
       const result = buildReportInstruction(step, ctx);
 
-      expect(result).toContain('前のステップの作業結果をレポートとして出力してください');
+      expect(result).toContain('あなたが今行った作業の結果をレポートとして回答してください');
       expect(result).toContain('プロジェクトのソースファイルを変更しないでください');
       expect(result).toContain('**レポート出力:** `Report File` に出力してください。');
     });

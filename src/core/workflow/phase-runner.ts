@@ -151,6 +151,13 @@ export async function runReportPhase(
   });
 
   const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
+
+  // Check for errors in report phase
+  if (reportResponse.status !== 'done') {
+    const errorMsg = reportResponse.error || reportResponse.content || 'Unknown error';
+    throw new Error(`Report phase failed: ${errorMsg}`);
+  }
+
   const outputs = resolveReportOutputs(step.report, ctx.reportDir, reportResponse.content);
   for (const [fileName, content] of outputs.entries()) {
     writeReportFile(ctx.reportDir, fileName, content);
@@ -190,6 +197,12 @@ export async function runStatusJudgmentPhase(
   });
 
   const judgmentResponse = await runAgent(step.agent, judgmentInstruction, judgmentOptions);
+
+  // Check for errors in status judgment phase
+  if (judgmentResponse.status !== 'done') {
+    const errorMsg = judgmentResponse.error || judgmentResponse.content || 'Unknown error';
+    throw new Error(`Status judgment phase failed: ${errorMsg}`);
+  }
 
   // Update session (phase 3 may update it)
   ctx.updateAgentSession(sessionKey, judgmentResponse.sessionId);
