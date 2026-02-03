@@ -38,9 +38,10 @@ export class OptionsBuilder {
 
   /** Build RunAgentOptions for Phase 1 (main execution) */
   buildAgentOptions(step: WorkflowStep): RunAgentOptions {
-    // Phase 1: exclude Write from allowedTools when step has report config AND edit is disabled
+    // Phase 1: exclude Write from allowedTools when step has report config AND edit is NOT enabled
     // (If edit is enabled, Write is needed for code implementation even if report exists)
-    const allowedTools = step.report && step.edit === false
+    // Note: edit defaults to undefined, so check !== true to catch both false and undefined
+    const allowedTools = step.report && step.edit !== true
       ? step.allowedTools?.filter((t) => t !== 'Write')
       : step.allowedTools;
 
