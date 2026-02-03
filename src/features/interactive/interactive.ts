@@ -11,15 +11,12 @@
  */
 
 import * as readline from 'node:readline';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import chalk from 'chalk';
 import type { Language } from '../../core/models/index.js';
 import { loadGlobalConfig, loadAgentSessions, updateAgentSession } from '../../infra/config/index.js';
 import { isQuietMode } from '../../shared/context.js';
 import { getProvider, type ProviderType } from '../../infra/providers/index.js';
 import { selectOption } from '../../shared/prompt/index.js';
-import { getLanguageResourcesDir } from '../../infra/resources/index.js';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { info, error, blankLine, StreamDisplay } from '../../shared/ui/index.js';
 import { getPrompt, getPromptObject } from '../../shared/prompts/index.js';
@@ -41,31 +38,9 @@ function resolveLanguage(lang?: Language): 'en' | 'ja' {
   return lang === 'ja' ? 'ja' : 'en';
 }
 
-function readPromptFile(lang: 'en' | 'ja', fileName: string, fallback: string): string {
-  const filePath = join(getLanguageResourcesDir(lang), 'prompts', fileName);
-  if (existsSync(filePath)) {
-    return readFileSync(filePath, 'utf-8').trim();
-  }
-  if (lang !== 'en') {
-    const enPath = join(getLanguageResourcesDir('en'), 'prompts', fileName);
-    if (existsSync(enPath)) {
-      return readFileSync(enPath, 'utf-8').trim();
-    }
-  }
-  return fallback.trim();
-}
-
 function getInteractivePrompts(lang: 'en' | 'ja', workflowContext?: WorkflowContext) {
-  let systemPrompt = readPromptFile(
-    lang,
-    'interactive-system.md',
-    getPrompt('interactive.systemPrompt', lang),
-  );
-  let summaryPrompt = readPromptFile(
-    lang,
-    'interactive-summary.md',
-    getPrompt('interactive.summaryPrompt', lang),
-  );
+  let systemPrompt = getPrompt('interactive.systemPrompt', lang);
+  let summaryPrompt = getPrompt('interactive.summaryPrompt', lang);
 
   // Add workflow context to prompts if available
   if (workflowContext) {
