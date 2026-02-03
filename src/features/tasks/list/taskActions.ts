@@ -6,6 +6,8 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
+import { rmSync, existsSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import chalk from 'chalk';
 import {
   createTempCloneForBranch,
@@ -25,6 +27,7 @@ import { executeTask } from '../execute/taskExecution.js';
 import type { TaskExecutionOptions } from '../execute/types.js';
 import { listWorkflows, getCurrentWorkflow } from '../../../infra/config/index.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
+import { encodeWorktreePath } from '../../../infra/config/project/sessionStore.js';
 
 const log = createLogger('list-tasks');
 
@@ -178,11 +181,34 @@ export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
 
 /**
  * Delete a branch (discard changes).
+ * For worktree branches, removes the worktree directory and session file.
  */
 export function deleteBranch(projectDir: string, item: BranchListItem): boolean {
-  const { branch } = item.info;
+  const { branch, worktreePath } = item.info;
 
   try {
+    // If this is a worktree branch, remove the worktree directory and session file
+    if (worktreePath) {
+      // Remove worktree directory if it exists
+      if (existsSync(worktreePath)) {
+        rmSync(worktreePath, { recursive: true, force: true });
+        log.info('Removed worktree directory', { worktreePath });
+      }
+
+      // Remove worktree-session file
+      const encodedPath = encodeWorktreePath(worktreePath);
+      const sessionFile = join(projectDir, '.takt', 'worktree-sessions', `${encodedPath}.json`);
+      if (existsSync(sessionFile)) {
+        unlinkSync(sessionFile);
+        log.info('Removed worktree-session file', { sessionFile });
+      }
+
+      success(`Deleted worktree ${branch}`);
+      log.info('Worktree branch deleted', { branch, worktreePath });
+      return true;
+    }
+
+    // For regular branches, use git branch -D
     execFileSync('git', ['branch', '-D', branch], {
       cwd: projectDir,
       encoding: 'utf-8',

@@ -46,6 +46,7 @@ export interface WorktreeResult {
 export interface BranchInfo {
   branch: string;
   commit: string;
+  worktreePath?: string; // Path to worktree directory (for worktree-sessions branches)
 }
 
 /** Branch with list metadata */
