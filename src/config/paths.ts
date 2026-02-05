@@ -107,6 +107,7 @@ export {
   type AgentSessionData,
   getAgentSessionsPath,
   loadAgentSessions,
+  loadAgentSessionsByProvider,
   saveAgentSessions,
   updateAgentSession,
   clearAgentSessions,
@@ -115,5 +116,6 @@ export {
   encodeWorktreePath,
   getWorktreeSessionPath,
   loadWorktreeSessions,
+  loadWorktreeSessionsByProvider,
   updateWorktreeSession,
 } from './sessionStore.js';

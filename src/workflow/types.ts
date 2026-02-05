@@ -44,7 +44,7 @@ export interface IterationLimitRequest {
 }
 
 /** Callback for session updates (when agent session IDs change) */
-export type SessionUpdateCallback = (agentName: string, sessionId: string) => void;
+export type SessionUpdateCallback = (agentName: string, sessionId: string, provider?: ProviderType) => void;
 
 /**
  * Callback for iteration limit reached.

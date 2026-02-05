@@ -6,6 +6,7 @@
  */
 
 import type { WorkflowStep, Language } from '../models/types.js';
+import type { ProviderType } from '../providers/index.js';
 import { runAgent, type RunAgentOptions } from '../agents/runner.js';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -26,11 +27,13 @@ export interface PhaseRunnerContext {
   /** Language for instructions */
   language?: Language;
   /** Get agent session ID */
-  getSessionId: (agent: string) => string | undefined;
+  getSessionId: (agent: string, provider?: ProviderType) => string | undefined;
   /** Build resume options for a step */
   buildResumeOptions: (step: WorkflowStep, sessionId: string, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>) => RunAgentOptions;
   /** Update agent session after a phase run */
-  updateAgentSession: (agent: string, sessionId: string | undefined) => void;
+  updateAgentSession: (agent: string, sessionId: string | undefined, provider?: ProviderType) => void;
+  /** Default provider for steps without override */
+  defaultProvider?: ProviderType;
 }
 
 /**
@@ -51,7 +54,8 @@ export async function runReportPhase(
   stepIteration: number,
   ctx: PhaseRunnerContext,
 ): Promise<void> {
-  const sessionId = ctx.getSessionId(step.agent);
+  const provider = step.provider ?? ctx.defaultProvider;
+  const sessionId = ctx.getSessionId(step.agent, provider);
   if (!sessionId) {
     throw new Error(`Report phase requires a session to resume, but no sessionId found for agent "${step.agent}" in step "${step.name}"`);
   }
@@ -101,7 +105,7 @@ export async function runReportPhase(
 
   for (const [i, reportInstruction] of attempts.entries()) {
     const reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
-    ctx.updateAgentSession(step.agent, reportResponse.sessionId);
+    ctx.updateAgentSession(step.agent, reportResponse.sessionId, provider);
 
     if (hasReportFiles()) {
       log.debug('Report phase complete', { step: step.name, status: reportResponse.status, attempt: i + 1 });
@@ -122,7 +126,8 @@ export async function runStatusJudgmentPhase(
   step: WorkflowStep,
   ctx: PhaseRunnerContext,
 ): Promise<string> {
-  const sessionId = ctx.getSessionId(step.agent);
+  const provider = step.provider ?? ctx.defaultProvider;
+  const sessionId = ctx.getSessionId(step.agent, provider);
   if (!sessionId) {
     throw new Error(`Status judgment phase requires a session to resume, but no sessionId found for agent "${step.agent}" in step "${step.name}"`);
   }
@@ -141,7 +146,7 @@ export async function runStatusJudgmentPhase(
   const judgmentResponse = await runAgent(step.agent, judgmentInstruction, judgmentOptions);
 
   // Update session (phase 3 may update it)
-  ctx.updateAgentSession(step.agent, judgmentResponse.sessionId);
+  ctx.updateAgentSession(step.agent, judgmentResponse.sessionId, provider);
 
   log.debug('Status judgment phase complete', { step: step.name, status: judgmentResponse.status });
   return judgmentResponse.content;

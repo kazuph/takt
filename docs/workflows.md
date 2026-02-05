@@ -44,6 +44,38 @@ steps:
       Your instructions here with {variables}
 ```
 
+## Multi-Provider / Multi-Model Steps
+
+You can mix providers and models per step. This enables flows like:
+- Claude (Opus) for implementation
+- Codex for review
+- Gemini for long-context summaries
+
+Example:
+
+```yaml
+steps:
+  - name: implement
+    agent: ../agents/default/coder.md
+    provider: claude
+    model: opus
+    edit: true
+
+  - name: review
+    agent: ../agents/default/ai-antipattern-reviewer.md
+    provider: codex
+    model: gpt-5
+    edit: false
+
+  - name: summarize
+    agent: ../agents/default/supervisor.md
+    provider: gemini
+    model: gemini-2.0-pro
+    edit: false
+```
+
+> Tip: For reliable session resume across providers, ensure each step has a stable provider/model.
+
 ## Available Variables
 
 | Variable | Description |

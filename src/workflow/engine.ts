@@ -21,6 +21,7 @@ import { handleBlocked } from './blocked-handler.js';
 import { ParallelLogger } from './parallel-logger.js';
 import { detectMatchedRule } from './rule-evaluator.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from './phase-runner.js';
+import type { ProviderType } from '../providers/index.js';
 import {
   createInitialState,
   addUserInput,
@@ -359,7 +360,7 @@ export class WorkflowEngine extends EventEmitter {
 
     return {
       ...this.buildBaseOptions(step),
-      sessionId: this.state.agentSessions.get(step.agent),
+      sessionId: this.getSessionIdForStep(step),
       allowedTools,
     };
   }
@@ -376,15 +377,29 @@ export class WorkflowEngine extends EventEmitter {
     };
   }
 
+  private getSessionKey(agent: string, provider?: ProviderType): string {
+    return provider ? `${provider}::${agent}` : agent;
+  }
+
+  private getProviderForStep(step: WorkflowStep): ProviderType | undefined {
+    return step.provider ?? this.options.provider;
+  }
+
+  private getSessionIdForStep(step: WorkflowStep): string | undefined {
+    const provider = this.getProviderForStep(step);
+    return this.state.agentSessions.get(this.getSessionKey(step.agent, provider));
+  }
+
   /** Update agent session and notify via callback if session changed */
-  private updateAgentSession(agent: string, sessionId: string | undefined): void {
+  private updateAgentSession(agent: string, sessionId: string | undefined, provider?: ProviderType): void {
     if (!sessionId) return;
 
-    const previousSessionId = this.state.agentSessions.get(agent);
-    this.state.agentSessions.set(agent, sessionId);
+    const key = this.getSessionKey(agent, provider);
+    const previousSessionId = this.state.agentSessions.get(key);
+    this.state.agentSessions.set(key, sessionId);
 
     if (this.options.onSessionUpdate && sessionId !== previousSessionId) {
-      this.options.onSessionUpdate(agent, sessionId);
+      this.options.onSessionUpdate(agent, sessionId, provider);
     }
   }
 
@@ -394,9 +409,10 @@ export class WorkflowEngine extends EventEmitter {
       cwd: this.cwd,
       reportDir: join(this.cwd, this.reportDir),
       language: this.language,
-      getSessionId: (agent: string) => this.state.agentSessions.get(agent),
+      getSessionId: (agent: string, provider?: ProviderType) => this.state.agentSessions.get(this.getSessionKey(agent, provider)),
       buildResumeOptions: this.buildResumeOptions.bind(this),
       updateAgentSession: this.updateAgentSession.bind(this),
+      defaultProvider: this.options.provider,
     };
   }
 
@@ -411,13 +427,13 @@ export class WorkflowEngine extends EventEmitter {
       agent: step.agent,
       stepIteration,
       iteration: this.state.iteration,
-      sessionId: this.state.agentSessions.get(step.agent) ?? 'new',
+      sessionId: this.getSessionIdForStep(step) ?? 'new',
     });
 
     // Phase 1: main execution (Write excluded if step has report)
     const agentOptions = this.buildAgentOptions(step);
     let response = await runAgent(step.agent, instruction, agentOptions);
-    this.updateAgentSession(step.agent, response.sessionId);
+    this.updateAgentSession(step.agent, response.sessionId, this.getProviderForStep(step));
 
     const phaseCtx = this.buildPhaseRunnerContext();
 
@@ -483,7 +499,7 @@ export class WorkflowEngine extends EventEmitter {
         const subInstruction = this.buildInstruction(subStep, subIteration);
 
         // Phase 1: main execution (Write excluded if sub-step has report)
-        const baseOptions = this.buildAgentOptions(subStep);
+    const baseOptions = this.buildAgentOptions(subStep);
 
         // Override onStream with parallel logger's prefixed handler (immutable)
         const agentOptions = parallelLogger
@@ -491,7 +507,7 @@ export class WorkflowEngine extends EventEmitter {
           : baseOptions;
 
         const subResponse = await runAgent(subStep.agent, subInstruction, agentOptions);
-        this.updateAgentSession(subStep.agent, subResponse.sessionId);
+    this.updateAgentSession(subStep.agent, subResponse.sessionId, this.getProviderForStep(subStep));
 
         // Phase 2: report output for sub-step
         if (subStep.report) {

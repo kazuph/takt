@@ -8,9 +8,9 @@ import type { WorkflowConfig, Language } from '../models/types.js';
 import type { IterationLimitRequest } from '../workflow/types.js';
 import type { ProviderType } from '../providers/index.js';
 import {
-  loadAgentSessions,
+  loadAgentSessionsByProvider,
   updateAgentSession,
-  loadWorktreeSessions,
+  loadWorktreeSessionsByProvider,
   updateWorktreeSession,
 } from '../config/paths.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
@@ -183,9 +183,15 @@ export async function executeWorkflow(
   // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
   const currentProvider = loadGlobalConfig().provider ?? 'claude';
-  const savedSessions = isWorktree
-    ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
-    : loadAgentSessions(projectCwd, currentProvider);
+  const sessionsByProvider = isWorktree
+    ? loadWorktreeSessionsByProvider(projectCwd, cwd, currentProvider)
+    : loadAgentSessionsByProvider(projectCwd, currentProvider);
+  const savedSessions: Record<string, string> = {};
+  for (const [providerKey, sessions] of Object.entries(sessionsByProvider)) {
+    for (const [agentName, sessionId] of Object.entries(sessions)) {
+      savedSessions[`${providerKey}::${agentName}`] = sessionId;
+    }
+  }
   const latestLog = loadLatestSessionLog(projectCwd);
   const initialUserInputs = latestLog && latestLog.task === task
     ? latestLog.history
@@ -212,11 +218,11 @@ export async function executeWorkflow(
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
   const sessionUpdateHandler = isWorktree
-    ? (agentName: string, agentSessionId: string): void => {
-        updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId, currentProvider);
+    ? (agentName: string, agentSessionId: string, provider?: ProviderType): void => {
+        updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId, provider ?? currentProvider);
       }
-    : (agentName: string, agentSessionId: string): void => {
-        updateAgentSession(projectCwd, agentName, agentSessionId, currentProvider);
+    : (agentName: string, agentSessionId: string, provider?: ProviderType): void => {
+        updateAgentSession(projectCwd, agentName, agentSessionId, provider ?? currentProvider);
       };
 
   const iterationLimitHandler = async (

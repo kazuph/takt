@@ -86,10 +86,25 @@ export function addToInputHistory(projectDir: string, input: string): void {
 
 /** Agent session data for persistence */
 export interface AgentSessionData {
-  agentSessions: Record<string, string>;
+  agentSessions?: Record<string, string>;
+  /** Multi-provider sessions (preferred) */
+  providers?: Record<string, Record<string, string>>;
   updatedAt: string;
   /** Provider that created these sessions (claude, codex, etc.) */
   provider?: string;
+}
+
+function normalizeProviders(
+  data: AgentSessionData,
+  defaultProvider?: string
+): Record<string, Record<string, string>> {
+  if (data.providers) {
+    return data.providers;
+  }
+
+  const providerKey = data.provider ?? defaultProvider;
+  if (!providerKey || !data.agentSessions) return {};
+  return { [providerKey]: data.agentSessions };
 }
 
 /** Get path for storing agent sessions */
@@ -99,21 +114,34 @@ export function getAgentSessionsPath(projectDir: string): string {
 
 /** Load saved agent sessions. Returns empty if provider has changed. */
 export function loadAgentSessions(projectDir: string, currentProvider?: string): Record<string, string> {
-  const path = getAgentSessionsPath(projectDir);
-  if (existsSync(path)) {
-    try {
-      const content = readFileSync(path, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
-      // If provider has changed or is unknown (legacy data), sessions are incompatible — discard them
-      if (currentProvider && data.provider !== currentProvider) {
-        return {};
-      }
-      return data.agentSessions || {};
-    } catch {
-      return {};
-    }
+  const providers = loadAgentSessionsByProvider(projectDir, currentProvider);
+  if (currentProvider) {
+    return providers[currentProvider] ?? {};
   }
+
+  const providerKeys = Object.keys(providers);
+  if (providerKeys.length === 1) {
+    return providers[providerKeys[0]!] ?? {};
+  }
+
   return {};
+}
+
+/** Load saved agent sessions by provider. */
+export function loadAgentSessionsByProvider(
+  projectDir: string,
+  defaultProvider?: string
+): Record<string, Record<string, string>> {
+  const path = getAgentSessionsPath(projectDir);
+  if (!existsSync(path)) return {};
+
+  try {
+    const content = readFileSync(path, 'utf-8');
+    const data = JSON.parse(content) as AgentSessionData;
+    return normalizeProviders(data, defaultProvider);
+  } catch {
+    return {};
+  }
 }
 
 /** Save agent sessions (atomic write) */
@@ -124,8 +152,10 @@ export function saveAgentSessions(
 ): void {
   const path = getAgentSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
+  const providers = provider ? { [provider]: sessions } : {};
   const data: AgentSessionData = {
     agentSessions: sessions,
+    providers,
     updatedAt: new Date().toISOString(),
     provider,
   };
@@ -145,30 +175,33 @@ export function updateAgentSession(
   const path = getAgentSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
 
-  let sessions: Record<string, string> = {};
+  let providers: Record<string, Record<string, string>> = {};
   let existingProvider: string | undefined;
   if (existsSync(path)) {
     try {
       const content = readFileSync(path, 'utf-8');
       const data = JSON.parse(content) as AgentSessionData;
       existingProvider = data.provider;
-      // If provider changed, discard old sessions
-      if (provider && existingProvider && existingProvider !== provider) {
-        sessions = {};
-      } else {
-        sessions = data.agentSessions || {};
-      }
+      providers = normalizeProviders(data, provider);
     } catch {
-      sessions = {};
+      providers = {};
     }
   }
 
+  const providerKey = provider ?? existingProvider;
+  if (!providerKey) {
+    return;
+  }
+
+  const sessions = providers[providerKey] ? { ...providers[providerKey] } : {};
   sessions[agentName] = sessionId;
+  providers[providerKey] = sessions;
 
   const data: AgentSessionData = {
-    agentSessions: sessions,
+    agentSessions: providers[providerKey],
+    providers,
     updatedAt: new Date().toISOString(),
-    provider: provider ?? existingProvider,
+    provider: providerKey,
   };
   writeFileAtomic(path, JSON.stringify(data, null, 2));
 }
@@ -213,20 +246,34 @@ export function loadWorktreeSessions(
   worktreePath: string,
   currentProvider?: string
 ): Record<string, string> {
-  const sessionPath = getWorktreeSessionPath(projectDir, worktreePath);
-  if (existsSync(sessionPath)) {
-    try {
-      const content = readFileSync(sessionPath, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
-      if (currentProvider && data.provider !== currentProvider) {
-        return {};
-      }
-      return data.agentSessions || {};
-    } catch {
-      return {};
-    }
+  const providers = loadWorktreeSessionsByProvider(projectDir, worktreePath, currentProvider);
+  if (currentProvider) {
+    return providers[currentProvider] ?? {};
   }
+
+  const providerKeys = Object.keys(providers);
+  if (providerKeys.length === 1) {
+    return providers[providerKeys[0]!] ?? {};
+  }
+
   return {};
+}
+
+/** Load saved agent sessions for a worktree by provider. */
+export function loadWorktreeSessionsByProvider(
+  projectDir: string,
+  worktreePath: string,
+  defaultProvider?: string
+): Record<string, Record<string, string>> {
+  const sessionPath = getWorktreeSessionPath(projectDir, worktreePath);
+  if (!existsSync(sessionPath)) return {};
+  try {
+    const content = readFileSync(sessionPath, 'utf-8');
+    const data = JSON.parse(content) as AgentSessionData;
+    return normalizeProviders(data, defaultProvider);
+  } catch {
+    return {};
+  }
 }
 
 /** Update a single agent session for a worktree (atomic) */
@@ -241,7 +288,7 @@ export function updateWorktreeSession(
   ensureDir(dir);
 
   const sessionPath = getWorktreeSessionPath(projectDir, worktreePath);
-  let sessions: Record<string, string> = {};
+  let providers: Record<string, Record<string, string>> = {};
   let existingProvider: string | undefined;
 
   if (existsSync(sessionPath)) {
@@ -249,22 +296,26 @@ export function updateWorktreeSession(
       const content = readFileSync(sessionPath, 'utf-8');
       const data = JSON.parse(content) as AgentSessionData;
       existingProvider = data.provider;
-      if (provider && existingProvider && existingProvider !== provider) {
-        sessions = {};
-      } else {
-        sessions = data.agentSessions || {};
-      }
+      providers = normalizeProviders(data, provider);
     } catch {
-      sessions = {};
+      providers = {};
     }
   }
 
+  const providerKey = provider ?? existingProvider;
+  if (!providerKey) {
+    return;
+  }
+
+  const sessions = providers[providerKey] ? { ...providers[providerKey] } : {};
   sessions[agentName] = sessionId;
+  providers[providerKey] = sessions;
 
   const data: AgentSessionData = {
-    agentSessions: sessions,
+    agentSessions: providers[providerKey],
+    providers,
     updatedAt: new Date().toISOString(),
-    provider: provider ?? existingProvider,
+    provider: providerKey,
   };
   writeFileAtomic(sessionPath, JSON.stringify(data, null, 2));
 }

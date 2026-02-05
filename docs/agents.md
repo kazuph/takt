@@ -4,7 +4,7 @@ This guide explains how to configure and create custom agents in TAKT.
 
 ## Built-in Agents
 
-TAKT includes six built-in agents (located in `resources/global/{lang}/agents/default/`):
+TAKT includes built-in agents (located in `resources/global/{lang}/agents/default/`):
 
 | Agent | Description |
 |-------|-------------|
@@ -14,6 +14,7 @@ TAKT includes six built-in agents (located in `resources/global/{lang}/agents/de
 | **architecture-reviewer** | Reviews architecture and code quality, verifies spec compliance |
 | **security-reviewer** | Security vulnerability assessment |
 | **supervisor** | Final verification, validation, and approval |
+| **recovery-resume** | Recovery guidance after aborted/failed workflows |
 
 ## Specifying Agents
 
@@ -80,7 +81,7 @@ agents:
 | `allowed_tools` | List of tools the agent can use |
 | `claude_agent` | Claude Code agent name (for Claude Code native agents) |
 | `claude_skill` | Claude Code skill name (for Claude Code native skills) |
-| `provider` | Provider override: `claude` or `codex` |
+| `provider` | Provider override: `claude`, `codex`, or `gemini` |
 | `model` | Model override (alias or full name) |
 
 ### Available Tools
