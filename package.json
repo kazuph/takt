@@ -1,6 +1,6 @@
 {
   "name": "takt",
-  "version": "0.6.0-rc2",
+  "version": "0.6.0-rc1",
   "description": "TAKT: Task Agent Koordination Tool - AI Agent Piece Orchestration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,8 +23,7 @@
     "test:e2e:claude": "npm run test:e2e:provider:claude",
     "test:e2e:codex": "npm run test:e2e:provider:codex",
     "lint": "eslint src/",
-    "prepublishOnly": "npm run lint && npm run build && npm run test",
-    "postversion": "git push --follow-tags"
+    "prepublishOnly": "npm run lint && npm run build && npm run test"
   },
   "keywords": [
     "claude",

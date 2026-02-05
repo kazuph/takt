@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.6.0-rc2] - 2026-02-05
+## [0.6.0-rc1] - 2026-02-05
 
 ### Fixed
 
@@ -21,7 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Internal
 
-- auto-tag ワークフローを release/ ブランチからのマージのみに制限
+- auto-tag ワークフローを release/ ブランチからのマージのみに制限し、publish ジョブを統合（GITHUB_TOKEN 制約による連鎖トリガー不発を解消）
+- postversion フック削除（release ブランチフローと競合するため）
 - テスト更新: security-reviewer → qa-reviewer の変更に対応
 
 ## [0.6.0-rc] - 2026-02-05
