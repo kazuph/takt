@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { truncate, progressBar } from '../utils/ui.js';
-import { generateSessionId, createSessionLog } from '../utils/session.js';
+import { truncate, progressBar } from '../shared/ui/index.js';
+import { generateSessionId, createSessionLog } from '../infra/fs/session.js';
 
 describe('truncate', () => {
   it('should not truncate short text', () => {
@@ -65,7 +65,7 @@ describe('createSessionLog', () => {
 
     expect(log.task).toBe('test task');
     expect(log.projectDir).toBe('/project');
-    expect(log.workflowName).toBe('default');
+    expect(log.pieceName).toBe('default');
     expect(log.iterations).toBe(0);
     expect(log.status).toBe('running');
     expect(log.history).toEqual([]);

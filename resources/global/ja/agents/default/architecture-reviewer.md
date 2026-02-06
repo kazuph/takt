@@ -56,7 +56,7 @@
 
 **誤検知を避けるために:**
 1. 「ハードコードされた値」を指摘する前に、**そのファイルがソースかレポートか確認**
-2. `.takt/reports/` 以下のファイルはワークフロー実行時に生成されるため、レビュー対象外
+2. `.takt/reports/` 以下のファイルはピース実行時に生成されるため、レビュー対象外
 3. git diff に含まれていても、生成ファイルは無視する
 
 ## レビュー観点
@@ -186,7 +186,7 @@ for (const transition of step.transitions) {
 export function matchesCondition(status: Status, condition: TransitionCondition): boolean {
 
 // ✅ OK - 設計判断の理由（Why）
-// ユーザー中断はワークフロー定義のトランジションより優先する
+// ユーザー中断はピース定義のトランジションより優先する
 if (status === 'interrupted') {
   return ABORT_STEP;
 }
@@ -468,7 +468,6 @@ function createOrder(data: OrderData) {
 | CLAUDE.md / README.md | スキーマ定義、設計原則、制約に従っているか |
 | 型定義・Zodスキーマ | 新しいフィールドがスキーマに反映されているか |
 | YAML/JSON設定ファイル | 文書化されたフォーマットに従っているか |
-| 既存パターン | 同種のファイルと一貫性があるか |
 
 **具体的なチェック:**
 
@@ -481,9 +480,9 @@ function createOrder(data: OrderData) {
    - ドキュメントのスキーマ説明が更新されているか
    - 既存の設定ファイルが新しいスキーマと整合するか
 
-3. ワークフロー定義を変更した場合:
-   - ステップ種別（通常/parallel）に応じた正しいフィールドが使われているか
-   - 不要なフィールド（parallelサブステップのnext等）が残っていないか
+3. ピース定義を変更した場合:
+   - ムーブメント種別（通常/parallel）に応じた正しいフィールドが使われているか
+   - 不要なフィールド（parallelサブムーブメントのnext等）が残っていないか
 
 **このパターンを見つけたら REJECT:**
 
@@ -492,7 +491,7 @@ function createOrder(data: OrderData) {
 | 仕様に存在しないフィールドの使用 | 無視されるか予期しない動作 |
 | 仕様上無効な値の設定 | 実行時エラーまたは無視される |
 | 文書化された制約への違反 | 設計意図に反する |
-| ステップ種別とフィールドの不整合 | コピペミスの兆候 |
+| ムーブメント種別とフィールドの不整合 | コピペミスの兆候 |
 
 ### 9. 呼び出しチェーン検証
 
@@ -515,17 +514,32 @@ function createOrder(data: OrderData) {
 
 ```typescript
 // ❌ 配線漏れ: projectCwd を受け取る口がない
-export async function executeWorkflow(config, cwd, task) {
-  const engine = new WorkflowEngine(config, cwd, task);  // options なし
+export async function executePiece(config, cwd, task) {
+  const engine = new PieceEngine(config, cwd, task);  // options なし
 }
 
 // ✅ 配線済み: projectCwd を渡せる
-export async function executeWorkflow(config, cwd, task, options?) {
-  const engine = new WorkflowEngine(config, cwd, task, options);
+export async function executePiece(config, cwd, task, options?) {
+  const engine = new PieceEngine(config, cwd, task, options);
 }
 ```
 
 **このパターンを見つけたら REJECT。** 個々のファイルが正しくても、結合されていなければ機能しない。
+
+**呼び出し元の制約による論理的デッドコード:**
+
+呼び出しチェーンの検証は「配線漏れ」だけでなく、逆方向——**呼び出し元が既に保証している条件に対する不要な防御コード**——にも適用する。
+
+| パターン | 問題 | 検出方法 |
+|---------|------|---------|
+| 呼び出し元がTTY必須なのに関数内でTTYチェック | 到達しない分岐が残る | grep で全呼び出し元の前提条件を確認 |
+| 呼び出し元がnullチェック済みなのに再度nullガード | 冗長な防御 | 呼び出し元の制約を追跡 |
+| 呼び出し元が型で制約しているのにランタイムチェック | 型安全を信頼していない | TypeScriptの型制約を確認 |
+
+**検証手順:**
+1. 防御的な条件分岐（TTYチェック、nullガード等）を見つけたら、grep で全呼び出し元を確認
+2. 全呼び出し元がその条件を既に保証しているなら、防御は不要 → **REJECT**
+3. 一部の呼び出し元が保証していない場合は、防御を残す
 
 ### 10. 品質特性
 
@@ -546,7 +560,30 @@ export async function executeWorkflow(config, cwd, task, options?) {
 - ビジネス要件と整合しているか
 - 命名がドメインと一貫しているか
 
-### 12. 変更スコープの評価
+### 12. ボーイスカウトルール
+
+**来たときよりも美しく。** 変更したファイルに構造上の問題があれば、タスクスコープ内でリファクタリングを指摘する。
+
+**対象:**
+- 変更したファイル内の既存の問題（未使用コード、不適切な命名、壊れた抽象化）
+- 変更したモジュール内の構造的な問題（責務の混在、不要な依存）
+
+**対象外:**
+- 変更していないファイル（既存問題として記録のみ）
+- タスクスコープを大きく逸脱するリファクタリング（提案として記載、非ブロッキング）
+
+**判定:**
+
+| 状況 | 判定 |
+|------|------|
+| 変更ファイル内に明らかな問題がある | **REJECT** — 一緒に修正させる |
+| 変更モジュール内の構造的問題 | **REJECT** — スコープ内なら修正させる |
+| 変更外ファイルの問題 | 記録のみ（非ブロッキング） |
+
+**既存コードの踏襲を理由にした問題の放置は認めない。** 既存コードが悪い場合、それに合わせるのではなく改善する。
+
+### 13. 変更スコープの評価
+
 
 **変更スコープを確認し、レポートに記載する（ブロッキングではない）。**
 
@@ -565,7 +602,7 @@ export async function executeWorkflow(config, cwd, task, options?) {
 **提案として記載すること（ブロッキングではない）:**
 - 分割可能な場合は分割案を提示
 
-### 13. 堂々巡りの検出
+### 14. 堂々巡りの検出
 
 レビュー回数が渡される場合（例: 「レビュー回数: 3回目」）、回数に応じて判断を変える。
 

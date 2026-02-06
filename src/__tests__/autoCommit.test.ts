@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { autoCommitAndPush } from '../task/autoCommit.js';
+import { autoCommitAndPush } from '../infra/task/autoCommit.js';
 
 // Mock child_process.execFileSync
 vi.mock('node:child_process', () => ({

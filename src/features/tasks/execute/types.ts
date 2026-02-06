@@ -1,0 +1,96 @@
+/**
+ * Execution module type definitions
+ */
+
+import type { Language } from '../../../core/models/index.js';
+import type { ProviderType } from '../../../infra/providers/index.js';
+
+/** Result of piece execution */
+export interface PieceExecutionResult {
+  success: boolean;
+  reason?: string;
+}
+
+/** Metadata from interactive mode, passed through to NDJSON logging */
+export interface InteractiveMetadata {
+  /** Whether the user confirmed with /go */
+  confirmed: boolean;
+  /** The assembled task text (only meaningful when confirmed=true) */
+  task?: string;
+}
+
+/** Options for piece execution */
+export interface PieceExecutionOptions {
+  /** Header prefix for display */
+  headerPrefix?: string;
+  /** Project root directory (where .takt/ lives). */
+  projectCwd: string;
+  /** Language for instruction metadata */
+  language?: Language;
+  provider?: ProviderType;
+  model?: string;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
+  /** Interactive mode result metadata for NDJSON logging */
+  interactiveMetadata?: InteractiveMetadata;
+}
+
+export interface TaskExecutionOptions {
+  provider?: ProviderType;
+  model?: string;
+}
+
+export interface ExecuteTaskOptions {
+  /** Task content */
+  task: string;
+  /** Working directory (may be a clone path) */
+  cwd: string;
+  /** Piece name or path (auto-detected by isPiecePath) */
+  pieceIdentifier: string;
+  /** Project root (where .takt/ lives) */
+  projectCwd: string;
+  /** Agent provider/model overrides */
+  agentOverrides?: TaskExecutionOptions;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
+  /** Interactive mode result metadata for NDJSON logging */
+  interactiveMetadata?: InteractiveMetadata;
+}
+
+export interface PipelineExecutionOptions {
+  /** GitHub issue number */
+  issueNumber?: number;
+  /** Task content (alternative to issue) */
+  task?: string;
+  /** Piece name or path to piece file */
+  piece: string;
+  /** Branch name (auto-generated if omitted) */
+  branch?: string;
+  /** Whether to create a PR after successful execution */
+  autoPr: boolean;
+  /** Repository in owner/repo format */
+  repo?: string;
+  /** Skip branch creation, commit, and push (piece-only execution) */
+  skipGit?: boolean;
+  /** Working directory */
+  cwd: string;
+  provider?: ProviderType;
+  model?: string;
+}
+
+export interface WorktreeConfirmationResult {
+  execCwd: string;
+  isWorktree: boolean;
+  branch?: string;
+}
+
+export interface SelectAndExecuteOptions {
+  autoPr?: boolean;
+  repo?: string;
+  piece?: string;
+  createWorktree?: boolean | undefined;
+  /** Enable interactive user input during step transitions */
+  interactiveUserInput?: boolean;
+  /** Interactive mode result metadata for NDJSON logging */
+  interactiveMetadata?: InteractiveMetadata;
+}

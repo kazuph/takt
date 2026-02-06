@@ -9,13 +9,13 @@ Tasks placed in this directory (.takt/tasks/) will be processed by TAKT.
   task: "Task description"
   worktree: true                  # (optional) true | "/path/to/dir"
   branch: "feat/my-feature"      # (optional) branch name
-  workflow: "default"             # (optional) workflow name
+  piece: "default"             # (optional) piece name
 
 Fields:
   task      (required)  Task description (string)
   worktree  (optional)  true: create shared clone, "/path": clone at path
   branch    (optional)  Branch name (auto-generated if omitted: takt/{timestamp}-{slug})
-  workflow  (optional)  Workflow name (uses current workflow if omitted)
+  piece  (optional)  Piece name (uses current piece if omitted)
 
 ## Markdown Format (Simple)
 

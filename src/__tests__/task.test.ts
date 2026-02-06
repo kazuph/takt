@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { TaskRunner } from '../task/runner.js';
-import { isTaskFile, parseTaskFiles } from '../task/parser.js';
+import { TaskRunner } from '../infra/task/runner.js';
+import { isTaskFile, parseTaskFiles } from '../infra/task/parser.js';
 
 describe('isTaskFile', () => {
   it('should accept .yaml files', () => {

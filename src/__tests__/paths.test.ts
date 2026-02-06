@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isPathSafe } from '../config/paths.js';
+import { isPathSafe } from '../infra/config/paths.js';
 
 describe('isPathSafe', () => {
   it('should accept paths within base directory', () => {

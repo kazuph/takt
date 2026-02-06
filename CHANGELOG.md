@@ -4,6 +4,277 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.1] - 2026-02-06
+
+### Fixed
+
+- Ctrl+C がピース実行中に効かない問題を修正: SIGINT ハンドラで `interruptAllQueries()` を呼び出してアクティブな SDK クエリを停止するように修正
+- Ctrl+C 後に EPIPE クラッシュが発生する問題を修正: SDK が停止済みの子プロセスの stdin に書き込む際の EPIPE エラーを二重防御で抑制（`uncaughtException` ハンドラ + `Promise.resolve().catch()`）
+- セレクトメニューの `onKeypress` ハンドラで例外が発生した際にターミナルの raw mode がリークする問題を修正
+
+### Internal
+
+- SIGINT ハンドラと EPIPE 抑制の統合テストを追加（`it-sigint-interrupt.test.ts`）
+- セレクトメニューのキー入力安全性テストを追加（`select-rawmode-safety.test.ts`）
+
+## [0.7.0] - 2026-02-06
+
+### Added
+
+- Hybrid Codex ピース: 全主要ピース（default, minimal, expert, expert-cqrs, passthrough, review-fix-minimal, coding）の Codex バリアントを追加
+  - coder エージェントを Codex プロバイダーで実行し、レビュアーは Claude を使うハイブリッド構成
+  - en/ja 両対応
+- `passthrough` ピース: タスクをそのまま coder に渡す最小構成ピース（レビューなし）
+- `coding` ピースを plan ベースに刷新: architect-planner による設計→実装→並列レビュー→修正の構成に変更
+- `takt export-cc` コマンド: ビルトインピース・エージェントを Claude Code Skill としてデプロイ
+- `takt list` に delete アクション追加、non-interactive モード分離
+- AI 相談アクション: `takt add` / インタラクティブモードで GitHub Issue 作成・タスクファイル保存が可能に
+- サイクル検出: ai_review ↔ ai_fix 間の無限ループを検出する `CycleDetector` を追加 (#102)
+  - 修正不要時の裁定ステップ（`ai_no_fix`）を default ピースに追加
+- `architect-planner` エージェント: アーキテクチャ設計と実装計画を統合する新エージェント
+- ピースカテゴリに Hybrid Codex サブカテゴリを追加（en/ja）
+- CI: skipped な TAKT Action ランを週次で自動削除するワークフローを追加
+
+### Changed
+
+- カテゴリ設定を簡素化: `default-categories.yaml` を `piece-categories.yaml` に統合し、ユーザーディレクトリへの自動コピー方式に変更
+- ピース選択UIのサブカテゴリナビゲーションを改善（再帰的な階層表示が正しく動作するように）
+- Claude Code Skill を Agent Team ベースに刷新
+- エージェントプロンプトにボーイスカウトルールと後方互換コード検出ルールを追加
+- `console.log` を `info()` に統一（list コマンド）
+
+### Fixed
+
+- Hybrid Codex ピースの description に含まれるコロンが YAML パースエラーを起こす問題を修正
+- サブカテゴリ選択時に `selectPieceFromCategoryTree` に不正な引数が渡される問題を修正
+- GitHub Actions でテストが git user 未設定により失敗する問題を修正（listTasks, listNonInteractive）
+
+### Internal
+
+- `list` コマンドのリファクタリング: `listNonInteractive.ts`, `taskDeleteActions.ts` を分離
+- `cycle-detector.ts` を追加、`PieceEngine` にサイクル検出を統合
+- ピースカテゴリローダーのリファクタリング（`pieceCategories.ts`, `pieceSelection/index.ts`）
+- 不要なワークツリーセッションテストを削除、ワークツリー削除テストを簡素化
+- テスト追加: cycle-detector, engine-loop-monitors, piece-selection, listNonInteractive, taskDeleteActions, createIssue, saveTaskFile
+
+## [0.6.0] - 2026-02-05
+
+RC1/RC2 の内容を正式リリース。機能変更なし。
+
+## [0.6.0-rc1] - 2026-02-05
+
+### Fixed
+
+- ai_review ↔ ai_fix 間の無限ループを修正: ai_fix が「修正不要」と判断した場合に plan へ戻ってフルパイプラインが再起動する問題を解消
+  - `ai_no_fix` 調停ステップを追加（architecture-reviewer が ai_review vs ai_fix の対立を判定）
+  - ai_fix の「修正不要」ルートを `plan` → `ai_no_fix` に変更
+  - 対象ピース: default, expert, expert-cqrs（en/ja）
+
+### Changed
+
+- default ピースの並列レビュアーを security-review → qa-review に変更（TAKT 開発向けに最適化）
+- qa-reviewer エージェントを `expert/` から `default/` に移動し、テストカバレッジ重視の内容に書き直し
+- ai_review instruction にイテレーション認識を追加（初回は網羅的レビュー、2回目以降は修正確認を優先）
+
+### Internal
+
+- auto-tag ワークフローを release/ ブランチからのマージのみに制限し、publish ジョブを統合（GITHUB_TOKEN 制約による連鎖トリガー不発を解消）
+- postversion フック削除（release ブランチフローと競合するため）
+- テスト更新: security-reviewer → qa-reviewer の変更に対応
+
+## [0.6.0-rc] - 2026-02-05
+
+### Added
+
+- `coding` ビルトインピース: 設計→実装→並列レビュー→修正の軽量開発ピース（plan/supervise を省略した高速フィードバックループ）
+- `conductor` エージェント: Phase 3 判定専用エージェント。レポートやレスポンスを読んで判定タグを出力する
+- Phase 3 判定のフォールバック戦略: AutoSelect → ReportBased → ResponseBased → AgentConsult の4段階フォールバックで判定精度を向上 (`src/core/piece/judgment/`)
+- セッション状態管理: タスク実行結果（成功/エラー/中断）を保存し、次回インタラクティブモード起動時に前回の結果を表示 (#89)
+- TAKT メタ情報（ピース構造、進行状況）をエージェントに引き渡す仕組み
+- `/play` コマンド: インタラクティブモードでタスクを即座に実行
+- E2Eテスト基盤: mock/provider 両対応のテストインフラ、10種のE2Eテストスペック、テストヘルパー（isolated-env, takt-runner, test-repo）
+- レビューエージェントに「論理的に到達不可能な防御コード」の検出ルールを追加
+
+### Changed
+
+- Phase 3 判定ロジックをセッション再開方式から conductor エージェント＋フォールバック戦略に変更（判定の安定性向上）
+- CLI ルーティングを `executeDefaultAction()` として関数化し、スラッシュコマンドのフォールバックから再利用可能に (#32)
+- `/` や `#` で始まる入力をコマンド/Issue 未検出時にタスク指示として受け入れるよう変更 (#32)
+- `isDirectTask()` を簡素化: Issue 参照のみ直接実行、それ以外はすべてインタラクティブモードへ
+- 全ビルトインピースから `pass_previous_response: true` を削除（デフォルト動作のため不要）
+
+### Internal
+
+- E2Eテスト設定ファイル追加（vitest.config.e2e.ts, vitest.config.e2e.mock.ts, vitest.config.e2e.provider.ts）
+- `rule-utils.ts` に `getReportFiles()`, `hasOnlyOneBranch()`, `getAutoSelectedTag()` を追加
+- `StatusJudgmentBuilder` にレポートコンテンツ・レスポンスベースの判定指示生成を追加
+- `InstructionBuilder` にピースメタ情報（構造、反復回数）の注入を追加
+- テスト追加: judgment-detector, judgment-fallback, sessionState, pieceResolver, cli-slash-hash, e2e-helpers
+
+## [0.5.1] - 2026-02-04
+
+### Fixed
+
+- Windows environment file path handling and encoding issues (#90, #91)
+  - Improved .git detection for Windows
+  - Added mandatory .git check for Codex (error if not found)
+  - Fixed character encoding issues
+- Codex branch name summary processing bug
+
+### Internal
+
+- Test memory leak and hanging issues resolved
+  - Added cleanup handlers for PieceEngine and TaskWatcher
+  - Changed vitest to single-threaded execution for improved test stability
+
+## [0.5.0] - 2026-02-04
+
+### Changed
+
+- **BREAKING:** Complete terminology migration from "workflow" to "piece" across entire codebase
+  - All CLI commands, configuration files, and documentation now use "piece" terminology
+  - `WorkflowEngine` → `PieceEngine`
+  - `workflow_categories` → `piece_categories` in config files
+  - `builtin_workflows_enabled` → `builtin_pieces_enabled`
+  - `~/.takt/workflows/` → `~/.takt/pieces/` (user piece directory)
+  - `.takt/workflows/` → `.takt/pieces/` (project piece directory)
+  - All workflow-related file names and types renamed to piece-equivalents
+  - Updated all documentation (README.md, CLAUDE.md, docs/*)
+
+### Internal
+
+- Complete directory structure refactoring:
+  - `src/core/workflow/` → `src/core/piece/`
+  - `src/features/workflowSelection/` → `src/features/pieceSelection/`
+- File renames:
+  - `workflow-types.ts` → `piece-types.ts`
+  - `workflowExecution.ts` → `pieceExecution.ts`
+  - `workflowLoader.ts` → `pieceLoader.ts`
+  - `workflowParser.ts` → `pieceParser.ts`
+  - `workflowResolver.ts` → `pieceResolver.ts`
+  - `workflowCategories.ts` → `pieceCategories.ts`
+  - `switchWorkflow.ts` → `switchPiece.ts`
+- All test files updated to reflect new terminology (194 files changed, ~3,400 insertions, ~3,400 deletions)
+- Resources directory updated:
+  - `resources/global/*/pieces/*.yaml` updated with new terminology
+  - All prompt files (`*.md`) updated
+  - Configuration files (`config.yaml`, `default-categories.yaml`) updated
+
+## [0.4.1] - 2026-02-04
+
+### Fixed
+
+- Workflow execution bug where previous step's response was incorrectly bound to subsequent steps
+  - Fixed `MovementExecutor`, `ParallelRunner`, and `state-manager` to properly isolate step responses
+  - Updated interactive summary prompts to prevent response leakage
+
+## [0.4.0] - 2026-02-04
+
+### Added
+
+- Externalized prompt system: all internal prompts moved to versioned, translatable files (`src/shared/prompts/en/`, `src/shared/prompts/ja/`)
+- i18n label system: UI labels extracted to separate YAML files (`labels_en.yaml`, `labels_ja.yaml`) with `src/shared/i18n/` module
+- Prompt preview functionality (`src/features/prompt/preview.ts`)
+- Phase system injection into agents for improved workflow phase awareness
+- Enhanced debug capabilities with new debug log viewer (`tools/debug-log-viewer.html`)
+- Comprehensive test coverage:
+  - i18n system tests (`i18n.test.ts`)
+  - Prompt system tests (`prompts.test.ts`)
+  - Session management tests (`session.test.ts`)
+  - Worktree integration tests (`it-worktree-delete.test.ts`, `it-worktree-sessions.test.ts`)
+
+### Changed
+
+- **BREAKING:** Internal terminology renamed: `WorkflowStep` → `WorkflowMovement`, `StepExecutor` → `MovementExecutor`, `ParallelSubStepRawSchema` → `ParallelSubMovementRawSchema`, `WorkflowStepRawSchema` → `WorkflowMovementRawSchema`
+- **BREAKING:** Removed unnecessary backward compatibility code
+- **BREAKING:** Disabled interactive prompt override feature
+- Workflow resource directory renamed: `resources/global/*/workflows/` → `resources/global/*/pieces/`
+- Prompts restructured for better readability and maintainability
+- Removed unnecessary task requirement summarization from conversation flow
+- Suppressed unnecessary report output during workflow execution
+
+### Fixed
+
+- `takt worktree` bug fix for worktree operations
+
+### Internal
+
+- Extracted prompt management into `src/shared/prompts/index.ts` with language-aware file loading
+- Created `src/shared/i18n/index.ts` for centralized label management
+- Enhanced `tools/jsonl-viewer.html` with additional features
+- Major refactoring across 162 files (~5,800 insertions, ~2,900 deletions)
+
+## [0.3.9] - 2026-02-03
+
+### Added
+
+- Workflow categorization support (#85)
+  - Default category configuration in `resources/global/{lang}/default-categories.yaml`
+  - User-defined categories via `workflow_categories` in `~/.takt/config.yaml`
+  - Nested category support with unlimited depth
+  - Category-based workflow filtering in workflow selection UI
+  - `show_others_category` and `others_category_name` configuration options
+  - Builtin workflow filtering via `builtin_workflows_enabled` and `disabled_builtins`
+- Agent-less step execution: `agent` field is now optional (#71)
+  - Steps can execute with `instruction_template` only (no system prompt)
+  - Inline system prompts supported (agent string used as prompt if file doesn't exist)
+- `takt add #N` automatically reflects issue number in branch name (#78)
+  - Issue number embedded in branch name (e.g., `takt/issue-28-...`)
+
+### Changed
+
+- **BREAKING:** Permission mode values unified to provider-independent format (#87)
+  - New values: `readonly`, `edit`, `full` (replaces `default`, `acceptEdits`, `bypassPermissions`)
+  - TAKT translates to provider-specific flags (Claude: default/acceptEdits/bypassPermissions, Codex: read-only/workspace-write/danger-full-access)
+  - All builtin workflows updated to use new values
+- Workflow naming changes:
+  - `simple` workflow replaced with `minimal` and `review-fix-minimal`
+  - Added `review-only` workflow for read-only code review
+- Agent prompts updated with legacy対応禁止ルール (no backward compatibility hacks)
+- Documentation updates:
+  - README.md and docs/README.ja.md updated with v0.3.8+ features
+  - CLAUDE.md significantly expanded with architectural details and implementation notes
+
+### Internal
+
+- Created `src/infra/config/loaders/workflowCategories.ts` for category management
+- Created `src/features/workflowSelection/index.ts` for workflow selection UI
+- Enhanced `src/shared/prompt/select.ts` with category display support
+- Added comprehensive tests for workflow categories (`workflow-categories.test.ts`, `workflow-category-config.test.ts`)
+
+## [0.3.8] - 2026-02-02
+
+### Added
+
+- CLI option to specify workflow/config file paths: `--workflow <path>` and `--config <path>` (#81)
+- CI-friendly quiet mode for minimal log output (#70)
+- Mock scenario support for testing workflow execution
+- Comprehensive integration tests (7 test files, ~3000 lines of test coverage)
+
+### Changed
+
+- Rule evaluation improved: `detectRuleIndex` now uses last match instead of first match (#25)
+- `ai_fix` step significantly improved:
+  - Added `{step_iteration}` counter to show retry attempt number
+  - Explicit fix procedure defined (Read → Grep → Edit → Test → Report)
+  - Coder agent now prioritizes reviewer feedback over assumptions
+- README and docs updated with clearer CLI usage and CI/CD examples
+
+### Fixed
+
+- Workflow loading priority corrected (user workflows now take precedence over builtins)
+- Test stability improvements (flaky tests skipped, ai_fix test updated)
+- Slack notification configuration fixed
+
+### Internal
+
+- Refactored instruction builder: extracted context assembly and status rules logic (#44)
+- Introduced `src/infra/task/git.ts` for DRY git commit operations
+- Unified error handling with `getErrorMessage()`
+- Made `projectCwd` required throughout codebase
+- Removed deprecated `sacrificeMode`
+- 35 files updated for consistency (`console.log` → `blankLine()`, etc.)
+
 ## [0.3.7] - 2026-02-01
 
 ### Added

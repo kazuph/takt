@@ -8,35 +8,36 @@ import * as path from 'node:path';
 import { tmpdir } from 'node:os';
 
 // Mock dependencies before importing the module under test
-vi.mock('../commands/interactive.js', () => ({
+vi.mock('../features/interactive/index.js', () => ({
   interactiveMode: vi.fn(),
 }));
 
-vi.mock('../providers/index.js', () => ({
+vi.mock('../infra/providers/index.js', () => ({
   getProvider: vi.fn(),
 }));
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(() => ({ provider: 'claude' })),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   promptInput: vi.fn(),
   confirm: vi.fn(),
-  selectOption: vi.fn(),
-  promptMultiline: vi.fn(),
 }));
 
-vi.mock('../task/summarize.js', () => ({
+vi.mock('../infra/task/summarize.js', () => ({
   summarizeTaskName: vi.fn(),
 }));
 
-vi.mock('../utils/ui.js', () => ({
+vi.mock('../shared/ui/index.js', () => ({
   success: vi.fn(),
   info: vi.fn(),
+  blankLine: vi.fn(),
 }));
 
-vi.mock('../utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -44,57 +45,63 @@ vi.mock('../utils/debug.js', () => ({
   }),
 }));
 
-vi.mock('../config/workflowLoader.js', () => ({
-  listWorkflows: vi.fn(),
+vi.mock('../features/tasks/execute/selectAndExecute.js', () => ({
+  determinePiece: vi.fn(),
 }));
 
-vi.mock('../config/paths.js', () => ({
-  getCurrentWorkflow: vi.fn(() => 'default'),
+vi.mock('../infra/config/loaders/pieceResolver.js', () => ({
+  getPieceDescription: vi.fn(() => ({
+    name: 'default',
+    description: '',
+    pieceStructure: '1. implement\n2. review'
+  })),
 }));
 
-vi.mock('../github/issue.js', () => ({
+vi.mock('../infra/github/issue.js', () => ({
   isIssueReference: vi.fn((s: string) => /^#\d+$/.test(s)),
   resolveIssueTask: vi.fn(),
+  parseIssueNumbers: vi.fn((args: string[]) => {
+    const numbers: number[] = [];
+    for (const arg of args) {
+      const match = arg.match(/^#(\d+)$/);
+      if (match?.[1]) {
+        numbers.push(Number.parseInt(match[1], 10));
+      }
+    }
+    return numbers;
+  }),
+  createIssue: vi.fn(),
 }));
 
-import { interactiveMode } from '../commands/interactive.js';
-import { getProvider } from '../providers/index.js';
-import { promptInput, confirm, selectOption } from '../prompt/index.js';
-import { summarizeTaskName } from '../task/summarize.js';
-import { listWorkflows } from '../config/workflowLoader.js';
-import { resolveIssueTask } from '../github/issue.js';
-import { addTask, summarizeConversation } from '../commands/addTask.js';
+import { interactiveMode } from '../features/interactive/index.js';
+import { promptInput, confirm } from '../shared/prompt/index.js';
+import { summarizeTaskName } from '../infra/task/summarize.js';
+import { determinePiece } from '../features/tasks/execute/selectAndExecute.js';
+import { getPieceDescription } from '../infra/config/loaders/pieceResolver.js';
+import { resolveIssueTask, createIssue } from '../infra/github/issue.js';
+import { addTask } from '../features/tasks/index.js';
 
 const mockResolveIssueTask = vi.mocked(resolveIssueTask);
-
+const mockCreateIssue = vi.mocked(createIssue);
 const mockInteractiveMode = vi.mocked(interactiveMode);
-const mockGetProvider = vi.mocked(getProvider);
 const mockPromptInput = vi.mocked(promptInput);
 const mockConfirm = vi.mocked(confirm);
-const mockSelectOption = vi.mocked(selectOption);
 const mockSummarizeTaskName = vi.mocked(summarizeTaskName);
-const mockListWorkflows = vi.mocked(listWorkflows);
+const mockDeterminePiece = vi.mocked(determinePiece);
+const mockGetPieceDescription = vi.mocked(getPieceDescription);
 
-/** Helper: set up mocks for the full happy path */
 function setupFullFlowMocks(overrides?: {
-  conversationTask?: string;
-  summaryContent?: string;
+  task?: string;
   slug?: string;
 }) {
-  const task = overrides?.conversationTask ?? 'User: 認証機能を追加したい\n\nAssistant: 了解です。';
-  const summary = overrides?.summaryContent ?? '# 認証機能追加\nJWT認証を実装する';
+  const task = overrides?.task ?? '# 認証機能追加\nJWT認証を実装する';
   const slug = overrides?.slug ?? 'add-auth';
 
-  mockInteractiveMode.mockResolvedValue({ confirmed: true, task });
-
-  const mockProviderCall = vi.fn().mockResolvedValue({ content: summary });
-  mockGetProvider.mockReturnValue({ call: mockProviderCall } as any);
-
+  mockDeterminePiece.mockResolvedValue('default');
+  mockGetPieceDescription.mockReturnValue({ name: 'default', description: '', pieceStructure: '' });
+  mockInteractiveMode.mockResolvedValue({ action: 'execute', task });
   mockSummarizeTaskName.mockResolvedValue(slug);
   mockConfirm.mockResolvedValue(false);
-  mockListWorkflows.mockReturnValue([]);
-
-  return { mockProviderCall };
 }
 
 let testDir: string;
@@ -102,7 +109,8 @@ let testDir: string;
 beforeEach(() => {
   vi.clearAllMocks();
   testDir = fs.mkdtempSync(path.join(tmpdir(), 'takt-test-'));
-  mockListWorkflows.mockReturnValue([]);
+  mockDeterminePiece.mockResolvedValue('default');
+  mockGetPieceDescription.mockReturnValue({ name: 'default', description: '', pieceStructure: '' });
   mockConfirm.mockResolvedValue(false);
 });
 
@@ -115,16 +123,15 @@ afterEach(() => {
 describe('addTask', () => {
   it('should cancel when interactive mode is not confirmed', async () => {
     // Given: user cancels interactive mode
-    mockInteractiveMode.mockResolvedValue({ confirmed: false, task: '' });
+    mockDeterminePiece.mockResolvedValue('default');
+    mockInteractiveMode.mockResolvedValue({ action: 'cancel', task: '' });
 
     // When
     await addTask(testDir);
 
-    // Then: no task file created
     const tasksDir = path.join(testDir, '.takt', 'tasks');
     const files = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir) : [];
     expect(files.length).toBe(0);
-    expect(mockGetProvider).not.toHaveBeenCalled();
     expect(mockSummarizeTaskName).not.toHaveBeenCalled();
   });
 
@@ -145,38 +152,14 @@ describe('addTask', () => {
     expect(content).toContain('JWT認証を実装する');
   });
 
-  it('should summarize conversation via provider.call', async () => {
-    // Given
-    const { mockProviderCall } = setupFullFlowMocks({
-      conversationTask: 'User: バグ修正して\n\nAssistant: どのバグですか？',
-    });
-
-    // When
-    await addTask(testDir);
-
-    // Then: provider.call was called with conversation text
-    expect(mockProviderCall).toHaveBeenCalledWith(
-      'task-summarizer',
-      'User: バグ修正して\n\nAssistant: どのバグですか？',
-      expect.objectContaining({
-        cwd: testDir,
-        maxTurns: 1,
-        allowedTools: [],
-      }),
-    );
-  });
-
-  it('should use first line of summary for filename generation', async () => {
-    // Given: summary with multiple lines
+  it('should use first line of task for filename generation', async () => {
     setupFullFlowMocks({
-      summaryContent: 'First line summary\nSecond line details',
+      task: 'First line summary\nSecond line details',
       slug: 'first-line',
     });
 
-    // When
     await addTask(testDir);
 
-    // Then: summarizeTaskName receives only the first line
     expect(mockSummarizeTaskName).toHaveBeenCalledWith('First line summary', { cwd: testDir });
   });
 
@@ -244,52 +227,48 @@ describe('addTask', () => {
     expect(content).toContain('branch: feat/my-branch');
   });
 
-  it('should include workflow selection in task file', async () => {
-    // Given: multiple workflows available
-    setupFullFlowMocks({ slug: 'with-workflow' });
-    mockListWorkflows.mockReturnValue(['default', 'review']);
+  it('should include piece selection in task file', async () => {
+    // Given: determinePiece returns a non-default piece
+    setupFullFlowMocks({ slug: 'with-piece' });
+    mockDeterminePiece.mockResolvedValue('review');
+    mockGetPieceDescription.mockReturnValue({ name: 'review', description: 'Code review piece', pieceStructure: '' });
     mockConfirm.mockResolvedValue(false);
-    mockSelectOption.mockResolvedValue('review');
 
     // When
     await addTask(testDir);
 
     // Then
-    const taskFile = path.join(testDir, '.takt', 'tasks', 'with-workflow.yaml');
+    const taskFile = path.join(testDir, '.takt', 'tasks', 'with-piece.yaml');
     const content = fs.readFileSync(taskFile, 'utf-8');
-    expect(content).toContain('workflow: review');
+    expect(content).toContain('piece: review');
   });
 
-  it('should cancel when workflow selection returns null', async () => {
-    // Given: workflows available but user cancels selection
-    setupFullFlowMocks({ slug: 'cancelled' });
-    mockListWorkflows.mockReturnValue(['default', 'review']);
-    mockConfirm.mockResolvedValue(false);
-    mockSelectOption.mockResolvedValue(null);
+  it('should cancel when piece selection returns null', async () => {
+    // Given: user cancels piece selection
+    mockDeterminePiece.mockResolvedValue(null);
 
     // When
     await addTask(testDir);
 
-    // Then: no task file created (cancelled at workflow selection)
+    // Then: no task file created (cancelled at piece selection)
     const tasksDir = path.join(testDir, '.takt', 'tasks');
     const files = fs.readdirSync(tasksDir);
     expect(files.length).toBe(0);
   });
 
-  it('should not include workflow when current workflow is selected', async () => {
-    // Given: current workflow selected (no need to record it)
+  it('should always include piece from determinePiece', async () => {
+    // Given: determinePiece returns 'default'
     setupFullFlowMocks({ slug: 'default-wf' });
-    mockListWorkflows.mockReturnValue(['default', 'review']);
+    mockDeterminePiece.mockResolvedValue('default');
     mockConfirm.mockResolvedValue(false);
-    mockSelectOption.mockResolvedValue('default');
 
     // When
     await addTask(testDir);
 
-    // Then: workflow field should not be in the YAML
+    // Then: piece field is included
     const taskFile = path.join(testDir, '.takt', 'tasks', 'default-wf.yaml');
     const content = fs.readFileSync(taskFile, 'utf-8');
-    expect(content).not.toContain('workflow:');
+    expect(content).toContain('piece: default');
   });
 
   it('should fetch issue and use directly as task content when given issue reference', async () => {
@@ -299,7 +278,6 @@ describe('addTask', () => {
 
     mockSummarizeTaskName.mockResolvedValue('fix-login-timeout');
     mockConfirm.mockResolvedValue(false);
-    mockListWorkflows.mockReturnValue([]);
 
     // When
     await addTask(testDir, '#99');
@@ -317,13 +295,14 @@ describe('addTask', () => {
     expect(content).toContain('Fix login timeout');
   });
 
-  it('should proceed to worktree/workflow settings after issue fetch', async () => {
+  it('should proceed to worktree settings after issue fetch', async () => {
     // Given: issue with worktree enabled
     mockResolveIssueTask.mockReturnValue('Issue text');
     mockSummarizeTaskName.mockResolvedValue('issue-task');
     mockConfirm.mockResolvedValue(true);
-    mockPromptInput.mockResolvedValue('');
-    mockListWorkflows.mockReturnValue([]);
+    mockPromptInput
+      .mockResolvedValueOnce('')  // worktree path (auto)
+      .mockResolvedValueOnce(''); // branch name (auto)
 
     // When
     await addTask(testDir, '#42');
@@ -343,34 +322,72 @@ describe('addTask', () => {
     // When
     await addTask(testDir, '#99');
 
-    // Then: no task file created, no crash
     const tasksDir = path.join(testDir, '.takt', 'tasks');
     const files = fs.readdirSync(tasksDir);
     expect(files.length).toBe(0);
-    expect(mockGetProvider).not.toHaveBeenCalled();
   });
-});
 
-describe('summarizeConversation', () => {
-  it('should call provider with summarize system prompt', async () => {
-    // Given
-    const mockCall = vi.fn().mockResolvedValue({ content: 'Summary text' });
-    mockGetProvider.mockReturnValue({ call: mockCall } as any);
+  it('should include issue number in task file when issue reference is used', async () => {
+    // Given: issue reference "#99"
+    const issueText = 'Issue #99: Fix login timeout';
+    mockResolveIssueTask.mockReturnValue(issueText);
+    mockSummarizeTaskName.mockResolvedValue('fix-login-timeout');
+    mockConfirm.mockResolvedValue(false);
 
     // When
-    const result = await summarizeConversation('/project', 'conversation text');
+    await addTask(testDir, '#99');
 
-    // Then
-    expect(result).toBe('Summary text');
-    expect(mockCall).toHaveBeenCalledWith(
-      'task-summarizer',
-      'conversation text',
-      expect.objectContaining({
-        cwd: '/project',
-        maxTurns: 1,
-        allowedTools: [],
-        systemPrompt: expect.stringContaining('会話履歴からタスクの要件をまとめてください'),
-      }),
-    );
+    // Then: task file contains issue field
+    const taskFile = path.join(testDir, '.takt', 'tasks', 'fix-login-timeout.yaml');
+    expect(fs.existsSync(taskFile)).toBe(true);
+    const content = fs.readFileSync(taskFile, 'utf-8');
+    expect(content).toContain('issue: 99');
+  });
+
+  describe('create_issue action', () => {
+    it('should call createIssue when create_issue action is selected', async () => {
+      // Given: interactive mode returns create_issue action
+      const task = 'Create a new feature\nWith detailed description';
+      mockDeterminePiece.mockResolvedValue('default');
+      mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task });
+      mockCreateIssue.mockReturnValue({ success: true, url: 'https://github.com/owner/repo/issues/1' });
+
+      // When
+      await addTask(testDir);
+
+      // Then: createIssue is called via createIssueFromTask
+      expect(mockCreateIssue).toHaveBeenCalledWith({
+        title: 'Create a new feature',
+        body: task,
+      });
+    });
+
+    it('should not create task file when create_issue action is selected', async () => {
+      // Given: interactive mode returns create_issue action
+      mockDeterminePiece.mockResolvedValue('default');
+      mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task: 'Some task' });
+      mockCreateIssue.mockReturnValue({ success: true, url: 'https://github.com/owner/repo/issues/1' });
+
+      // When
+      await addTask(testDir);
+
+      // Then: no task file created
+      const tasksDir = path.join(testDir, '.takt', 'tasks');
+      const files = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir) : [];
+      expect(files.length).toBe(0);
+    });
+
+    it('should not prompt for worktree settings when create_issue action is selected', async () => {
+      // Given: interactive mode returns create_issue action
+      mockDeterminePiece.mockResolvedValue('default');
+      mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task: 'Some task' });
+      mockCreateIssue.mockReturnValue({ success: true, url: 'https://github.com/owner/repo/issues/1' });
+
+      // When
+      await addTask(testDir);
+
+      // Then: confirm (worktree prompt) is never called
+      expect(mockConfirm).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,0 +1,49 @@
+/**
+ * Tests for builtin piece enable/disable flag
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+vi.mock('../infra/config/global/globalConfig.js', async (importOriginal) => {
+  const original = await importOriginal() as Record<string, unknown>;
+  return {
+    ...original,
+    getLanguage: () => 'en',
+    getDisabledBuiltins: () => [],
+    getBuiltinPiecesEnabled: () => false,
+  };
+});
+
+const { listPieces } = await import('../infra/config/loaders/pieceLoader.js');
+
+const SAMPLE_PIECE = `name: test-piece
+movements:
+  - name: step1
+    agent: coder
+    instruction: "{task}"
+`;
+
+describe('builtin piece toggle', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'takt-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('should exclude builtin pieces when disabled', () => {
+    const projectPiecesDir = join(tempDir, '.takt', 'pieces');
+    mkdirSync(projectPiecesDir, { recursive: true });
+    writeFileSync(join(projectPiecesDir, 'project-custom.yaml'), SAMPLE_PIECE);
+
+    const pieces = listPieces(tempDir);
+    expect(pieces).toContain('project-custom');
+    expect(pieces).not.toContain('default');
+  });
+});

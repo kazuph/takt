@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { existsSync, rmSync, mkdirSync, symlinkSync, lstatSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
@@ -17,33 +17,34 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../workflow/rule-evaluator.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../utils/session.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
 }));
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../workflow/engine.js';
-import { runReportPhase } from '../workflow/phase-runner.js';
+import { PieceEngine } from '../core/piece/index.js';
+import { runReportPhase } from '../core/piece/index.js';
 import {
   makeResponse,
-  makeStep,
+  makeMovement,
   makeRule,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
-import type { WorkflowConfig } from '../models/types.js';
+import type { PieceConfig } from '../core/models/index.js';
 
 function createWorktreeDirs(): { projectCwd: string; cloneCwd: string } {
   const base = join(tmpdir(), `takt-worktree-test-${randomUUID()}`);
@@ -63,14 +64,14 @@ function createWorktreeDirs(): { projectCwd: string; cloneCwd: string } {
   return { projectCwd, cloneCwd };
 }
 
-function buildSimpleConfig(): WorkflowConfig {
+function buildSimpleConfig(): PieceConfig {
   return {
     name: 'worktree-test',
-    description: 'Test workflow for worktree',
+    description: 'Test piece for worktree',
     maxIterations: 10,
-    initialStep: 'review',
-    steps: [
-      makeStep('review', {
+    initialMovement: 'review',
+    movements: [
+      makeMovement('review', {
         report: '00-review.md',
         rules: [
           makeRule('approved', 'COMPLETE'),
@@ -80,7 +81,7 @@ function buildSimpleConfig(): WorkflowConfig {
   };
 }
 
-describe('WorkflowEngine: worktree reportDir resolution', () => {
+describe('PieceEngine: worktree reportDir resolution', () => {
   let projectCwd: string;
   let cloneCwd: string;
   let baseDir: string;
@@ -100,10 +101,10 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
     }
   });
 
-  it('should pass cwd-based reportDir to phase runner context in worktree mode', async () => {
+  it('should pass projectCwd-based reportDir to phase runner context in worktree mode', async () => {
     // Given: worktree environment where cwd !== projectCwd
     const config = buildSimpleConfig();
-    const engine = new WorkflowEngine(config, cloneCwd, 'test task', {
+    const engine = new PieceEngine(config, cloneCwd, 'test task', {
       projectCwd,
     });
 
@@ -114,34 +115,31 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
       { index: 0, method: 'tag' as const },
     ]);
 
-    // When: run the workflow
+    // When: run the piece
     await engine.run();
 
-    // Then: runReportPhase was called with context containing cwd-based reportDir
+    // Then: runReportPhase was called with context containing projectCwd-based reportDir
     const reportPhaseMock = vi.mocked(runReportPhase);
     expect(reportPhaseMock).toHaveBeenCalled();
     const phaseCtx = reportPhaseMock.mock.calls[0][2] as { reportDir: string };
 
-    // reportDir should be resolved from cloneCwd (cwd), not projectCwd
-    const expectedPath = join(cloneCwd, '.takt/reports/test-report-dir');
-    const unexpectedPath = join(projectCwd, '.takt/reports/test-report-dir');
+    // reportDir should be resolved from projectCwd, not cloneCwd
+    const expectedPath = join(projectCwd, '.takt/reports/test-report-dir');
+    const unexpectedPath = join(cloneCwd, '.takt/reports/test-report-dir');
 
     expect(phaseCtx.reportDir).toBe(expectedPath);
     expect(phaseCtx.reportDir).not.toBe(unexpectedPath);
-
-    const logsLink = join(cloneCwd, '.takt', 'logs');
-    expect(lstatSync(logsLink).isSymbolicLink()).toBe(true);
   });
 
-  it('should pass cwd-based reportDir to buildInstruction (used by {report_dir} placeholder)', async () => {
-    // Given: worktree environment with a step that uses {report_dir} in template
-    const config: WorkflowConfig = {
+  it('should pass projectCwd-based reportDir to buildInstruction (used by {report_dir} placeholder)', async () => {
+    // Given: worktree environment with a movement that uses {report_dir} in template
+    const config: PieceConfig = {
       name: 'worktree-test',
       description: 'Test',
       maxIterations: 10,
-      initialStep: 'review',
-      steps: [
-        makeStep('review', {
+      initialMovement: 'review',
+      movements: [
+        makeMovement('review', {
           instructionTemplate: 'Write report to {report_dir}',
           report: '00-review.md',
           rules: [
@@ -150,7 +148,7 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
         }),
       ],
     };
-    const engine = new WorkflowEngine(config, cloneCwd, 'test task', {
+    const engine = new PieceEngine(config, cloneCwd, 'test task', {
       projectCwd,
     });
 
@@ -162,25 +160,25 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
       { index: 0, method: 'tag' as const },
     ]);
 
-    // When: run the workflow
+    // When: run the piece
     await engine.run();
 
-    // Then: the instruction should contain cwd-based reportDir
+    // Then: the instruction should contain projectCwd-based reportDir
     const runAgentMock = vi.mocked(runAgent);
     expect(runAgentMock).toHaveBeenCalled();
     const instruction = runAgentMock.mock.calls[0][1] as string;
 
-    const expectedPath = join(cloneCwd, '.takt/reports/test-report-dir');
+    const expectedPath = join(projectCwd, '.takt/reports/test-report-dir');
     expect(instruction).toContain(expectedPath);
-    // In worktree mode, projectCwd path should NOT appear
-    expect(instruction).not.toContain(join(projectCwd, '.takt/reports/test-report-dir'));
+    // In worktree mode, cloneCwd path should NOT appear
+    expect(instruction).not.toContain(join(cloneCwd, '.takt/reports/test-report-dir'));
   });
 
   it('should use same path in non-worktree mode (cwd === projectCwd)', async () => {
     // Given: normal environment where cwd === projectCwd
     const normalDir = projectCwd;
     const config = buildSimpleConfig();
-    const engine = new WorkflowEngine(config, normalDir, 'test task', {
+    const engine = new PieceEngine(config, normalDir, 'test task', {
       projectCwd: normalDir,
     });
 
@@ -191,7 +189,7 @@ describe('WorkflowEngine: worktree reportDir resolution', () => {
       { index: 0, method: 'tag' as const },
     ]);
 
-    // When: run the workflow
+    // When: run the piece
     await engine.run();
 
     // Then: reportDir should be the same (cwd === projectCwd)

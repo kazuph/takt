@@ -1,10 +1,10 @@
 /**
- * WorkflowEngine integration tests: parallel step aggregation.
+ * PieceEngine integration tests: parallel movement aggregation.
  *
  * Covers:
  * - Aggregated output format (## headers and --- separators)
- * - Individual sub-step output storage
- * - Concurrent execution of sub-steps
+ * - Individual sub-movement output storage
+ * - Concurrent execution of sub-movements
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -16,34 +16,35 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../workflow/rule-evaluator.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
 }));
 
-vi.mock('../utils/session.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
 }));
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../workflow/engine.js';
+import { PieceEngine } from '../core/piece/index.js';
 import { runAgent } from '../agents/runner.js';
 import {
   makeResponse,
-  buildDefaultWorkflowConfig,
+  buildDefaultPieceConfig,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   createTestTmpDir,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
 
-describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
+describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -58,9 +59,9 @@ describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
     }
   });
 
-  it('should aggregate sub-step outputs with ## headers and --- separators', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task');
+  it('should aggregate sub-movement outputs with ## headers and --- separators', async () => {
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan done' }),
@@ -85,7 +86,7 @@ describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
 
     expect(state.status).toBe('completed');
 
-    const reviewersOutput = state.stepOutputs.get('reviewers');
+    const reviewersOutput = state.movementOutputs.get('reviewers');
     expect(reviewersOutput).toBeDefined();
     expect(reviewersOutput!.content).toContain('## arch-review');
     expect(reviewersOutput!.content).toContain('Architecture review content');
@@ -95,9 +96,9 @@ describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
     expect(reviewersOutput!.matchedRuleMethod).toBe('aggregate');
   });
 
-  it('should store individual sub-step outputs in stepOutputs', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task');
+  it('should store individual sub-movement outputs in movementOutputs', async () => {
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan' }),
@@ -120,16 +121,16 @@ describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
 
     const state = await engine.run();
 
-    expect(state.stepOutputs.has('arch-review')).toBe(true);
-    expect(state.stepOutputs.has('security-review')).toBe(true);
-    expect(state.stepOutputs.has('reviewers')).toBe(true);
-    expect(state.stepOutputs.get('arch-review')!.content).toBe('Arch content');
-    expect(state.stepOutputs.get('security-review')!.content).toBe('Sec content');
+    expect(state.movementOutputs.has('arch-review')).toBe(true);
+    expect(state.movementOutputs.has('security-review')).toBe(true);
+    expect(state.movementOutputs.has('reviewers')).toBe(true);
+    expect(state.movementOutputs.get('arch-review')!.content).toBe('Arch content');
+    expect(state.movementOutputs.get('security-review')!.content).toBe('Sec content');
   });
 
-  it('should execute sub-steps concurrently (both runAgent calls happen)', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task');
+  it('should execute sub-movements concurrently (both runAgent calls happen)', async () => {
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan' }),
@@ -152,7 +153,7 @@ describe('WorkflowEngine Integration: Parallel Step Aggregation', () => {
 
     await engine.run();
 
-    // 6 total: 4 normal + 2 parallel sub-steps
+    // 6 total: 4 normal + 2 parallel sub-movements
     expect(vi.mocked(runAgent)).toHaveBeenCalledTimes(6);
 
     const calledAgents = vi.mocked(runAgent).mock.calls.map(call => call[0]);

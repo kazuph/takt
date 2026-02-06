@@ -5,23 +5,31 @@
  * of the pipeline execution flow. Git operations are skipped via --skip-git.
  *
  * Mocked: git operations (child_process), GitHub API, UI output, notifications, session
- * Not mocked: executeTask, executeWorkflow, WorkflowEngine, runAgent, rule evaluation
+ * Not mocked: executeTask, executePiece, PieceEngine, runAgent, rule evaluation
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setMockScenario, resetScenario } from '../mock/scenario.js';
+import { setMockScenario, resetScenario } from '../infra/mock/index.js';
 
 // --- Mocks ---
 
 // Safety net: prevent callAiJudge from calling real Claude CLI.
-vi.mock('../claude/client.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../claude/client.js')>();
+vi.mock('../infra/claude/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
-    callAiJudge: vi.fn().mockResolvedValue(-1),
+    callAiJudge: vi.fn().mockImplementation(async (content: string, conditions: { index: number; text: string }[]) => {
+      // Simple text matching: return index of first condition whose text appears in content
+      for (let i = 0; i < conditions.length; i++) {
+        if (content.includes(conditions[i]!.text)) {
+          return i;
+        }
+      }
+      return -1;
+    }),
   };
 });
 
@@ -30,37 +38,40 @@ vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }));
 
-vi.mock('../github/issue.js', () => ({
+vi.mock('../infra/github/issue.js', () => ({
   fetchIssue: vi.fn(),
   formatIssueAsTask: vi.fn(),
   checkGhCli: vi.fn(),
 }));
 
-vi.mock('../github/pr.js', () => ({
+vi.mock('../infra/github/pr.js', () => ({
   createPullRequest: vi.fn(),
   pushBranch: vi.fn(),
   buildPrBody: vi.fn().mockReturnValue('PR body'),
 }));
 
-vi.mock('../utils/ui.js', () => ({
+vi.mock('../shared/ui/index.js', () => ({
   header: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
   status: vi.fn(),
+  blankLine: vi.fn(),
   StreamDisplay: vi.fn().mockImplementation(() => ({
     createHandler: () => vi.fn(),
     flush: vi.fn(),
   })),
 }));
 
-vi.mock('../utils/notification.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
 }));
 
-vi.mock('../utils/session.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
   createSessionLog: vi.fn().mockReturnValue({
     startTime: new Date().toISOString(),
@@ -73,21 +84,21 @@ vi.mock('../utils/session.js', () => ({
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
 }));
 
-vi.mock('../config/paths.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../config/paths.js')>();
+vi.mock('../infra/config/paths.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/config/paths.js')>();
   return {
     ...original,
     loadAgentSessions: vi.fn().mockReturnValue({}),
     updateAgentSession: vi.fn(),
     loadWorktreeSessions: vi.fn().mockReturnValue({}),
     updateWorktreeSession: vi.fn(),
-    getCurrentWorkflow: vi.fn().mockReturnValue('default'),
+    getCurrentPiece: vi.fn().mockReturnValue('default'),
     getProjectConfigDir: vi.fn().mockImplementation((cwd: string) => join(cwd, '.takt')),
   };
 });
 
-vi.mock('../config/globalConfig.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../config/globalConfig.js')>();
+vi.mock('../infra/config/global/globalConfig.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/config/global/globalConfig.js')>();
   return {
     ...original,
     loadGlobalConfig: vi.fn().mockReturnValue({}),
@@ -95,25 +106,24 @@ vi.mock('../config/globalConfig.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../config/projectConfig.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../config/projectConfig.js')>();
+vi.mock('../infra/config/project/projectConfig.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../infra/config/project/projectConfig.js')>();
   return {
     ...original,
     loadProjectConfig: vi.fn().mockReturnValue({}),
   };
 });
 
-vi.mock('../cli.js', () => ({
+vi.mock('../shared/context.js', () => ({
   isQuietMode: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   selectOption: vi.fn().mockResolvedValue('stop'),
   promptInput: vi.fn().mockResolvedValue(null),
-  promptMultiline: vi.fn(),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -121,12 +131,12 @@ vi.mock('../workflow/phase-runner.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { executePipeline } from '../commands/pipelineExecution.js';
+import { executePipeline } from '../features/pipeline/index.js';
 
 // --- Test helpers ---
 
-/** Create a minimal test workflow YAML + agent files in a temp directory */
-function createTestWorkflowDir(): { dir: string; workflowPath: string } {
+/** Create a minimal test piece YAML + agent files in a temp directory */
+function createTestPieceDir(): { dir: string; piecePath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-pipeline-'));
 
   // Create .takt/reports structure
@@ -139,14 +149,14 @@ function createTestWorkflowDir(): { dir: string; workflowPath: string } {
   writeFileSync(join(agentsDir, 'coder.md'), 'You are a coder. Implement the task.');
   writeFileSync(join(agentsDir, 'reviewer.md'), 'You are a reviewer. Review the code.');
 
-  // Create a simple workflow YAML
-  const workflowYaml = `
+  // Create a simple piece YAML
+  const pieceYaml = `
 name: it-simple
-description: Integration test workflow
+description: Integration test piece
 max_iterations: 10
-initial_step: plan
+initial_movement: plan
 
-steps:
+movements:
   - name: plan
     agent: ./agents/planner.md
     rules:
@@ -175,21 +185,21 @@ steps:
     instruction: "{task}"
 `;
 
-  const workflowPath = join(dir, 'workflow.yaml');
-  writeFileSync(workflowPath, workflowYaml);
+  const piecePath = join(dir, 'piece.yaml');
+  writeFileSync(piecePath, pieceYaml);
 
-  return { dir, workflowPath };
+  return { dir, piecePath };
 }
 
 describe('Pipeline Integration Tests', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -197,9 +207,9 @@ describe('Pipeline Integration Tests', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should complete pipeline with workflow path + skip-git + mock scenario', async () => {
+  it('should complete pipeline with piece path + skip-git + mock scenario', async () => {
     // Scenario: plan -> implement -> review -> COMPLETE
-    // agent field must match extractAgentName(step.agent), i.e., the .md filename without extension
+    // agent field must match extractAgentName(movement.agent), i.e., the .md filename without extension
     setMockScenario([
       { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nPlan completed. Requirements are clear.' },
       { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
@@ -208,7 +218,7 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a hello world function',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -218,21 +228,19 @@ describe('Pipeline Integration Tests', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should complete pipeline with workflow name + skip-git + mock scenario', async () => {
-    // Use builtin 'simple' workflow
+  it('should complete pipeline with piece name + skip-git + mock scenario', async () => {
+    // Use builtin 'minimal' piece
     // agent field: extractAgentName result (from .md filename)
-    // tag in content: [STEP_NAME:N] where STEP_NAME is the step name uppercased
+    // tag in content: [MOVEMENT_NAME:N] where MOVEMENT_NAME is the movement name uppercased
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear and implementable.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo AI-specific issues.' },
-      { agent: 'architecture-reviewer', status: 'done', content: '[REVIEW:1]\n\nNo issues found.' },
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'coder', status: 'done', content: 'Implementation complete' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const exitCode = await executePipeline({
       task: 'Add a hello world function',
-      workflow: 'simple',
+      piece: 'minimal',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -242,21 +250,21 @@ describe('Pipeline Integration Tests', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should return EXIT_WORKFLOW_FAILED for non-existent workflow', async () => {
+  it('should return EXIT_PIECE_FAILED for non-existent piece', async () => {
     const exitCode = await executePipeline({
       task: 'Test task',
-      workflow: 'non-existent-workflow-xyz',
+      piece: 'non-existent-piece-xyz',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    // executeTask returns false when workflow not found → executePipeline returns EXIT_WORKFLOW_FAILED (3)
+    // executeTask returns false when piece not found → executePipeline returns EXIT_PIECE_FAILED (3)
     expect(exitCode).toBe(3);
   });
 
-  it('should handle ABORT transition from workflow', async () => {
+  it('should handle ABORT transition from piece', async () => {
     // Scenario: plan returns second rule -> ABORT
     setMockScenario([
       { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear, insufficient info.' },
@@ -264,14 +272,14 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Vague task with no details',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    // ABORT means workflow failed -> EXIT_WORKFLOW_FAILED (3)
+    // ABORT means piece failed -> EXIT_PIECE_FAILED (3)
     expect(exitCode).toBe(3);
   });
 
@@ -288,7 +296,7 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Task needing a fix',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,

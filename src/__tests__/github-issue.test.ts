@@ -12,7 +12,7 @@ import {
   isIssueReference,
   formatIssueAsTask,
   type GitHubIssue,
-} from '../github/issue.js';
+} from '../infra/github/issue.js';
 
 describe('parseIssueNumbers', () => {
   it('should parse single issue reference', () => {
@@ -68,6 +68,12 @@ describe('isIssueReference', () => {
     expect(isIssueReference('')).toBe(false);
     expect(isIssueReference('#')).toBe(false);
     expect(isIssueReference('6')).toBe(false);
+  });
+
+  it('should return false for issue number followed by text (issue #32)', () => {
+    expect(isIssueReference('#32あああ')).toBe(false);
+    expect(isIssueReference('#10abc')).toBe(false);
+    expect(isIssueReference('#123text')).toBe(false);
   });
 
   it('should return false for multiple issues (single string)', () => {

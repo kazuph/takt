@@ -1,0 +1,148 @@
+# MAGI System Piece
+# A deliberation piece modeled after Evangelion's MAGI system
+# Three personas (scientist, nurturer, pragmatist) analyze from different perspectives and vote
+#
+# Template Variables:
+#   {iteration}      - Piece-wide turn count (total movements executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the piece
+#   {movement_iteration} - Per-movement iteration count (how many times THIS movement has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous movement
+#   {user_inputs}    - Accumulated user inputs during piece
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
+
+name: magi
+description: MAGI Deliberation System - Analyze from 3 perspectives and decide by majority
+
+max_iterations: 5
+
+movements:
+  - name: melchior
+    agent: ../agents/magi/melchior.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      # MAGI System Initiated
+
+      ## Matter for Deliberation
+      {task}
+
+      ## Instructions
+      You are MELCHIOR-1 of the MAGI System.
+      Analyze the above from the perspective of a scientist/engineer and render your judgment.
+
+      ## Output Format
+
+      | Judgment | Tag |
+      |----------|-----|
+      | In favor | `[MELCHIOR:APPROVE]` |
+      | Against | `[MELCHIOR:REJECT]` |
+      | Conditional approval | `[MELCHIOR:CONDITIONAL]` |
+
+      ### Output Example
+
+      ```
+      [MELCHIOR:APPROVE]
+
+      Reason: {Reason for approval}
+      ```
+    rules:
+      - condition: Judgment completed
+        next: balthasar
+
+  - name: balthasar
+    agent: ../agents/magi/balthasar.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      # MAGI System Continuing
+
+      ## Matter for Deliberation
+      {task}
+
+      ## MELCHIOR-1's Judgment
+      {previous_response}
+
+      ## Instructions
+      You are BALTHASAR-2 of the MAGI System.
+      Analyze the above from the perspective of a nurturer and render your judgment.
+      Consider MELCHIOR's judgment as reference, but make your own independent assessment.
+
+      ## Output Format
+
+      | Judgment | Tag |
+      |----------|-----|
+      | In favor | `[BALTHASAR:APPROVE]` |
+      | Against | `[BALTHASAR:REJECT]` |
+      | Conditional approval | `[BALTHASAR:CONDITIONAL]` |
+
+      ### Output Example
+
+      ```
+      [BALTHASAR:APPROVE]
+
+      Reason: {Reason for approval}
+      ```
+    rules:
+      - condition: Judgment completed
+        next: casper
+
+  - name: casper
+    agent: ../agents/magi/casper.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      # MAGI System Final Deliberation
+
+      ## Matter for Deliberation
+      {task}
+
+      ## Previous Judgments
+      {previous_response}
+
+      ## Instructions
+      You are CASPER-3 of the MAGI System.
+      Analyze the above from a practical/realistic perspective and render your judgment.
+
+      **Finally, tally the judgments from all three and provide the final conclusion.**
+
+      ## Output Format
+
+      Final conclusion by majority vote:
+
+      | Judgment | Tag |
+      |----------|-----|
+      | Approved (2+ in favor) | `[MAGI:APPROVE]` |
+      | Rejected (2+ against) | `[MAGI:REJECT]` |
+      | Conditional approval | `[MAGI:CONDITIONAL]` |
+
+      ### Output Example
+
+      ```
+      ## MAGI System Final Judgment
+
+      | System | Judgment |
+      |--------|----------|
+      | MELCHIOR-1 | APPROVE |
+      | BALTHASAR-2 | CONDITIONAL |
+      | CASPER-3 | APPROVE |
+
+      **Conclusion: [MAGI:APPROVE]**
+
+      [Reasoning/Summary]
+      ```
+    rules:
+      - condition: Final judgment completed
+        next: COMPLETE

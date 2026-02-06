@@ -24,7 +24,7 @@ vi.mock('node:module', () => {
   };
 });
 
-import { checkForUpdates } from '../utils/updateNotifier.js';
+import { checkForUpdates } from '../shared/utils/index.js';
 
 beforeEach(() => {
   vi.clearAllMocks();

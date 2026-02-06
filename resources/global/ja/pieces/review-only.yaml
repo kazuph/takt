@@ -1,0 +1,328 @@
+# レビュー専用ピース
+# コードやPRをレビューするだけで編集は行わない
+# ローカル: コンソール出力のみ。PR指定時: PRにインラインコメント＋サマリを投稿
+#
+# フロー:
+# plan -> reviewers (parallel: arch-review + security-review + ai-review) -> supervise
+#   -> pr-comment -> COMPLETE (PRコメント要求時)
+#   -> COMPLETE (ローカル: コンソール出力のみ)
+#   -> ABORT (rejected)
+#
+# 全ムーブメント edit: false（ファイル変更なし）
+#
+# テンプレート変数:
+#   {iteration}         - ピース全体のターン数
+#   {max_iterations}    - 最大イテレーション数
+#   {movement_iteration}    - ムーブメントごとのイテレーション数
+#   {task}              - 元のユーザー要求
+#   {previous_response} - 前のムーブメントの出力
+#   {user_inputs}       - 蓄積されたユーザー入力
+#   {report_dir}        - レポートディレクトリ名
+
+name: review-only
+description: レビュー専用ピース - コードをレビューするだけで編集は行わない
+
+max_iterations: 10
+
+initial_movement: plan
+
+movements:
+  - name: plan
+    edit: false
+    agent: ../agents/default/planner.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    rules:
+      - condition: レビュー対象が明確
+        next: reviewers
+      - condition: ユーザーが質問をしている（レビュータスクではない）
+        next: COMPLETE
+      - condition: 要件が不明確、情報不足
+        next: ABORT
+        appendix: |
+          確認事項:
+          - {質問1}
+          - {質問2}
+    instruction_template: |
+      ## Previous Response (superviseからの差し戻し時)
+      {previous_response}
+
+      レビュー依頼を分析し、レビュー方針を立ててください。
+
+      **これはレビュー専用ピースです。** コード編集は行いません。
+      以下に集中してください:
+      1. レビュー対象のファイル/モジュールを特定
+      2. レビューの重点領域を決定（アーキテクチャ、セキュリティ、AIパターン等）
+      3. 依頼に記載された特定の懸念事項を整理
+
+      **PR番号が記載されている場合**（例: "PR #42"）、レビュアーが
+      PRの変更ファイルに集中できるよう計画に含めてください。
+
+  - name: reviewers
+    parallel:
+      - name: arch-review
+        edit: false
+        agent: ../agents/default/architecture-reviewer.md
+        report:
+          name: 01-architect-review.md
+          format: |
+            ```markdown
+            # アーキテクチャレビュー
+
+            ## 結果: APPROVE / IMPROVE / REJECT
+
+            ## サマリー
+            {1-2文で結果を要約}
+
+            ## 確認した観点
+            - [x] 構造・設計
+            - [x] コード品質
+            - [x] 変更スコープ
+
+            ## 問題点（REJECTの場合）
+            | # | 場所 | 問題 | 修正案 |
+            |---|------|------|--------|
+            | 1 | `src/file.ts:42` | 問題の説明 | 修正方法 |
+
+            ## 改善提案（任意・ブロッキングではない）
+            - {将来的な改善提案}
+            ```
+
+            **認知負荷軽減ルール:**
+            - APPROVE + 問題なし → サマリーのみ（5行以内）
+            - APPROVE + 軽微な提案 → サマリー + 改善提案（15行以内）
+            - REJECT → 問題点を表形式で（30行以内）
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          **アーキテクチャと設計**のレビューに集中してください。AI特有の問題はレビューしないでください（ai_reviewムーブメントで行います）。
+
+          コードをレビューしてフィードバックを提供してください。
+
+      - name: security-review
+        edit: false
+        agent: ../agents/default/security-reviewer.md
+        report:
+          name: 02-security-review.md
+          format: |
+            ```markdown
+            # セキュリティレビュー
+
+            ## 結果: APPROVE / REJECT
+
+            ## 重大度: None / Low / Medium / High / Critical
+
+            ## チェック結果
+            | カテゴリ | 結果 | 備考 |
+            |---------|------|------|
+            | インジェクション | - | - |
+            | 認証・認可 | - | - |
+            | データ保護 | - | - |
+            | 依存関係 | - | - |
+
+            ## 脆弱性（REJECTの場合）
+            | # | 重大度 | 種類 | 場所 | 修正案 |
+            |---|--------|------|------|--------|
+            | 1 | High | SQLi | `src/db.ts:42` | パラメータ化クエリを使用 |
+
+            ## 警告（ブロッキングではない）
+            - {セキュリティに関する推奨事項}
+            ```
+
+            **認知負荷軽減ルール:**
+            - 問題なし → チェック表のみ（10行以内）
+            - 警告あり → + 警告を1-2行（15行以内）
+            - 脆弱性あり → + 表形式で（30行以内）
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          コードに対してセキュリティレビューを行ってください。以下の脆弱性を確認してください:
+          - インジェクション攻撃（SQL, コマンド, XSS）
+          - 認証・認可の問題
+          - データ露出リスク
+          - 暗号化の弱点
+
+      - name: ai-review
+        edit: false
+        agent: ../agents/default/ai-antipattern-reviewer.md
+        report:
+          name: 03-ai-review.md
+          format: |
+            ```markdown
+            # AI生成コードレビュー
+
+            ## 結果: APPROVE / REJECT
+
+            ## サマリー
+            {1文で結果を要約}
+
+            ## 検証した項目
+            | 観点 | 結果 | 備考 |
+            |------|------|------|
+            | 仮定の妥当性 | - | - |
+            | API/ライブラリの実在 | - | - |
+            | コンテキスト適合 | - | - |
+            | スコープ | - | - |
+
+            ## 問題点（REJECTの場合）
+            | # | カテゴリ | 場所 | 問題 |
+            |---|---------|------|------|
+            | 1 | 幻覚API | `src/file.ts:23` | 存在しないメソッド |
+            ```
+
+            **認知負荷軽減ルール:**
+            - 問題なし → サマリー1文 + チェック表のみ（10行以内）
+            - 問題あり → + 問題を表形式で（25行以内）
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          AI特有の問題についてコードをレビューしてください:
+          - 仮定の検証
+          - もっともらしいが間違っているパターン
+          - 既存コードベースとの適合性
+          - スコープクリープの検出
+    rules:
+      - condition: all("approved")
+        next: supervise
+      - condition: any("needs_fix")
+        next: supervise
+
+  - name: supervise
+    edit: false
+    agent: ../agents/default/supervisor.md
+    report:
+      - Review Summary: 04-review-summary.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    rules:
+      - condition: approved, PR comment requested
+        next: pr-comment
+      - condition: approved
+        next: COMPLETE
+      - condition: rejected
+        next: ABORT
+    instruction_template: |
+      ## レビュー結果
+      {previous_response}
+
+      **これはレビュー専用ピースです。** テスト実行やビルドは行わないでください。
+      レビュー結果を統合し、最終サマリーを作成する役割です。
+
+      **やること:**
+      1. Report Directory内の全レビューレポートを読む
+      2. アーキテクチャ・セキュリティ・AIレビューの結果を統合
+      3. 統合レビューサマリーと総合判定を作成
+      4. ルーティング判断:
+         - タスクにPRへのコメント投稿が含まれている場合
+           （例: "PRにコメントして"、"PRにレビュー結果を投稿"）
+           → `pr-comment` ムーブメントへ（condition: "approved, PR comment requested"）
+         - ローカルレビューのみ → COMPLETE（condition: "approved"）
+         - 重大な問題が見つかった場合 → ABORT（condition: "rejected"）
+
+      **Review Summaryレポートフォーマット:**
+      ```markdown
+      # レビューサマリー
+
+      ## 総合判定: APPROVE / REJECT
+
+      ## サマリー
+      {2-3文で全レビュー結果を統合}
+
+      ## レビュー結果
+      | レビュー | 結果 | 主要な発見 |
+      |---------|------|-----------|
+      | アーキテクチャ | APPROVE/REJECT | {概要} |
+      | セキュリティ | APPROVE/REJECT | {概要} |
+      | AIアンチパターン | APPROVE/REJECT | {概要} |
+
+      ## 要注意の問題
+      | # | 重大度 | ソース | 場所 | 問題 |
+      |---|--------|--------|------|------|
+      | 1 | High | セキュリティ | `file:line` | 説明 |
+
+      ## 改善提案
+      - {全レビューからの統合提案}
+      ```
+
+  - name: pr-comment
+    edit: false
+    agent: ../agents/review/pr-commenter.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    rules:
+      - condition: コメント投稿完了
+        next: COMPLETE
+      - condition: コメント投稿失敗
+        next: COMPLETE
+    instruction_template: |
+      ## レビューサマリー
+      {previous_response}
+
+      レビュー結果をPRにコメントとして投稿してください。
+
+      **手順:**
+      1. タスク説明からPR番号を抽出
+      2. Report Directory内の全レビューレポートを読む:
+         - `01-architect-review.md`（アーキテクチャレビュー）
+         - `02-security-review.md`（セキュリティレビュー）
+         - `03-ai-review.md`（AIアンチパターンレビュー）
+         - `04-review-summary.md`（統合サマリー）
+      3. 重要度でフィルタリングし、Critical/High/Mediumの指摘をインラインコメントとして投稿
+      4. 以下のフォーマットでサマリーコメントを投稿:
+
+      ```
+      ## 自動レビューサマリー
+
+      {04-review-summary.mdからの総合判定とサマリー}
+
+      ### レビュー結果
+      | レビュー | 結果 |
+      |---------|------|
+      | アーキテクチャ | {結果} |
+      | セキュリティ | {結果} |
+      | AIアンチパターン | {結果} |
+
+      ### 主要な発見
+      {重要な指摘のリスト}
+
+      ### 改善提案
+      {統合された提案}
+
+      ---
+      *[takt](https://github.com/toruticas/takt) review-only ピースで生成*
+      ```

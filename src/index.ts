@@ -5,25 +5,151 @@
  */
 
 // Models
-export * from './models/index.js';
+export * from './core/models/index.js';
 
-// Configuration
-export * from './config/index.js';
+// Configuration (PermissionMode excluded to avoid name conflict with core/models PermissionMode)
+export * from './infra/config/paths.js';
+export * from './infra/config/loaders/index.js';
+export * from './infra/config/global/index.js';
+export {
+  loadProjectConfig,
+  saveProjectConfig,
+  updateProjectConfig,
+  getCurrentPiece,
+  setCurrentPiece,
+  isVerboseMode,
+  type ProjectLocalConfig,
+  writeFileAtomic,
+  getInputHistoryPath,
+  MAX_INPUT_HISTORY,
+  loadInputHistory,
+  saveInputHistory,
+  addToInputHistory,
+  type AgentSessionData,
+  getAgentSessionsPath,
+  loadAgentSessions,
+  saveAgentSessions,
+  updateAgentSession,
+  clearAgentSessions,
+  getWorktreeSessionsDir,
+  encodeWorktreePath,
+  getWorktreeSessionPath,
+  loadWorktreeSessions,
+  updateWorktreeSession,
+  getClaudeProjectSessionsDir,
+  clearClaudeProjectSessions,
+} from './infra/config/project/index.js';
 
 // Claude integration
-export * from './claude/index.js';
+export {
+  ClaudeClient,
+  ClaudeProcess,
+  QueryExecutor,
+  QueryRegistry,
+  executeClaudeCli,
+  executeClaudeQuery,
+  generateQueryId,
+  hasActiveProcess,
+  isQueryActive,
+  getActiveQueryCount,
+  registerQuery,
+  unregisterQuery,
+  interruptQuery,
+  interruptAllQueries,
+  interruptCurrentProcess,
+  sdkMessageToStreamEvent,
+  createCanUseToolCallback,
+  createAskUserQuestionHooks,
+  buildSdkOptions,
+  callClaude,
+  callClaudeCustom,
+  callClaudeAgent,
+  callClaudeSkill,
+  callAiJudge,
+  detectRuleIndex,
+  detectJudgeIndex,
+  buildJudgePrompt,
+  isRegexSafe,
+} from './infra/claude/index.js';
+export type {
+  StreamEvent,
+  StreamCallback,
+  PermissionRequest,
+  PermissionHandler,
+  AskUserQuestionInput,
+  AskUserQuestionHandler,
+  ClaudeResult,
+  ClaudeResultWithQueryId,
+  ClaudeCallOptions,
+  ClaudeSpawnOptions,
+  InitEventData,
+  ToolUseEventData,
+  ToolResultEventData,
+  ToolOutputEventData,
+  TextEventData,
+  ThinkingEventData,
+  ResultEventData,
+  ErrorEventData,
+} from './infra/claude/index.js';
 
 // Codex integration
-export * from './codex/index.js';
+export * from './infra/codex/index.js';
 
 // Agent execution
 export * from './agents/index.js';
 
-// Workflow engine
-export * from './workflow/index.js';
+// Piece engine
+export {
+  PieceEngine,
+  COMPLETE_MOVEMENT,
+  ABORT_MOVEMENT,
+  ERROR_MESSAGES,
+  determineNextMovementByRules,
+  extractBlockedPrompt,
+  LoopDetector,
+  createInitialState,
+  addUserInput,
+  getPreviousOutput,
+  handleBlocked,
+  ParallelLogger,
+  InstructionBuilder,
+  isReportObjectConfig,
+  ReportInstructionBuilder,
+  StatusJudgmentBuilder,
+  buildEditRule,
+  RuleEvaluator,
+  detectMatchedRule,
+  evaluateAggregateConditions,
+  AggregateEvaluator,
+  needsStatusJudgmentPhase,
+  runReportPhase,
+  runStatusJudgmentPhase,
+} from './core/piece/index.js';
+export type {
+  PieceEvents,
+  UserInputRequest,
+  IterationLimitRequest,
+  SessionUpdateCallback,
+  IterationLimitCallback,
+  PieceEngineOptions,
+  LoopCheckResult,
+  ProviderType,
+  RuleMatch,
+  RuleEvaluatorContext,
+  ReportInstructionContext,
+  StatusJudgmentContext,
+  InstructionContext,
+  StatusRulesComponents,
+  BlockedHandlerResult,
+} from './core/piece/index.js';
 
 // Utilities
-export * from './utils/index.js';
+export * from './shared/utils/index.js';
+export * from './shared/ui/index.js';
+export * from './shared/prompt/index.js';
+export * from './shared/constants.js';
+export * from './shared/context.js';
+export * from './shared/exitCodes.js';
 
 // Resources (embedded prompts and templates)
-export * from './resources/index.js';
+export * from './infra/resources/index.js';

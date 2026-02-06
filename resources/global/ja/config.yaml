@@ -4,11 +4,8 @@
 # 言語設定 (en または ja)
 language: ja
 
-# 信頼済みディレクトリ - これらのディレクトリ内のプロジェクトは確認プロンプトをスキップします
-trusted_directories: []
-
-# デフォルトワークフロー - ワークフローが指定されていない場合に使用します
-default_workflow: default
+# デフォルトのピース - 指定がない場合に使用します
+default_piece: default
 
 # ログレベル: debug, info, warn, error
 log_level: info
@@ -16,14 +13,19 @@ log_level: info
 # プロバイダー: claude または codex
 provider: claude
 
+# ビルトインピースの読み込み (resources/global/{lang}/pieces)
+# enable_builtin_pieces: true
+
 # デフォルトモデル (オプション)
 # Claude: opus, sonnet, haiku, opusplan, default, またはフルモデル名
 # Codex: gpt-5.2-codex, gpt-5.1-codex など
 # model: sonnet
 
-# 認証
-# Claude: `claude setup-token`（サブスク）または `claude login`
-# Codex/Gemini: 各CLIのログインフローを使用
+# Anthropic APIキー (オプション、環境変数 TAKT_ANTHROPIC_API_KEY で上書き可能)
+# anthropic_api_key: ""
+
+# OpenAI APIキー (オプション、環境変数 TAKT_OPENAI_API_KEY で上書き可能)
+# openai_api_key: ""
 
 # パイプライン実行設定 (オプション)
 # パイプラインモード (--task) のブランチ名、コミットメッセージ、PRの本文をカスタマイズできます。

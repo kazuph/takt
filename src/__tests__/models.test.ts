@@ -7,10 +7,10 @@ import {
   AgentTypeSchema,
   StatusSchema,
   PermissionModeSchema,
-  WorkflowConfigRawSchema,
+  PieceConfigRawSchema,
   CustomAgentConfigSchema,
   GlobalConfigSchema,
-} from '../models/schemas.js';
+} from '../core/models/index.js';
 
 describe('AgentTypeSchema', () => {
   it('should accept valid agent types', () => {
@@ -43,23 +43,26 @@ describe('StatusSchema', () => {
 
 describe('PermissionModeSchema', () => {
   it('should accept valid permission modes', () => {
-    expect(PermissionModeSchema.parse('default')).toBe('default');
-    expect(PermissionModeSchema.parse('acceptEdits')).toBe('acceptEdits');
-    expect(PermissionModeSchema.parse('bypassPermissions')).toBe('bypassPermissions');
+    expect(PermissionModeSchema.parse('readonly')).toBe('readonly');
+    expect(PermissionModeSchema.parse('edit')).toBe('edit');
+    expect(PermissionModeSchema.parse('full')).toBe('full');
   });
 
   it('should reject invalid permission modes', () => {
     expect(() => PermissionModeSchema.parse('readOnly')).toThrow();
     expect(() => PermissionModeSchema.parse('admin')).toThrow();
+    expect(() => PermissionModeSchema.parse('default')).toThrow();
+    expect(() => PermissionModeSchema.parse('acceptEdits')).toThrow();
+    expect(() => PermissionModeSchema.parse('bypassPermissions')).toThrow();
   });
 });
 
-describe('WorkflowConfigRawSchema', () => {
-  it('should parse valid workflow config', () => {
+describe('PieceConfigRawSchema', () => {
+  it('should parse valid piece config', () => {
     const config = {
-      name: 'test-workflow',
-      description: 'A test workflow',
-      steps: [
+      name: 'test-piece',
+      description: 'A test piece',
+      movements: [
         {
           name: 'step1',
           agent: 'coder',
@@ -72,22 +75,22 @@ describe('WorkflowConfigRawSchema', () => {
       ],
     };
 
-    const result = WorkflowConfigRawSchema.parse(config);
-    expect(result.name).toBe('test-workflow');
-    expect(result.steps).toHaveLength(1);
-    expect(result.steps[0]?.allowed_tools).toEqual(['Read', 'Grep']);
+    const result = PieceConfigRawSchema.parse(config);
+    expect(result.name).toBe('test-piece');
+    expect(result.movements).toHaveLength(1);
+    expect(result.movements![0]?.allowed_tools).toEqual(['Read', 'Grep']);
     expect(result.max_iterations).toBe(10);
   });
 
-  it('should parse step with permission_mode', () => {
+  it('should parse movement with permission_mode', () => {
     const config = {
-      name: 'test-workflow',
-      steps: [
+      name: 'test-piece',
+      movements: [
         {
           name: 'implement',
           agent: 'coder',
           allowed_tools: ['Read', 'Edit', 'Write', 'Bash'],
-          permission_mode: 'acceptEdits',
+          permission_mode: 'edit',
           instruction: '{task}',
           rules: [
             { condition: 'Done', next: 'COMPLETE' },
@@ -96,14 +99,14 @@ describe('WorkflowConfigRawSchema', () => {
       ],
     };
 
-    const result = WorkflowConfigRawSchema.parse(config);
-    expect(result.steps[0]?.permission_mode).toBe('acceptEdits');
+    const result = PieceConfigRawSchema.parse(config);
+    expect(result.movements![0]?.permission_mode).toBe('edit');
   });
 
   it('should allow omitting permission_mode', () => {
     const config = {
-      name: 'test-workflow',
-      steps: [
+      name: 'test-piece',
+      movements: [
         {
           name: 'plan',
           agent: 'planner',
@@ -112,14 +115,14 @@ describe('WorkflowConfigRawSchema', () => {
       ],
     };
 
-    const result = WorkflowConfigRawSchema.parse(config);
-    expect(result.steps[0]?.permission_mode).toBeUndefined();
+    const result = PieceConfigRawSchema.parse(config);
+    expect(result.movements![0]?.permission_mode).toBeUndefined();
   });
 
   it('should reject invalid permission_mode', () => {
     const config = {
-      name: 'test-workflow',
-      steps: [
+      name: 'test-piece',
+      movements: [
         {
           name: 'step1',
           agent: 'coder',
@@ -129,16 +132,16 @@ describe('WorkflowConfigRawSchema', () => {
       ],
     };
 
-    expect(() => WorkflowConfigRawSchema.parse(config)).toThrow();
+    expect(() => PieceConfigRawSchema.parse(config)).toThrow();
   });
 
-  it('should require at least one step', () => {
+  it('should require at least one movement', () => {
     const config = {
-      name: 'empty-workflow',
-      steps: [],
+      name: 'empty-piece',
+      movements: [],
     };
 
-    expect(() => WorkflowConfigRawSchema.parse(config)).toThrow();
+    expect(() => PieceConfigRawSchema.parse(config)).toThrow();
   });
 });
 
@@ -198,21 +201,18 @@ describe('GlobalConfigSchema', () => {
     const config = {};
     const result = GlobalConfigSchema.parse(config);
 
-    expect(result.trusted_directories).toEqual([]);
-    expect(result.default_workflow).toBe('default');
+    expect(result.default_piece).toBe('default');
     expect(result.log_level).toBe('info');
     expect(result.provider).toBe('claude');
   });
 
   it('should accept valid config', () => {
     const config = {
-      trusted_directories: ['/home/user/projects'],
-      default_workflow: 'custom',
+      default_piece: 'custom',
       log_level: 'debug' as const,
     };
 
     const result = GlobalConfigSchema.parse(config);
-    expect(result.trusted_directories).toHaveLength(1);
     expect(result.log_level).toBe('debug');
   });
 });

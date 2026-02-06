@@ -5,14 +5,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Readable } from 'node:stream';
 import chalk from 'chalk';
-import type { SelectOptionItem, KeyInputResult } from '../prompt/index.js';
+import type { SelectOptionItem, KeyInputResult } from '../shared/prompt/index.js';
 import {
   renderMenu,
   countRenderedLines,
   handleKeyInput,
   readMultilineFromStream,
-} from '../prompt/index.js';
-import { isFullWidth, getDisplayWidth, truncateText } from '../utils/text.js';
+} from '../shared/prompt/index.js';
+import { isFullWidth, getDisplayWidth, truncateText } from '../shared/utils/index.js';
 
 // Disable chalk colors for predictable test output
 chalk.level = 0;
@@ -310,7 +310,7 @@ describe('prompt', () => {
 
   describe('selectOption', () => {
     it('should return null for empty options', async () => {
-      const { selectOption } = await import('../prompt/index.js');
+      const { selectOption } = await import('../shared/prompt/index.js');
       const result = await selectOption('Test:', []);
       expect(result).toBeNull();
     });
@@ -318,13 +318,13 @@ describe('prompt', () => {
 
   describe('selectOptionWithDefault', () => {
     it('should return default for empty options', async () => {
-      const { selectOptionWithDefault } = await import('../prompt/index.js');
+      const { selectOptionWithDefault } = await import('../shared/prompt/index.js');
       const result = await selectOptionWithDefault('Test:', [], 'fallback');
       expect(result).toBe('fallback');
     });
 
     it('should have return type that allows null (cancel)', async () => {
-      const { selectOptionWithDefault } = await import('../prompt/index.js');
+      const { selectOptionWithDefault } = await import('../shared/prompt/index.js');
       // When options are empty, default is returned (not null)
       const result: string | null = await selectOptionWithDefault('Test:', [], 'fallback');
       expect(result).toBe('fallback');

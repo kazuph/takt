@@ -56,7 +56,7 @@ Code is read far more often than it is written. Poorly structured code destroys 
 
 **To avoid false positives:**
 1. Before flagging "hardcoded values", **verify if the file is source or report**
-2. Files under `.takt/reports/` are generated during workflow execution - not review targets
+2. Files under `.takt/reports/` are generated during piece execution - not review targets
 3. Ignore generated files even if they appear in git diff
 
 ## Review Perspectives
@@ -186,7 +186,7 @@ for (const transition of step.transitions) {
 export function matchesCondition(status: Status, condition: TransitionCondition): boolean {
 
 // ✅ OK - Design decision (Why)
-// User interruption takes priority over workflow-defined transitions
+// User interruption takes priority over piece-defined transitions
 if (status === 'interrupted') {
   return ABORT_STEP;
 }
@@ -260,6 +260,22 @@ function updateConfig(config: Config): Config {
 | Over-generalization | Variants and extension points not currently needed |
 | Hidden Dependencies | Child components implicitly calling APIs etc. |
 | Non-idiomatic | Custom implementation ignoring language/FW conventions |
+| Logically dead defensive code | Guards for conditions already guaranteed by all callers |
+
+**Logically dead defensive code:**
+
+Call chain verification applies not only to "missing wiring" but also to the reverse — **unnecessary guards for conditions that callers already guarantee**.
+
+| Pattern | Problem | Detection |
+|---------|---------|-----------|
+| TTY check when all callers require TTY | Unreachable branch remains | grep all callers' preconditions |
+| Null guard when callers already check null | Redundant defense | Trace caller constraints |
+| Runtime type check when TypeScript types constrain | Not trusting type safety | Check TypeScript type constraints |
+
+**Verification:**
+1. When you find a defensive branch (TTY check, null guard, etc.), grep all callers
+2. If all callers already guarantee the condition, the guard is unnecessary → **REJECT**
+3. If some callers don't guarantee it, keep the guard
 
 ### 6. Abstraction Level Evaluation
 
@@ -348,7 +364,6 @@ function createUser(data: UserData) {
 | CLAUDE.md / README.md | Conforms to schema definitions, design principles, constraints |
 | Type definitions / Zod schemas | New fields reflected in schemas |
 | YAML/JSON config files | Follows documented format |
-| Existing patterns | Consistent with similar files |
 
 **Specific checks:**
 
@@ -361,7 +376,7 @@ function createUser(data: UserData) {
    - Documentation schema descriptions are updated
    - Existing config files are compatible with new schema
 
-3. When workflow definitions are modified:
+3. When piece definitions are modified:
    - Correct fields used for step type (normal vs. parallel)
    - No unnecessary fields remaining (e.g., `next` on parallel sub-steps)
 
@@ -393,7 +408,29 @@ Verify:
 - Does it align with business requirements
 - Is naming consistent with the domain
 
-### 11. Change Scope Assessment
+### 11. Boy Scout Rule
+
+**Leave the code better than you found it.** If changed files have structural issues, flag them for refactoring within the task scope.
+
+**In scope:**
+- Existing issues within changed files (dead code, poor naming, broken abstractions)
+- Structural issues within changed modules (mixed responsibilities, unnecessary dependencies)
+
+**Out of scope:**
+- Issues in unchanged files (record as existing issues only)
+- Refactoring that significantly exceeds the task scope (suggest as non-blocking)
+
+**Judgment:**
+
+| Situation | Judgment |
+|-----------|----------|
+| Clear issues within changed files | **REJECT** — require fix together |
+| Structural issues within changed modules | **REJECT** — fix if within scope |
+| Issues in unchanged files | Record only (non-blocking) |
+
+**Following poor existing code as justification for leaving problems is not acceptable.** If existing code is bad, improve it rather than match it.
+
+### 12. Change Scope Assessment
 
 **Check change scope and include in report (non-blocking).**
 
@@ -412,7 +449,7 @@ Verify:
 **Include as suggestions (non-blocking):**
 - If splittable, present splitting proposal
 
-### 12. Circular Review Detection
+### 13. Circular Review Detection
 
 When review count is provided (e.g., "Review count: 3rd"), adjust judgment accordingly.
 

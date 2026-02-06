@@ -5,63 +5,70 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
-vi.mock('../config/index.js', () => ({
-  loadWorkflowByIdentifier: vi.fn(),
-  isWorkflowPath: vi.fn(() => false),
+vi.mock('../infra/config/index.js', () => ({
+  loadPieceByIdentifier: vi.fn(),
+  isPiecePath: vi.fn(() => false),
   loadGlobalConfig: vi.fn(() => ({})),
 }));
 
-vi.mock('../task/index.js', () => ({
+vi.mock('../infra/task/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   TaskRunner: vi.fn(),
 }));
 
-vi.mock('../task/clone.js', () => ({
+vi.mock('../infra/task/clone.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createSharedClone: vi.fn(),
   removeClone: vi.fn(),
 }));
 
-vi.mock('../task/autoCommit.js', () => ({
+vi.mock('../infra/task/autoCommit.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   autoCommitAndPush: vi.fn(),
 }));
 
-vi.mock('../task/summarize.js', () => ({
+vi.mock('../infra/task/summarize.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   summarizeTaskName: vi.fn(),
 }));
 
-vi.mock('../utils/ui.js', () => ({
+vi.mock('../shared/ui/index.js', () => ({
   header: vi.fn(),
   info: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
   status: vi.fn(),
+  blankLine: vi.fn(),
 }));
 
-vi.mock('../utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
     error: vi.fn(),
   }),
-}));
-
-vi.mock('../utils/error.js', () => ({
   getErrorMessage: vi.fn((e) => e.message),
 }));
 
-vi.mock('./workflowExecution.js', () => ({
-  executeWorkflow: vi.fn(),
+vi.mock('../features/tasks/execute/pieceExecution.js', () => ({
+  executePiece: vi.fn(),
 }));
 
-vi.mock('../constants.js', () => ({
-  DEFAULT_WORKFLOW_NAME: 'default',
+vi.mock('../shared/context.js', () => ({
+  isQuietMode: vi.fn(() => false),
+}));
+
+vi.mock('../shared/constants.js', () => ({
+  DEFAULT_PIECE_NAME: 'default',
   DEFAULT_LANGUAGE: 'en',
 }));
 
-import { createSharedClone } from '../task/clone.js';
-import { summarizeTaskName } from '../task/summarize.js';
-import { info } from '../utils/ui.js';
-import { resolveTaskExecution } from '../commands/taskExecution.js';
-import type { TaskInfo } from '../task/index.js';
+import { createSharedClone } from '../infra/task/clone.js';
+import { summarizeTaskName } from '../infra/task/summarize.js';
+import { info } from '../shared/ui/index.js';
+import { resolveTaskExecution } from '../features/tasks/index.js';
+import type { TaskInfo } from '../infra/task/index.js';
 
 const mockCreateSharedClone = vi.mocked(createSharedClone);
 const mockSummarizeTaskName = vi.mocked(summarizeTaskName);
@@ -86,7 +93,7 @@ describe('resolveTaskExecution', () => {
     // Then
     expect(result).toEqual({
       execCwd: '/project',
-      execWorkflow: 'default',
+      execPiece: 'default',
       isWorktree: false,
     });
     expect(mockSummarizeTaskName).not.toHaveBeenCalled();
@@ -142,7 +149,7 @@ describe('resolveTaskExecution', () => {
     });
     expect(result).toEqual({
       execCwd: '/project/../20260128T0504-add-auth',
-      execWorkflow: 'default',
+      execPiece: 'default',
       isWorktree: true,
       branch: 'takt/20260128T0504-add-auth',
     });
@@ -198,15 +205,15 @@ describe('resolveTaskExecution', () => {
     expect(mockSummarizeTaskName).toHaveBeenCalledWith('New feature implementation details', { cwd: '/project' });
   });
 
-  it('should use workflow override from task data', async () => {
-    // Given: Task with workflow override
+  it('should use piece override from task data', async () => {
+    // Given: Task with piece override
     const task: TaskInfo = {
-      name: 'task-with-workflow',
+      name: 'task-with-piece',
       content: 'Task content',
       filePath: '/tasks/task.yaml',
       data: {
         task: 'Task content',
-        workflow: 'custom-workflow',
+        piece: 'custom-piece',
       },
     };
 
@@ -214,7 +221,7 @@ describe('resolveTaskExecution', () => {
     const result = await resolveTaskExecution(task, '/project', 'default');
 
     // Then
-    expect(result.execWorkflow).toBe('custom-workflow');
+    expect(result.execPiece).toBe('custom-piece');
   });
 
   it('should pass branch option to createSharedClone when specified', async () => {

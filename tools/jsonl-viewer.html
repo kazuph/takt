@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAKT JSONL Session Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    .drop-zone {
+      border: 2px dashed #007acc;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      background: #252526;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      background: #2d2d30;
+      border-color: #0098ff;
+    }
+
+    .drop-zone-text {
+      font-size: 16px;
+      color: #858585;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    .action-btn {
+      padding: 10px 20px;
+      background: #007acc;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #005a9e;
+    }
+
+    .action-btn:disabled {
+      background: #3e3e42;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    .action-btn.secondary {
+      background: #252526;
+      border: 1px solid #3e3e42;
+    }
+
+    .action-btn.secondary:hover:not(:disabled) {
+      background: #2d2d30;
+      border-color: #007acc;
+    }
+
+    .navigation {
+      display: none;
+      background: #252526;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .navigation.active {
+      display: flex;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      background: #007acc;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: #005a9e;
+    }
+
+    .nav-btn:disabled {
+      background: #3e3e42;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    .current-file {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      color: #d4d4d4;
+      padding: 0 10px;
+    }
+
+    .file-info {
+      background: #252526;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .file-info.active {
+      display: block;
+    }
+
+    .records {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .record {
+      background: #252526;
+      border-radius: 8px;
+      padding: 15px;
+      border-left: 4px solid #007acc;
+    }
+
+    .record.piece_start {
+      border-left-color: #4ec9b0;
+    }
+
+    .record.step_start {
+      border-left-color: #dcdcaa;
+    }
+
+    .record.step_complete {
+      border-left-color: #608b4e;
+    }
+
+    .record.piece_complete {
+      border-left-color: #4ec9b0;
+    }
+
+    .record.piece_abort {
+      border-left-color: #f48771;
+    }
+
+    .record.done {
+      border-left-color: #608b4e;
+    }
+
+    .record.blocked {
+      border-left-color: #f48771;
+    }
+
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .record-type {
+      font-weight: 600;
+      font-size: 14px;
+      color: #4ec9b0;
+    }
+
+    .record-timestamp {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    .record-content {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .record-field {
+      margin-bottom: 8px;
+    }
+
+    .field-label {
+      color: #9cdcfe;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .field-value {
+      color: #ce9178;
+    }
+
+    .instruction {
+      background: #1e1e1e;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #3e3e42;
+    }
+
+    .toggle-instruction {
+      color: #007acc;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    .toggle-instruction:hover {
+      text-decoration: underline;
+    }
+
+    .instruction.collapsed {
+      display: none;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      background: #f48771;
+      color: #1e1e1e;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3e3e42;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4e4e52;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TAKT JSONL Session Viewer</h1>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-text">
+        ここにJSONLファイルをドラッグ&ドロップ<br>
+        またはクリックしてファイルを選択
+      </div>
+      <input type="file" id="fileInput" accept=".jsonl,.json" style="display: none;">
+    </div>
+
+    <div class="quick-actions">
+      <button class="action-btn" id="loadLatestBtn">📂 セッションディレクトリを指定する</button>
+      <button class="action-btn secondary" id="clearDirBtn" style="display: none;">🗑️ 保存したディレクトリをクリア</button>
+    </div>
+
+    <div class="navigation" id="navigation">
+      <button class="nav-btn" id="oldestBtn">⏮️ Oldest</button>
+      <button class="nav-btn" id="prevBtn">◀️ Prev</button>
+      <div class="current-file" id="currentFile"></div>
+      <button class="nav-btn" id="nextBtn">Next ▶️</button>
+      <button class="nav-btn" id="latestBtn">Latest ⏭️</button>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="records" id="records"></div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const loadLatestBtn = document.getElementById('loadLatestBtn');
+    const clearDirBtn = document.getElementById('clearDirBtn');
+    const navigation = document.getElementById('navigation');
+    const currentFileDiv = document.getElementById('currentFile');
+    const oldestBtn = document.getElementById('oldestBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const latestBtn = document.getElementById('latestBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const statsDiv = document.getElementById('stats');
+    const recordsDiv = document.getElementById('records');
+
+    let sessionFiles = [];
+    let currentFileIndex = -1;
+    let lastLogDirectory = null;
+
+    // IndexedDB setup
+    const DB_NAME = 'TaktSessionViewerDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'directories';
+    let db = null;
+
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME);
+          }
+        };
+      });
+    }
+
+    async function saveDirectoryHandle(handle) {
+      if (!db) await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.put(handle, 'sessionDirectory');
+      return tx.complete;
+    }
+
+    async function getDirectoryHandle() {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get('sessionDirectory');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function clearDirectoryHandle() {
+      if (!db) await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete('sessionDirectory');
+      return tx.complete;
+    }
+
+    // Initialize
+    initDB().then(async () => {
+      const savedHandle = await getDirectoryHandle();
+      if (savedHandle) {
+        clearDirBtn.style.display = 'inline-block';
+        loadLatestBtn.textContent = '🔄 最新のセッションを読み込む';
+        try {
+          await loadFromDirectoryHandle(savedHandle);
+        } catch (err) {
+          console.log('Saved directory handle is no longer valid:', err);
+        }
+      }
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    oldestBtn.addEventListener('click', () => loadFileByIndex(sessionFiles.length - 1));
+    prevBtn.addEventListener('click', () => loadFileByIndex(currentFileIndex + 1));
+    nextBtn.addEventListener('click', () => loadFileByIndex(currentFileIndex - 1));
+    latestBtn.addEventListener('click', () => loadFileByIndex(0));
+
+    clearDirBtn.addEventListener('click', async () => {
+      await clearDirectoryHandle();
+      clearDirBtn.style.display = 'none';
+      loadLatestBtn.textContent = '📂 セッションディレクトリを指定する';
+      sessionFiles = [];
+      currentFileIndex = -1;
+      navigation.classList.remove('active');
+      recordsDiv.innerHTML = '';
+      fileInfo.classList.remove('active');
+    });
+
+    loadLatestBtn.addEventListener('click', async () => {
+      try {
+        if (!('showDirectoryPicker' in window)) {
+          alert('お使いのブラウザはこの機能に対応していません。Chrome、Edge、Brave、またはOperaをご使用ください。');
+          return;
+        }
+
+        const savedHandle = await getDirectoryHandle();
+        let dirHandle;
+
+        if (savedHandle) {
+          try {
+            const permission = await savedHandle.queryPermission({ mode: 'read' });
+            if (permission === 'granted') {
+              dirHandle = savedHandle;
+            } else {
+              const newPermission = await savedHandle.requestPermission({ mode: 'read' });
+              if (newPermission === 'granted') {
+                dirHandle = savedHandle;
+              }
+            }
+          } catch (err) {
+            console.log('Saved handle is invalid, requesting new directory');
+          }
+        }
+
+        if (!dirHandle) {
+          dirHandle = await window.showDirectoryPicker({
+            id: 'takt-sessions',
+            startIn: 'documents',
+            mode: 'read'
+          });
+
+          await saveDirectoryHandle(dirHandle);
+          clearDirBtn.style.display = 'inline-block';
+          loadLatestBtn.textContent = '🔄 最新のセッションを読み込む';
+        }
+
+        await loadFromDirectoryHandle(dirHandle);
+
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('User cancelled directory selection');
+        } else {
+          console.error('Error loading latest session:', err);
+          recordsDiv.innerHTML = `<div class="error">Error loading latest session: ${err.message}</div>`;
+        }
+      }
+    });
+
+    async function loadFromDirectoryHandle(dirHandle) {
+      lastLogDirectory = dirHandle;
+      sessionFiles = [];
+
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && (entry.name.endsWith('.jsonl') || entry.name.endsWith('.json'))) {
+          const fileHandle = entry;
+          const file = await fileHandle.getFile();
+          sessionFiles.push({ name: entry.name, file, modifiedTime: file.lastModified });
+        }
+      }
+
+      if (sessionFiles.length === 0) {
+        alert('JSONLファイルが見つかりませんでした。');
+        return;
+      }
+
+      sessionFiles.sort((a, b) => b.modifiedTime - a.modifiedTime);
+      loadFileByIndex(0);
+    }
+
+    function loadFileByIndex(index) {
+      if (index < 0 || index >= sessionFiles.length) return;
+
+      currentFileIndex = index;
+      const fileData = sessionFiles[index];
+      handleFile(fileData.file);
+
+      // Update navigation
+      navigation.classList.add('active');
+      currentFileDiv.textContent = `${fileData.name} (${index + 1} / ${sessionFiles.length})`;
+
+      oldestBtn.disabled = index === sessionFiles.length - 1;
+      prevBtn.disabled = index === sessionFiles.length - 1;
+      nextBtn.disabled = index === 0;
+      latestBtn.disabled = index === 0;
+    }
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target.result;
+          const lines = content.trim().split('\n');
+          const records = lines.map(line => JSON.parse(line));
+          displayRecords(records);
+        } catch (err) {
+          recordsDiv.innerHTML = `<div class="error">Error parsing JSONL: ${err.message}</div>`;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function displayRecords(records) {
+      const stats = {
+        total: records.length,
+        steps: records.filter(r => r.type === 'step_start').length,
+        completed: records.filter(r => r.type === 'step_complete' || r.status === 'done').length,
+      };
+
+      statsDiv.innerHTML = `
+        <div class="stat">
+          <span class="stat-label">Total Records</span>
+          <span class="stat-value">${stats.total}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Steps Started</span>
+          <span class="stat-value">${stats.steps}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Steps Completed</span>
+          <span class="stat-value">${stats.completed}</span>
+        </div>
+      `;
+
+      fileInfo.classList.add('active');
+
+      recordsDiv.innerHTML = records.map((record, index) => {
+        const hasInstruction = record.instruction && record.instruction.length > 0;
+        const instructionId = `instruction-${index}`;
+        const recordType = record.type || record.status || 'unknown';
+        const recordClass = record.type || record.status || 'unknown';
+
+        return `
+          <div class="record ${recordClass}">
+            <div class="record-header">
+              <span class="record-type">${recordType}</span>
+              <span class="record-timestamp">${record.timestamp || ''}</span>
+            </div>
+            <div class="record-content">
+              ${formatRecordContent(record)}
+              ${hasInstruction ? `
+                <div class="toggle-instruction" onclick="toggleInstruction('${instructionId}')">
+                  📄 Show instruction (${record.instruction.length} chars)
+                </div>
+                <div class="instruction collapsed" id="${instructionId}">${escapeHtml(record.instruction)}</div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatRecordContent(record) {
+      const fields = [];
+
+      if (record.piece) {
+        fields.push(`<div class="record-field"><span class="field-label">Piece:</span><span class="field-value">${escapeHtml(record.piece)}</span></div>`);
+      }
+      if (record.step) {
+        fields.push(`<div class="record-field"><span class="field-label">Step:</span><span class="field-value">${escapeHtml(record.step)}</span></div>`);
+      }
+      if (record.iteration !== undefined) {
+        fields.push(`<div class="record-field"><span class="field-label">Iteration:</span><span class="field-value">${record.iteration}</span></div>`);
+      }
+      if (record.status) {
+        fields.push(`<div class="record-field"><span class="field-label">Status:</span><span class="field-value">${escapeHtml(record.status)}</span></div>`);
+      }
+      if (record.matched_condition) {
+        fields.push(`<div class="record-field"><span class="field-label">Matched Condition:</span><span class="field-value">${escapeHtml(record.matched_condition)}</span></div>`);
+      }
+      if (record.next_step) {
+        fields.push(`<div class="record-field"><span class="field-label">Next Step:</span><span class="field-value">${escapeHtml(record.next_step)}</span></div>`);
+      }
+      if (record.match_method) {
+        fields.push(`<div class="record-field"><span class="field-label">Match Method:</span><span class="field-value">${escapeHtml(record.match_method)}</span></div>`);
+      }
+      if (record.reason) {
+        fields.push(`<div class="record-field"><span class="field-label">Reason:</span><span class="field-value">${escapeHtml(record.reason)}</span></div>`);
+      }
+      if (record.task) {
+        fields.push(`<div class="record-field"><span class="field-label">Task:</span><span class="field-value">${escapeHtml(record.task.substring(0, 200))}${record.task.length > 200 ? '...' : ''}</span></div>`);
+      }
+
+      return fields.join('');
+    }
+
+    function escapeHtml(text) {
+      if (typeof text !== 'string') return String(text);
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function toggleInstruction(id) {
+      const element = document.getElementById(id);
+      element.classList.toggle('collapsed');
+    }
+  </script>
+</body>
+</html>

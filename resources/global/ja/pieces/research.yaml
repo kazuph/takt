@@ -1,0 +1,131 @@
+# Research Piece
+# 調査タスクを自律的に実行するピース
+# Planner が計画を立て、Digger が実行し、Supervisor が確認する
+#
+# フロー:
+# plan -> dig -> supervise -> COMPLETE (approved)
+#                          -> plan (rejected: 計画からやり直し)
+#
+# テンプレート変数:
+#   {iteration}      - ピース全体のターン数（全エージェントで実行されたムーブメントの合計）
+#   {max_iterations} - ピースの最大イテレーション数
+#   {movement_iteration} - ムーブメントごとのイテレーション数（このムーブメントが何回実行されたか）
+#   {task}           - 元のユーザー要求
+#   {previous_response} - 前のムーブメントの出力
+#   {user_inputs}    - ピース中に蓄積されたユーザー入力
+#   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
+
+name: research
+description: 調査ピース - 質問せずに自律的に調査を実行
+
+max_iterations: 10
+
+movements:
+  - name: plan
+    agent: ../agents/research/planner.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      ## ピース状況
+      - イテレーション: {iteration}/{max_iterations}（ピース全体）
+      - ムーブメント実行回数: {movement_iteration}（このムーブメントの実行回数）
+      - ムーブメント: plan
+
+      ## 調査依頼
+      {task}
+
+      ## Supervisorからのフィードバック（再計画の場合）
+      {previous_response}
+
+      ## 追加のユーザー入力
+      {user_inputs}
+
+      ## 指示
+      上記の調査依頼について、調査計画を立ててください。
+
+      **重要**: ユーザーに質問しないでください。
+      - 不明点は仮定を置いて進める
+      - 複数の解釈がある場合は、すべてを調査対象に含める
+      - Supervisorからフィードバックがある場合は、指摘を反映した計画を作成
+    rules:
+      - condition: 計画が完了した
+        next: dig
+      - condition: 情報が不足しており計画を立てられない
+        next: ABORT
+
+  - name: dig
+    agent: ../agents/research/digger.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      ## ピース状況
+      - イテレーション: {iteration}/{max_iterations}（ピース全体）
+      - ムーブメント実行回数: {movement_iteration}（このムーブメントの実行回数）
+      - ムーブメント: dig
+
+      ## 元の調査依頼
+      {task}
+
+      ## 調査計画
+      {previous_response}
+
+      ## 追加のユーザー入力
+      {user_inputs}
+
+      ## 指示
+      上記の調査計画に従って、実際に調査を実行してください。
+
+      **重要**: ユーザーに質問しないでください。
+      - 調査できる範囲で調査する
+      - 調査できなかった項目は「調査不可」と報告
+
+      利用可能なツール:
+      - Web検索
+      - GitHub検索（gh コマンド）
+      - コードベース検索
+      - ファイル読み取り
+    rules:
+      - condition: 調査が完了した
+        next: supervise
+      - condition: 調査を実行できない
+        next: ABORT
+
+  - name: supervise
+    agent: ../agents/research/supervisor.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    instruction_template: |
+      ## ピース状況
+      - イテレーション: {iteration}/{max_iterations}（ピース全体）
+      - ムーブメント実行回数: {movement_iteration}（このムーブメントの実行回数）
+      - ムーブメント: supervise (調査品質評価)
+
+      ## 元の調査依頼
+      {task}
+
+      ## Digger の調査結果
+      {previous_response}
+
+      ## 指示
+      調査結果を評価し、元の依頼に対して十分な回答になっているか判断してください。
+
+      **重要**: 問題がある場合は、Plannerへの具体的な指示を含めてください。
+    rules:
+      - condition: 調査結果が元の依頼に対して十分である
+        next: COMPLETE
+      - condition: 調査結果が不十分であり、計画からやり直す必要がある
+        next: plan
+
+initial_movement: plan

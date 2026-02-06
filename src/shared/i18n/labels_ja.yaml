@@ -1,0 +1,49 @@
+# =============================================================================
+# TAKT UI Labels — 日本語
+# =============================================================================
+# ユーザー向け表示文字列（AIプロンプトではない）。
+# テンプレート変数は {variableName} 形式を使用します。
+# =============================================================================
+
+# ===== Interactive Mode UI =====
+interactive:
+  conversationLabel: "会話:"
+  noTranscript: "（ローカル履歴なし。現在のセッション文脈を要約してください。）"
+  ui:
+    intro: "対話モード - タスク内容を入力してください。コマンド: /go（実行）, /play（即実行）, /cancel（終了）"
+    resume: "前回のセッションを再開します"
+    noConversation: "まだ会話がありません。まずタスク内容を入力してください。"
+    summarizeFailed: "会話の要約に失敗しました。再度お試しください。"
+    continuePrompt: "続けてタスク内容を入力してください。"
+    proposed: "提案されたタスク指示:"
+    actionPrompt: "どうしますか？"
+    actions:
+      execute: "実行する"
+      createIssue: "GitHub Issueを建てる"
+      saveTask: "タスクにつむ"
+      continue: "会話を続ける"
+    cancelled: "キャンセルしました"
+    playNoTask: "タスク内容を指定してください: /play <タスク内容>"
+  previousTask:
+    success: "✅ 前回のタスクは正常に完了しました"
+    error: "❌ 前回のタスクはエラーで終了しました: {error}"
+    userStopped: "⚠️ 前回のタスクはユーザーによって中断されました"
+    piece: "使用ピース: {pieceName}"
+    timestamp: "実行時刻: {timestamp}"
+
+# ===== Piece Execution UI =====
+piece:
+  iterationLimit:
+    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
+    currentMovement: "現在のムーブメント: {currentMovement}"
+    continueQuestion: "続行しますか？"
+    continueLabel: "続行する（追加イテレーション数を入力）"
+    continueDescription: "入力した回数だけ上限を増やします"
+    stopLabel: "終了する"
+    inputPrompt: "追加するイテレーション数を入力してください（1以上）"
+    invalidInput: "1以上の整数を入力してください。"
+    userInputPrompt: "追加の指示を入力してください（空で中止）"
+  notifyComplete: "ピース完了 ({iteration} iterations)"
+  notifyAbort: "中断: {reason}"
+  sigintGraceful: "Ctrl+C: ピースを中断しています..."
+  sigintForce: "Ctrl+C: 強制終了します"

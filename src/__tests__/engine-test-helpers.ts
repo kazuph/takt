@@ -1,7 +1,7 @@
 /**
- * Shared helpers for WorkflowEngine integration tests.
+ * Shared helpers for PieceEngine integration tests.
  *
- * Provides mock setup, factory functions, and a default workflow config
+ * Provides mock setup, factory functions, and a default piece config
  * matching the parallel reviewers structure (plan → implement → ai_review → reviewers → supervise).
  */
 
@@ -10,15 +10,15 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { WorkflowConfig, WorkflowStep, AgentResponse, WorkflowRule } from '../models/types.js';
+import type { PieceConfig, PieceMovement, AgentResponse, PieceRule } from '../core/models/index.js';
 
 // --- Mock imports (consumers must call vi.mock before importing this) ---
 
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../workflow/rule-evaluator.js';
-import type { RuleMatch } from '../workflow/rule-evaluator.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../workflow/phase-runner.js';
-import { generateReportDir } from '../utils/session.js';
+import { detectMatchedRule } from '../core/piece/index.js';
+import type { RuleMatch } from '../core/piece/index.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/index.js';
+import { generateReportDir } from '../shared/utils/index.js';
 
 // --- Factory functions ---
 
@@ -33,11 +33,11 @@ export function makeResponse(overrides: Partial<AgentResponse> = {}): AgentRespo
   };
 }
 
-export function makeRule(condition: string, next: string, extra: Partial<WorkflowRule> = {}): WorkflowRule {
+export function makeRule(condition: string, next: string, extra: Partial<PieceRule> = {}): PieceRule {
   return { condition, next, ...extra };
 }
 
-export function makeStep(name: string, overrides: Partial<WorkflowStep> = {}): WorkflowStep {
+export function makeMovement(name: string, overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name,
     agent: `../agents/${name}.md`,
@@ -49,18 +49,18 @@ export function makeStep(name: string, overrides: Partial<WorkflowStep> = {}): W
 }
 
 /**
- * Build a workflow config matching the default.yaml parallel reviewers structure:
+ * Build a piece config matching the default.yaml parallel reviewers structure:
  * plan → implement → ai_review → (ai_fix↔) → reviewers(parallel) → (fix↔) → supervise
  */
-export function buildDefaultWorkflowConfig(overrides: Partial<WorkflowConfig> = {}): WorkflowConfig {
-  const archReviewSubStep = makeStep('arch-review', {
+export function buildDefaultPieceConfig(overrides: Partial<PieceConfig> = {}): PieceConfig {
+  const archReviewSubMovement = makeMovement('arch-review', {
     rules: [
       makeRule('approved', 'COMPLETE'),
       makeRule('needs_fix', 'fix'),
     ],
   });
 
-  const securityReviewSubStep = makeStep('security-review', {
+  const securityReviewSubMovement = makeMovement('security-review', {
     rules: [
       makeRule('approved', 'COMPLETE'),
       makeRule('needs_fix', 'fix'),
@@ -69,36 +69,36 @@ export function buildDefaultWorkflowConfig(overrides: Partial<WorkflowConfig> = 
 
   return {
     name: 'test-default',
-    description: 'Test workflow',
+    description: 'Test piece',
     maxIterations: 30,
-    initialStep: 'plan',
-    steps: [
-      makeStep('plan', {
+    initialMovement: 'plan',
+    movements: [
+      makeMovement('plan', {
         rules: [
           makeRule('Requirements are clear', 'implement'),
           makeRule('Requirements unclear', 'ABORT'),
         ],
       }),
-      makeStep('implement', {
+      makeMovement('implement', {
         rules: [
           makeRule('Implementation complete', 'ai_review'),
           makeRule('Cannot proceed', 'plan'),
         ],
       }),
-      makeStep('ai_review', {
+      makeMovement('ai_review', {
         rules: [
           makeRule('No AI-specific issues', 'reviewers'),
           makeRule('AI-specific issues found', 'ai_fix'),
         ],
       }),
-      makeStep('ai_fix', {
+      makeMovement('ai_fix', {
         rules: [
           makeRule('AI issues fixed', 'reviewers'),
           makeRule('Cannot proceed', 'plan'),
         ],
       }),
-      makeStep('reviewers', {
-        parallel: [archReviewSubStep, securityReviewSubStep],
+      makeMovement('reviewers', {
+        parallel: [archReviewSubMovement, securityReviewSubMovement],
         rules: [
           makeRule('all("approved")', 'supervise', {
             isAggregateCondition: true,
@@ -112,13 +112,13 @@ export function buildDefaultWorkflowConfig(overrides: Partial<WorkflowConfig> = 
           }),
         ],
       }),
-      makeStep('fix', {
+      makeMovement('fix', {
         rules: [
           makeRule('Fix complete', 'reviewers'),
           makeRule('Cannot proceed', 'plan'),
         ],
       }),
-      makeStep('supervise', {
+      makeMovement('supervise', {
         rules: [
           makeRule('All checks passed', 'COMPLETE'),
           makeRule('Requirements unmet', 'plan'),
@@ -172,4 +172,14 @@ export function applyDefaultMocks(): void {
   vi.mocked(runReportPhase).mockResolvedValue(undefined);
   vi.mocked(runStatusJudgmentPhase).mockResolvedValue('');
   vi.mocked(generateReportDir).mockReturnValue('test-report-dir');
+}
+
+/**
+ * Clean up PieceEngine instances to prevent EventEmitter memory leaks.
+ * Call this in afterEach to ensure all event listeners are removed.
+ */
+export function cleanupPieceEngine(engine: any): void {
+  if (engine && typeof engine.removeAllListeners === 'function') {
+    engine.removeAllListeners();
+  }
 }

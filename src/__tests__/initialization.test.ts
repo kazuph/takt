@@ -20,15 +20,14 @@ vi.mock('node:os', async () => {
 });
 
 // Mock the prompt to avoid interactive input
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   selectOptionWithDefault: vi.fn().mockResolvedValue('ja'),
-  promptMultiline: vi.fn(),
 }));
 
 // Import after mocks are set up
-const { needsLanguageSetup } = await import('../config/initialization.js');
-const { getGlobalConfigPath } = await import('../config/paths.js');
-const { copyProjectResourcesToDir, getLanguageResourcesDir, getProjectResourcesDir } = await import('../resources/index.js');
+const { needsLanguageSetup } = await import('../infra/config/global/initialization.js');
+const { getGlobalConfigPath } = await import('../infra/config/paths.js');
+const { copyProjectResourcesToDir, getLanguageResourcesDir, getProjectResourcesDir } = await import('../infra/resources/index.js');
 
 describe('initialization', () => {
   beforeEach(() => {

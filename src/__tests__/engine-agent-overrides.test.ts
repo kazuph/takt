@@ -1,8 +1,8 @@
 /**
- * Tests for WorkflowEngine provider/model overrides.
+ * Tests for PieceEngine provider/model overrides.
  *
- * Verifies that CLI-specified overrides take precedence over workflow step defaults,
- * and that step-specific values are used when no overrides are present.
+ * Verifies that CLI-specified overrides take precedence over piece movement defaults,
+ * and that movement-specific values are used when no overrides are present.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -11,57 +11,59 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../workflow/rule-evaluator.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn(),
   runReportPhase: vi.fn(),
   runStatusJudgmentPhase: vi.fn(),
 }));
 
-vi.mock('../utils/session.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
 }));
 
-import { WorkflowEngine } from '../workflow/engine.js';
+import { PieceEngine } from '../core/piece/index.js';
 import { runAgent } from '../agents/runner.js';
-import type { WorkflowConfig } from '../models/types.js';
+import type { PieceConfig } from '../core/models/index.js';
 import {
   makeResponse,
   makeRule,
-  makeStep,
+  makeMovement,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
 
-describe('WorkflowEngine agent overrides', () => {
+describe('PieceEngine agent overrides', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     applyDefaultMocks();
   });
 
-  it('respects workflow step provider/model even when CLI overrides are provided', async () => {
-    const step = makeStep('plan', {
+  it('respects piece movement provider/model even when CLI overrides are provided', async () => {
+    const movement = makeMovement('plan', {
       provider: 'claude',
-      model: 'claude-step',
+      model: 'claude-movement',
       rules: [makeRule('done', 'COMPLETE')],
     });
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'override-test',
-      steps: [step],
-      initialStep: 'plan',
+      movements: [movement],
+      initialMovement: 'plan',
       maxIterations: 1,
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: step.agent, content: 'done' }),
+      makeResponse({ agent: movement.agent, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 
-    const engine = new WorkflowEngine(config, '/tmp/project', 'override task', {
+    const engine = new PieceEngine(config, '/tmp/project', 'override task', {
+      projectCwd: '/tmp/project',
       provider: 'codex',
       model: 'cli-model',
     });
@@ -70,26 +72,27 @@ describe('WorkflowEngine agent overrides', () => {
 
     const options = vi.mocked(runAgent).mock.calls[0][2];
     expect(options.provider).toBe('claude');
-    expect(options.model).toBe('claude-step');
+    expect(options.model).toBe('claude-movement');
   });
 
-  it('allows CLI overrides when workflow step leaves provider/model undefined', async () => {
-    const step = makeStep('plan', {
+  it('allows CLI overrides when piece movement leaves provider/model undefined', async () => {
+    const movement = makeMovement('plan', {
       rules: [makeRule('done', 'COMPLETE')],
     });
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'override-fallback',
-      steps: [step],
-      initialStep: 'plan',
+      movements: [movement],
+      initialMovement: 'plan',
       maxIterations: 1,
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: step.agent, content: 'done' }),
+      makeResponse({ agent: movement.agent, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 
-    const engine = new WorkflowEngine(config, '/tmp/project', 'override task', {
+    const engine = new PieceEngine(config, '/tmp/project', 'override task', {
+      projectCwd: '/tmp/project',
       provider: 'codex',
       model: 'cli-model',
     });
@@ -101,29 +104,29 @@ describe('WorkflowEngine agent overrides', () => {
     expect(options.model).toBe('cli-model');
   });
 
-  it('falls back to workflow step provider/model when no overrides supplied', async () => {
-    const step = makeStep('plan', {
+  it('falls back to piece movement provider/model when no overrides supplied', async () => {
+    const movement = makeMovement('plan', {
       provider: 'claude',
-      model: 'step-model',
+      model: 'movement-model',
       rules: [makeRule('done', 'COMPLETE')],
     });
-    const config: WorkflowConfig = {
-      name: 'step-defaults',
-      steps: [step],
-      initialStep: 'plan',
+    const config: PieceConfig = {
+      name: 'movement-defaults',
+      movements: [movement],
+      initialMovement: 'plan',
       maxIterations: 1,
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: step.agent, content: 'done' }),
+      makeResponse({ agent: movement.agent, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 
-    const engine = new WorkflowEngine(config, '/tmp/project', 'step task');
+    const engine = new PieceEngine(config, '/tmp/project', 'movement task', { projectCwd: '/tmp/project' });
     await engine.run();
 
     const options = vi.mocked(runAgent).mock.calls[0][2];
     expect(options.provider).toBe('claude');
-    expect(options.model).toBe('step-model');
+    expect(options.model).toBe('movement-model');
   });
 });

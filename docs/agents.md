@@ -4,7 +4,7 @@ This guide explains how to configure and create custom agents in TAKT.
 
 ## Built-in Agents
 
-TAKT includes built-in agents (located in `resources/global/{lang}/agents/default/`):
+TAKT includes six built-in agents (located in `resources/global/{lang}/agents/default/`):
 
 | Agent | Description |
 |-------|-------------|
@@ -14,14 +14,13 @@ TAKT includes built-in agents (located in `resources/global/{lang}/agents/defaul
 | **architecture-reviewer** | Reviews architecture and code quality, verifies spec compliance |
 | **security-reviewer** | Security vulnerability assessment |
 | **supervisor** | Final verification, validation, and approval |
-| **recovery-resume** | Recovery guidance after aborted/failed workflows |
 
 ## Specifying Agents
 
-In workflow YAML, agents are specified by file path:
+In piece YAML, agents are specified by file path:
 
 ```yaml
-# Relative to workflow file directory
+# Relative to piece file directory
 agent: ../agents/default/coder.md
 
 # Home directory
@@ -53,7 +52,7 @@ You are a security-focused code reviewer.
 - Verify proper error handling
 ```
 
-> **Note**: Agents do NOT need to output status markers manually. The workflow engine auto-injects status output rules into agent instructions based on the step's `rules` configuration. Agents output `[STEP:N]` tags (where N is the 0-based rule index) which the engine uses for routing.
+> **Note**: Agents do NOT need to output status markers manually. The piece engine auto-injects status output rules into agent instructions based on the step's `rules` configuration. Agents output `[STEP:N]` tags (where N is the 0-based rule index) which the engine uses for routing.
 
 ### Using agents.yaml
 
@@ -75,13 +74,13 @@ agents:
 
 | Field | Description |
 |-------|-------------|
-| `name` | Agent identifier (referenced in workflow steps) |
+| `name` | Agent identifier (referenced in piece steps) |
 | `prompt_file` | Path to Markdown prompt file |
 | `prompt` | Inline prompt text (alternative to `prompt_file`) |
 | `allowed_tools` | List of tools the agent can use |
 | `claude_agent` | Claude Code agent name (for Claude Code native agents) |
 | `claude_skill` | Claude Code skill name (for Claude Code native skills) |
-| `provider` | Provider override: `claude`, `codex`, or `gemini` |
+| `provider` | Provider override: `claude` or `codex` |
 | `model` | Model override (alias or full name) |
 
 ### Available Tools
@@ -114,7 +113,7 @@ agents:
 ```
 
 ```yaml
-# workflow.yaml
+# piece.yaml
 steps:
   - name: implement
     agent: ../agents/default/coder.md

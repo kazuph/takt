@@ -30,3 +30,6 @@ coverage/
 
 # TAKT config (user data)
 .takt/
+
+task_planning/
+

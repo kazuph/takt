@@ -5,26 +5,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
-vi.mock('../prompt/index.js', () => ({
+vi.mock('../shared/prompt/index.js', () => ({
   confirm: vi.fn(),
   selectOptionWithDefault: vi.fn(),
-  promptMultiline: vi.fn(),
 }));
 
-vi.mock('../task/clone.js', () => ({
+vi.mock('../infra/task/clone.js', () => ({
   createSharedClone: vi.fn(),
   removeClone: vi.fn(),
 }));
 
-vi.mock('../task/autoCommit.js', () => ({
+vi.mock('../infra/task/autoCommit.js', () => ({
   autoCommitAndPush: vi.fn(),
 }));
 
-vi.mock('../task/summarize.js', () => ({
+vi.mock('../infra/task/summarize.js', () => ({
   summarizeTaskName: vi.fn(),
 }));
 
-vi.mock('../utils/ui.js', () => ({
+vi.mock('../shared/ui/index.js', () => ({
   info: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
@@ -33,7 +32,8 @@ vi.mock('../utils/ui.js', () => ({
   setLogLevel: vi.fn(),
 }));
 
-vi.mock('../utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -44,52 +44,46 @@ vi.mock('../utils/debug.js', () => ({
   getDebugLogFile: vi.fn(),
 }));
 
-vi.mock('../config/index.js', () => ({
+vi.mock('../infra/config/index.js', () => ({
   initGlobalDirs: vi.fn(),
   initProjectDirs: vi.fn(),
   loadGlobalConfig: vi.fn(() => ({ logLevel: 'info' })),
   getEffectiveDebugConfig: vi.fn(),
 }));
 
-vi.mock('../config/paths.js', () => ({
+vi.mock('../infra/config/paths.js', () => ({
   clearAgentSessions: vi.fn(),
-  getCurrentWorkflow: vi.fn(() => 'default'),
+  getCurrentPiece: vi.fn(() => 'default'),
   isVerboseMode: vi.fn(() => false),
 }));
 
-vi.mock('../commands/index.js', () => ({
-  executeTask: vi.fn(),
-  runAllTasks: vi.fn(),
-  switchWorkflow: vi.fn(),
-  switchConfig: vi.fn(),
-  addTask: vi.fn(),
-  watchTasks: vi.fn(),
-  listTasks: vi.fn(),
-  interactiveMode: vi.fn(() => Promise.resolve({ confirmed: false, task: '' })),
+vi.mock('../infra/config/loaders/pieceLoader.js', () => ({
+  listPieces: vi.fn(() => []),
 }));
 
-vi.mock('../config/workflowLoader.js', () => ({
-  listWorkflows: vi.fn(() => []),
-}));
+vi.mock('../shared/constants.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../shared/constants.js')>();
+  return {
+    ...actual,
+    DEFAULT_PIECE_NAME: 'default',
+  };
+});
 
-vi.mock('../constants.js', () => ({
-  DEFAULT_WORKFLOW_NAME: 'default',
-}));
-
-vi.mock('../github/issue.js', () => ({
+vi.mock('../infra/github/issue.js', () => ({
   isIssueReference: vi.fn((s: string) => /^#\d+$/.test(s)),
   resolveIssueTask: vi.fn(),
 }));
 
-vi.mock('../utils/updateNotifier.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   checkForUpdates: vi.fn(),
 }));
 
-import { confirm } from '../prompt/index.js';
-import { createSharedClone } from '../task/clone.js';
-import { summarizeTaskName } from '../task/summarize.js';
-import { info } from '../utils/ui.js';
-import { confirmAndCreateWorktree } from '../cli.js';
+import { confirm } from '../shared/prompt/index.js';
+import { createSharedClone } from '../infra/task/clone.js';
+import { summarizeTaskName } from '../infra/task/summarize.js';
+import { info } from '../shared/ui/index.js';
+import { confirmAndCreateWorktree } from '../features/tasks/index.js';
 
 const mockConfirm = vi.mocked(confirm);
 const mockCreateSharedClone = vi.mocked(createSharedClone);

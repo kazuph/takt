@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildPrBody } from '../github/pr.js';
-import type { GitHubIssue } from '../github/issue.js';
+import { buildPrBody } from '../infra/github/pr.js';
+import type { GitHubIssue } from '../infra/github/types.js';
 
 describe('buildPrBody', () => {
   it('should build body with issue and report', () => {
@@ -19,12 +19,12 @@ describe('buildPrBody', () => {
       comments: [],
     };
 
-    const result = buildPrBody(issue, 'Workflow `default` completed.');
+    const result = buildPrBody(issue, 'Piece `default` completed.');
 
     expect(result).toContain('## Summary');
     expect(result).toContain('Implement username/password authentication.');
     expect(result).toContain('## Execution Report');
-    expect(result).toContain('Workflow `default` completed.');
+    expect(result).toContain('Piece `default` completed.');
     expect(result).toContain('Closes #99');
   });
 

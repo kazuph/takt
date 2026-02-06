@@ -4,11 +4,8 @@
 # Language setting (en or ja)
 language: en
 
-# Trusted directories - projects in these directories skip confirmation prompts
-trusted_directories: []
-
-# Default workflow to use when no workflow is specified
-default_workflow: default
+# Default piece to use when no piece is specified
+default_piece: default
 
 # Log level: debug, info, warn, error
 log_level: info
@@ -16,14 +13,19 @@ log_level: info
 # Provider runtime: claude or codex
 provider: claude
 
+# Builtin pieces (resources/global/{lang}/pieces)
+# enable_builtin_pieces: true
+
 # Default model (optional)
 # Claude: opus, sonnet, haiku, opusplan, default, or full model name
 # Codex: gpt-5.2-codex, gpt-5.1-codex, etc.
 # model: sonnet
 
-# Authentication
-# Claude: use `claude setup-token` (subscription) or `claude login`
-# Codex/Gemini: use each CLI's login flow
+# Anthropic API key (optional, overridden by TAKT_ANTHROPIC_API_KEY env var)
+# anthropic_api_key: ""
+
+# OpenAI API key (optional, overridden by TAKT_OPENAI_API_KEY env var)
+# openai_api_key: ""
 
 # Pipeline execution settings (optional)
 # Customize branch naming, commit messages, and PR body for pipeline mode (--task).

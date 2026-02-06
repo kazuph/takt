@@ -4,21 +4,30 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildInstruction,
-  buildReportInstruction,
-  buildStatusJudgmentInstruction,
-  buildExecutionMetadata,
-  renderExecutionMetadata,
-  generateStatusRulesFromRules,
+  InstructionBuilder,
   isReportObjectConfig,
-  type InstructionContext,
+  ReportInstructionBuilder,
+  StatusJudgmentBuilder,
+  generateStatusRulesComponents,
   type ReportInstructionContext,
   type StatusJudgmentContext,
-} from '../workflow/instruction-builder.js';
-import type { WorkflowStep, WorkflowRule } from '../models/types.js';
+  type InstructionContext,
+} from '../core/piece/index.js';
+
+// Function wrappers for test readability
+function buildInstruction(step: PieceMovement, ctx: InstructionContext): string {
+  return new InstructionBuilder(step, ctx).build();
+}
+function buildReportInstruction(step: PieceMovement, ctx: ReportInstructionContext): string {
+  return new ReportInstructionBuilder(step, ctx).build();
+}
+function buildStatusJudgmentInstruction(step: PieceMovement, ctx: StatusJudgmentContext): string {
+  return new StatusJudgmentBuilder(step, ctx).build();
+}
+import type { PieceMovement, PieceRule } from '../core/models/index.js';
 
 
-function createMinimalStep(template: string): WorkflowStep {
+function createMinimalStep(template: string): PieceMovement {
   return {
     name: 'test-step',
     agent: 'test-agent',
@@ -33,9 +42,12 @@ function createMinimalContext(overrides: Partial<InstructionContext> = {}): Inst
     task: 'Test task',
     iteration: 1,
     maxIterations: 10,
-    stepIteration: 1,
+    movementIteration: 1,
     cwd: '/project',
+    projectCwd: '/project',
     userInputs: [],
+    pieceName: 'test-piece',
+    pieceDescription: 'Test piece description',
     ...overrides,
   };
 }
@@ -175,188 +187,80 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('buildExecutionMetadata', () => {
-    it('should set workingDirectory', () => {
-      const context = createMinimalContext({ cwd: '/project' });
-      const metadata = buildExecutionMetadata(context);
-
-      expect(metadata.workingDirectory).toBe('/project');
-    });
-
-    it('should use cwd as workingDirectory even in worktree mode', () => {
-      const context = createMinimalContext({
-        cwd: '/worktree-path',
-        projectCwd: '/project-path',
-      });
-      const metadata = buildExecutionMetadata(context);
-
-      expect(metadata.workingDirectory).toBe('/worktree-path');
-    });
-
-    it('should default language to en when not specified', () => {
-      const context = createMinimalContext({ cwd: '/project' });
-      const metadata = buildExecutionMetadata(context);
-
-      expect(metadata.language).toBe('en');
-    });
-
-    it('should propagate language from context', () => {
-      const context = createMinimalContext({ cwd: '/project', language: 'ja' });
-      const metadata = buildExecutionMetadata(context);
-
-      expect(metadata.language).toBe('ja');
-    });
-
-    it('should propagate edit field when provided', () => {
-      const context = createMinimalContext({ cwd: '/project' });
-
-      expect(buildExecutionMetadata(context, true).edit).toBe(true);
-      expect(buildExecutionMetadata(context, false).edit).toBe(false);
-    });
-
-    it('should leave edit undefined when not provided', () => {
-      const context = createMinimalContext({ cwd: '/project' });
-      const metadata = buildExecutionMetadata(context);
-
-      expect(metadata.edit).toBeUndefined();
-    });
-  });
-
-  describe('renderExecutionMetadata', () => {
-    it('should render Working Directory and Execution Rules', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
-
-      expect(rendered).toContain('## Execution Context');
-      expect(rendered).toContain('- Working Directory: /project');
-      expect(rendered).toContain('## Execution Rules');
-      expect(rendered).toContain('Do NOT run git commit');
-      expect(rendered).toContain('Do NOT use `cd`');
-    });
-
-    it('should end with a trailing empty line', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
-
-      expect(rendered).toMatch(/\n$/);
-    });
-
-    it('should render in Japanese when language is ja', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja' });
-
-      expect(rendered).toContain('## 実行コンテキスト');
-      expect(rendered).toContain('- 作業ディレクトリ: /project');
-      expect(rendered).toContain('## 実行ルール');
-      expect(rendered).toContain('git commit を実行しないでください');
-      expect(rendered).toContain('cd` を使用しないでください');
-    });
-
-    it('should include English note only for en, not for ja', () => {
-      const enRendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
-      const jaRendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja' });
-
-      expect(enRendered).toContain('Note:');
-      expect(jaRendered).not.toContain('Note:');
-    });
-
-    it('should include edit enabled prompt when edit is true (en)', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en', edit: true });
-
-      expect(rendered).toContain('Editing is ENABLED');
-      expect(rendered).not.toContain('Editing is DISABLED');
-    });
-
-    it('should include edit disabled prompt when edit is false (en)', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en', edit: false });
-
-      expect(rendered).toContain('Editing is DISABLED');
-      expect(rendered).not.toContain('Editing is ENABLED');
-    });
-
-    it('should not include edit prompt when edit is undefined', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'en' });
-
-      expect(rendered).not.toContain('Editing is ENABLED');
-      expect(rendered).not.toContain('Editing is DISABLED');
-      expect(rendered).not.toContain('編集が許可');
-      expect(rendered).not.toContain('編集が禁止');
-    });
-
-    it('should render edit enabled prompt in Japanese when language is ja', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja', edit: true });
-
-      expect(rendered).toContain('編集が許可されています');
-      expect(rendered).not.toContain('編集が禁止');
-    });
-
-    it('should render edit disabled prompt in Japanese when language is ja', () => {
-      const rendered = renderExecutionMetadata({ workingDirectory: '/project', language: 'ja', edit: false });
-
-      expect(rendered).toContain('編集が禁止されています');
-      expect(rendered).not.toContain('編集が許可');
-    });
-  });
-
-  describe('generateStatusRulesFromRules', () => {
-    const rules: WorkflowRule[] = [
+  describe('generateStatusRulesComponents', () => {
+    const rules: PieceRule[] = [
       { condition: '要件が明確で実装可能', next: 'implement' },
       { condition: 'ユーザーが質問をしている', next: 'COMPLETE' },
       { condition: '要件が不明確、情報不足', next: 'ABORT', appendix: '確認事項:\n- {質問1}\n- {質問2}' },
     ];
 
     it('should generate criteria table with numbered tags (ja)', () => {
-      const result = generateStatusRulesFromRules('plan', rules, 'ja');
+      const result = generateStatusRulesComponents('plan', rules, 'ja');
 
-      expect(result).toContain('## 判定基準');
-      expect(result).toContain('| 1 | 要件が明確で実装可能 | `[PLAN:1]` |');
-      expect(result).toContain('| 2 | ユーザーが質問をしている | `[PLAN:2]` |');
-      expect(result).toContain('| 3 | 要件が不明確、情報不足 | `[PLAN:3]` |');
+      expect(result.criteriaTable).toContain('| 1 | 要件が明確で実装可能 | `[PLAN:1]` |');
+      expect(result.criteriaTable).toContain('| 2 | ユーザーが質問をしている | `[PLAN:2]` |');
+      expect(result.criteriaTable).toContain('| 3 | 要件が不明確、情報不足 | `[PLAN:3]` |');
     });
 
     it('should generate criteria table with numbered tags (en)', () => {
-      const enRules: WorkflowRule[] = [
+      const enRules: PieceRule[] = [
         { condition: 'Requirements are clear', next: 'implement' },
         { condition: 'User is asking a question', next: 'COMPLETE' },
       ];
-      const result = generateStatusRulesFromRules('plan', enRules, 'en');
+      const result = generateStatusRulesComponents('plan', enRules, 'en');
 
-      expect(result).toContain('## Decision Criteria');
-      expect(result).toContain('| 1 | Requirements are clear | `[PLAN:1]` |');
-      expect(result).toContain('| 2 | User is asking a question | `[PLAN:2]` |');
+      expect(result.criteriaTable).toContain('| 1 | Requirements are clear | `[PLAN:1]` |');
+      expect(result.criteriaTable).toContain('| 2 | User is asking a question | `[PLAN:2]` |');
     });
 
-    it('should generate output format section with condition labels', () => {
-      const result = generateStatusRulesFromRules('plan', rules, 'ja');
+    it('should generate output list with condition labels', () => {
+      const result = generateStatusRulesComponents('plan', rules, 'ja');
 
-      expect(result).toContain('## 出力フォーマット');
-      expect(result).toContain('`[PLAN:1]` — 要件が明確で実装可能');
-      expect(result).toContain('`[PLAN:2]` — ユーザーが質問をしている');
-      expect(result).toContain('`[PLAN:3]` — 要件が不明確、情報不足');
+      expect(result.outputList).toContain('`[PLAN:1]` — 要件が明確で実装可能');
+      expect(result.outputList).toContain('`[PLAN:2]` — ユーザーが質問をしている');
+      expect(result.outputList).toContain('`[PLAN:3]` — 要件が不明確、情報不足');
     });
 
-    it('should generate appendix template section when rules have appendix', () => {
-      const result = generateStatusRulesFromRules('plan', rules, 'ja');
+    it('should generate appendix content when rules have appendix', () => {
+      const result = generateStatusRulesComponents('plan', rules, 'ja');
 
-      expect(result).toContain('### 追加出力テンプレート');
-      expect(result).toContain('`[PLAN:3]`');
-      expect(result).toContain('確認事項:');
-      expect(result).toContain('- {質問1}');
+      expect(result.hasAppendix).toBe(true);
+      expect(result.appendixContent).toContain('[[PLAN:3]]');
+      expect(result.appendixContent).toContain('確認事項:');
+      expect(result.appendixContent).toContain('- {質問1}');
     });
 
-    it('should not generate appendix section when no rules have appendix', () => {
-      const noAppendixRules: WorkflowRule[] = [
+    it('should not generate appendix when no rules have appendix', () => {
+      const noAppendixRules: PieceRule[] = [
         { condition: 'Done', next: 'review' },
         { condition: 'Blocked', next: 'plan' },
       ];
-      const result = generateStatusRulesFromRules('implement', noAppendixRules, 'en');
+      const result = generateStatusRulesComponents('implement', noAppendixRules, 'en');
 
-      expect(result).not.toContain('Appendix Template');
+      expect(result.hasAppendix).toBe(false);
+      expect(result.appendixContent).toBe('');
     });
 
     it('should uppercase step name in tags', () => {
-      const result = generateStatusRulesFromRules('ai_review', [
+      const result = generateStatusRulesComponents('ai_review', [
         { condition: 'No issues', next: 'supervise' },
       ], 'en');
 
-      expect(result).toContain('`[AI_REVIEW:1]`');
+      expect(result.criteriaTable).toContain('`[AI_REVIEW:1]`');
+    });
+
+    it('should omit interactive-only rules when interactive is false', () => {
+      const filteredRules: PieceRule[] = [
+        { condition: 'Clear', next: 'implement' },
+        { condition: 'User input required', next: 'implement', interactiveOnly: true },
+        { condition: 'Blocked', next: 'plan' },
+      ];
+      const result = generateStatusRulesComponents('implement', filteredRules, 'en', { interactive: false });
+
+      expect(result.criteriaTable).toContain('`[IMPLEMENT:1]`');
+      expect(result.criteriaTable).toContain('`[IMPLEMENT:3]`');
+      expect(result.criteriaTable).not.toContain('User input required');
+      expect(result.criteriaTable).not.toContain('`[IMPLEMENT:2]`');
     });
   });
 
@@ -372,9 +276,8 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('Decision Criteria');
-      expect(result).toContain('[PLAN:1]');
-      expect(result).toContain('[PLAN:2]');
+      // Status rules are no longer injected in Phase 1 (only in Phase 3)
+      expect(result).not.toContain('Decision Criteria');
     });
 
     it('should not add status rules when rules do not exist', () => {
@@ -397,26 +300,82 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('auto-injected Workflow Context section', () => {
+  describe('auto-injected Piece Context section', () => {
+    it('should include piece name when provided', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({
+        pieceName: 'my-piece',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('## Piece Context');
+      expect(result).toContain('- Piece: my-piece');
+    });
+
+    it('should include piece description when provided', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({
+        pieceName: 'my-piece',
+        pieceDescription: 'A test piece for validation',
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('## Piece Context');
+      expect(result).toContain('- Piece: my-piece');
+      expect(result).toContain('- Description: A test piece for validation');
+    });
+
+    it('should not show description when not provided', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({
+        pieceName: 'my-piece',
+        pieceDescription: undefined,
+        language: 'en',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('- Piece: my-piece');
+      expect(result).not.toContain('- Description:');
+    });
+
+    it('should render piece context in Japanese', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({
+        pieceName: 'coding',
+        pieceDescription: 'コーディングピース',
+        language: 'ja',
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('- ピース: coding');
+      expect(result).toContain('- 説明: コーディングピース');
+    });
+
     it('should include iteration, step iteration, and step name', () => {
       const step = createMinimalStep('Do work');
       step.name = 'implement';
       const context = createMinimalContext({
         iteration: 3,
         maxIterations: 20,
-        stepIteration: 2,
+        movementIteration: 2,
         language: 'en',
       });
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('## Workflow Context');
+      expect(result).toContain('## Piece Context');
       expect(result).toContain('- Iteration: 3/20');
-      expect(result).toContain('- Step Iteration: 2');
-      expect(result).toContain('- Step: implement');
+      expect(result).toContain('- Movement Iteration: 2');
+      expect(result).toContain('- Movement: implement');
     });
 
-    it('should NOT include report info even when step has report (phase separation)', () => {
+    it('should include report info in Phase 1 when step has report', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
       step.report = '00-plan.md';
@@ -427,12 +386,13 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('## Workflow Context');
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report File');
+      expect(result).toContain('## Piece Context');
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
     });
 
-    it('should NOT include report info for ReportConfig[] (phase separation)', () => {
+    it('should include report info for ReportConfig[] in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = [
         { label: 'Scope', path: '01-scope.md' },
@@ -445,11 +405,12 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report Files');
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report Files');
+      expect(result).toContain('Phase 1');
     });
 
-    it('should NOT include report info for ReportObjectConfig (phase separation)', () => {
+    it('should include report info for ReportObjectConfig in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = { name: '00-plan.md' };
       const context = createMinimalContext({
@@ -459,25 +420,142 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report File');
+      // Phase 1 now includes Report Directory info and phase note
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
     });
 
     it('should render Japanese step iteration suffix', () => {
       const step = createMinimalStep('Do work');
       const context = createMinimalContext({
-        stepIteration: 3,
+        movementIteration: 3,
         language: 'ja',
       });
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('- Step Iteration: 3（このステップの実行回数）');
+      expect(result).toContain('- Movement Iteration: 3（このムーブメントの実行回数）');
+    });
+
+    it('should include piece structure when pieceSteps is provided', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'implement';
+      const context = createMinimalContext({
+        language: 'en',
+        pieceMovements: [
+          { name: 'plan' },
+          { name: 'implement' },
+          { name: 'review' },
+        ],
+        currentMovementIndex: 1,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('This piece consists of 3 movements:');
+      expect(result).toContain('- Movement 1: plan');
+      expect(result).toContain('- Movement 2: implement');
+      expect(result).toContain('← current');
+      expect(result).toContain('- Movement 3: review');
+    });
+
+    it('should mark current step with marker', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'plan';
+      const context = createMinimalContext({
+        language: 'en',
+        pieceMovements: [
+          { name: 'plan' },
+          { name: 'implement' },
+        ],
+        currentMovementIndex: 0,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('- Movement 1: plan ← current');
+      expect(result).not.toContain('- Movement 2: implement ← current');
+    });
+
+    it('should include description in parentheses when provided', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'plan';
+      const context = createMinimalContext({
+        language: 'ja',
+        pieceMovements: [
+          { name: 'plan', description: 'タスクを分析し実装計画を作成する' },
+          { name: 'implement' },
+        ],
+        currentMovementIndex: 0,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('- Movement 1: plan（タスクを分析し実装計画を作成する） ← 現在');
+    });
+
+    it('should skip piece structure when pieceSteps is not provided', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({ language: 'en' });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).not.toContain('This piece consists of');
+    });
+
+    it('should skip piece structure when pieceSteps is empty', () => {
+      const step = createMinimalStep('Do work');
+      const context = createMinimalContext({
+        language: 'en',
+        pieceMovements: [],
+        currentMovementIndex: -1,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).not.toContain('This piece consists of');
+    });
+
+    it('should render piece structure in Japanese', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'plan';
+      const context = createMinimalContext({
+        language: 'ja',
+        pieceMovements: [
+          { name: 'plan' },
+          { name: 'implement' },
+        ],
+        currentMovementIndex: 0,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('このピースは2ムーブメントで構成されています:');
+      expect(result).toContain('← 現在');
+    });
+
+    it('should not show current marker when currentMovementIndex is -1', () => {
+      const step = createMinimalStep('Do work');
+      step.name = 'sub-step';
+      const context = createMinimalContext({
+        language: 'en',
+        pieceMovements: [
+          { name: 'plan' },
+          { name: 'implement' },
+        ],
+        currentMovementIndex: -1,
+      });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('This piece consists of 2 movements:');
+      expect(result).not.toContain('← current');
     });
   });
 
   describe('buildInstruction report-free (phase separation)', () => {
-    it('should NOT include report output instruction in buildInstruction', () => {
+    it('should include Report Directory info but NOT report output instruction in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = '00-plan.md';
       const context = createMinimalContext({
@@ -487,9 +565,14 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
+      // Phase 1 includes Report Directory info and phase note
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
+      expect(result).toContain('Phase 2 will automatically generate the report');
+
+      // But NOT the report output instruction (that's for Phase 2)
       expect(result).not.toContain('**Report output:**');
-      expect(result).not.toContain('Report File');
-      expect(result).not.toContain('Report Directory');
     });
 
     it('should NOT include report format in buildInstruction', () => {
@@ -540,7 +623,7 @@ describe('instruction-builder', () => {
       return {
         cwd: '/project',
         reportDir: '/project/.takt/reports/20260129-test',
-        stepIteration: 1,
+        movementIteration: 1,
         language: 'en',
         ...overrides,
       };
@@ -654,10 +737,10 @@ describe('instruction-builder', () => {
       expect(result).toContain('# Plan');
     });
 
-    it('should replace {step_iteration} in report output instruction', () => {
+    it('should replace {movement_iteration} in report output instruction', () => {
       const step = createMinimalStep('Do work');
       step.report = '00-plan.md';
-      const ctx = createReportContext({ stepIteration: 5 });
+      const ctx = createReportContext({ movementIteration: 5 });
 
       const result = buildReportInstruction(step, ctx);
 
@@ -672,7 +755,7 @@ describe('instruction-builder', () => {
       const result = buildReportInstruction(step, ctx);
 
       expect(result).toContain('## Instructions');
-      expect(result).toContain('Output the results of your previous work as a report');
+      expect(result).toContain('Respond with the results of the work you just completed as a report');
     });
 
     it('should NOT include user request, previous response, or status rules', () => {
@@ -698,7 +781,7 @@ describe('instruction-builder', () => {
 
       const result = buildReportInstruction(step, ctx);
 
-      expect(result).toContain('前のステップの作業結果をレポートとして出力してください');
+      expect(result).toContain('あなたが今行った作業の結果をレポートとして回答してください');
       expect(result).toContain('プロジェクトのソースファイルを変更しないでください');
       expect(result).toContain('**レポート出力:** `Report File` に出力してください。');
     });
@@ -844,9 +927,9 @@ describe('instruction-builder', () => {
       expect(result).toContain('Step 3/20');
     });
 
-    it('should replace {step_iteration}', () => {
-      const step = createMinimalStep('Run #{step_iteration}');
-      const context = createMinimalContext({ stepIteration: 2 });
+    it('should replace {movement_iteration}', () => {
+      const step = createMinimalStep('Run #{movement_iteration}');
+      const context = createMinimalContext({ movementIteration: 2 });
 
       const result = buildInstruction(step, context);
 
@@ -869,7 +952,7 @@ describe('instruction-builder', () => {
       expect(result).not.toContain('[TEST-STEP:');
     });
 
-    it('should include status rules with mixed regular and ai() conditions', () => {
+    it('should NOT include status rules with mixed regular and ai() conditions (Phase 1 no longer has status rules)', () => {
       const step = createMinimalStep('Do work');
       step.name = 'review';
       step.rules = [
@@ -880,11 +963,11 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('Decision Criteria');
-      expect(result).toContain('[REVIEW:1]');
+      // Status rules are no longer injected in Phase 1 (only in Phase 3)
+      expect(result).not.toContain('Decision Criteria');
     });
 
-    it('should include status rules with regular conditions only', () => {
+    it('should NOT include status rules with regular conditions only (Phase 1 no longer has status rules)', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
       step.rules = [
@@ -895,9 +978,8 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('Decision Criteria');
-      expect(result).toContain('[PLAN:1]');
-      expect(result).toContain('[PLAN:2]');
+      // Status rules are no longer injected in Phase 1 (only in Phase 3)
+      expect(result).not.toContain('Decision Criteria');
     });
 
     it('should NOT include status rules when all rules are aggregate conditions', () => {
@@ -927,7 +1009,7 @@ describe('instruction-builder', () => {
       expect(result).not.toContain('Decision Criteria');
     });
 
-    it('should include status rules with mixed aggregate and regular conditions', () => {
+    it('should NOT include status rules with mixed aggregate and regular conditions (Phase 1 no longer has status rules)', () => {
       const step = createMinimalStep('Do work');
       step.name = 'supervise';
       step.rules = [
@@ -938,8 +1020,8 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('Decision Criteria');
-      expect(result).toContain('[SUPERVISE:1]');
+      // Status rules are no longer injected in Phase 1 (only in Phase 3)
+      expect(result).not.toContain('Decision Criteria');
     });
   });
 
@@ -965,6 +1047,7 @@ describe('instruction-builder', () => {
     function createJudgmentContext(overrides: Partial<StatusJudgmentContext> = {}): StatusJudgmentContext {
       return {
         language: 'en',
+        reportContent: '# Test Report\n\nReport content for testing.',
         ...overrides,
       };
     }
@@ -980,8 +1063,8 @@ describe('instruction-builder', () => {
 
       const result = buildStatusJudgmentInstruction(step, ctx);
 
-      expect(result).toContain('Review your work results and determine the status');
-      expect(result).toContain('Do NOT perform any additional work');
+      expect(result).toContain('Review is already complete');
+      expect(result).toContain('Output exactly one tag corresponding to the judgment result');
     });
 
     it('should include header instruction (ja)', () => {
@@ -995,8 +1078,8 @@ describe('instruction-builder', () => {
 
       const result = buildStatusJudgmentInstruction(step, ctx);
 
-      expect(result).toContain('作業結果を振り返り、ステータスを判定してください');
-      expect(result).toContain('追加の作業は行わないでください');
+      expect(result).toContain('既にレビューは完了しています');
+      expect(result).toContain('レポートで示された判定結果に対応するタグを1つだけ出力してください');
     });
 
     it('should include criteria table with tags', () => {
@@ -1050,11 +1133,11 @@ describe('instruction-builder', () => {
       const step = createMinimalStep('Do work');
       step.name = 'test';
       step.rules = [{ condition: 'Done', next: 'COMPLETE' }];
-      const ctx: StatusJudgmentContext = {};
+      const ctx: StatusJudgmentContext = { reportContent: 'Test report content' };
 
       const result = buildStatusJudgmentInstruction(step, ctx);
 
-      expect(result).toContain('Review your work results');
+      expect(result).toContain('Review is already complete');
       expect(result).toContain('## Decision Criteria');
     });
 

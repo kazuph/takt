@@ -4,15 +4,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../providers/index.js', () => ({
+vi.mock('../infra/providers/index.js', () => ({
   getProvider: vi.fn(),
 }));
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock('../utils/debug.js', () => ({
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
     info: vi.fn(),
     debug: vi.fn(),
@@ -20,9 +22,9 @@ vi.mock('../utils/debug.js', () => ({
   }),
 }));
 
-import { getProvider } from '../providers/index.js';
-import { loadGlobalConfig } from '../config/globalConfig.js';
-import { summarizeTaskName } from '../task/summarize.js';
+import { getProvider } from '../infra/providers/index.js';
+import { loadGlobalConfig } from '../infra/config/global/globalConfig.js';
+import { summarizeTaskName } from '../infra/task/summarize.js';
 
 const mockGetProvider = vi.mocked(getProvider);
 const mockLoadGlobalConfig = vi.mocked(loadGlobalConfig);
@@ -38,17 +40,16 @@ beforeEach(() => {
   mockGetProvider.mockReturnValue(mockProvider);
   mockLoadGlobalConfig.mockReturnValue({
     language: 'ja',
-    trustedDirectories: [],
-    defaultWorkflow: 'default',
+    defaultPiece: 'default',
     logLevel: 'info',
     provider: 'claude',
-    model: 'haiku',
+    model: undefined,
   });
 });
 
 describe('summarizeTaskName', () => {
-  it('should return AI-generated slug for Japanese task name', async () => {
-    // Given: AI returns a slug for Japanese input
+  it('should return AI-generated slug for task name', async () => {
+    // Given: AI returns a slug for input
     mockProviderCall.mockResolvedValue({
       agent: 'summarizer',
       status: 'done',
@@ -57,17 +58,16 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('認証機能を追加する', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('add-auth');
     expect(mockGetProvider).toHaveBeenCalledWith('claude');
     expect(mockProviderCall).toHaveBeenCalledWith(
       'summarizer',
-      '認証機能を追加する',
+      'long task name for testing',
       expect.objectContaining({
         cwd: '/project',
-        model: 'haiku',
         allowedTools: [],
       })
     );
@@ -83,7 +83,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('Fix the login bug', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('fix-login-bug');
@@ -99,7 +99,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('ユーザー認証を追加', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('add-user-auth');
@@ -115,7 +115,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('長いタスク名', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result.length).toBeLessThanOrEqual(30);
@@ -133,7 +133,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('test', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('task');
@@ -165,8 +165,7 @@ describe('summarizeTaskName', () => {
     // Given: config has codex provider
     mockLoadGlobalConfig.mockReturnValue({
       language: 'ja',
-      trustedDirectories: [],
-      defaultWorkflow: 'default',
+      defaultPiece: 'default',
       logLevel: 'info',
       provider: 'codex',
       model: 'gpt-4',
@@ -202,7 +201,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('test', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('fix-multiple-hyphens');
@@ -218,7 +217,7 @@ describe('summarizeTaskName', () => {
     });
 
     // When
-    const result = await summarizeTaskName('test', { cwd: '/project' });
+    const result = await summarizeTaskName('long task name for testing', { cwd: '/project' });
 
     // Then
     expect(result).toBe('leading-trailing');
@@ -236,7 +235,7 @@ describe('summarizeTaskName', () => {
 
   it('should use romanization when useLLM is false', async () => {
     // When: useLLM is explicitly false
-    const result = await summarizeTaskName('認証機能を追加する', { cwd: '/project', useLLM: false });
+    const result = await summarizeTaskName('romanization test', { cwd: '/project', useLLM: false });
 
     // Then: should not call provider, should return romaji
     expect(mockProviderCall).not.toHaveBeenCalled();
@@ -246,7 +245,7 @@ describe('summarizeTaskName', () => {
 
   it('should handle mixed Japanese/English with romanization', async () => {
     // When
-    const result = await summarizeTaskName('Add 認証機能', { cwd: '/project', useLLM: false });
+    const result = await summarizeTaskName('Add romanization', { cwd: '/project', useLLM: false });
 
     // Then
     expect(result).toMatch(/^[a-z0-9-]+$/);
