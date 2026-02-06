@@ -437,6 +437,15 @@ export async function executePiece(
     notifyError('TAKT', getLabel('piece.notifyAbort', undefined, { reason }));
   });
 
+  // Suppress EPIPE errors from SDK child process stdin after interrupt.
+  // When interruptAllQueries() kills the child process, the SDK may still
+  // try to write to the dead process's stdin pipe, causing an unhandled
+  // EPIPE error on the Socket. This handler catches it gracefully.
+  const onEpipe = (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE') return;
+    throw err;
+  };
+
   // SIGINT handler: 1st Ctrl+C = graceful abort, 2nd = force exit
   let sigintCount = 0;
   const onSigInt = () => {
@@ -444,6 +453,8 @@ export async function executePiece(
     if (sigintCount === 1) {
       blankLine();
       warn(getLabel('piece.sigintGraceful'));
+      process.on('uncaughtException', onEpipe);
+      interruptAllQueries();
       engine.abort();
     } else {
       blankLine();
@@ -462,5 +473,6 @@ export async function executePiece(
     };
   } finally {
     process.removeListener('SIGINT', onSigInt);
+    process.removeListener('uncaughtException', onEpipe);
   }
 }

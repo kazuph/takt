@@ -72,12 +72,18 @@ export class QueryRegistry {
 
   /**
    * Interrupt all active Claude queries.
+   * Catches EPIPE errors from the SDK writing to a dying child process.
    * @returns number of queries that were interrupted
    */
   interruptAllQueries(): number {
     const count = this.activeQueries.size;
     for (const [id, queryInstance] of this.activeQueries) {
-      queryInstance.interrupt();
+      // interrupt() is async and writes to child process stdin.
+      // If the child process has already exited, the write causes EPIPE.
+      // Catch the rejection to prevent unhandled promise rejection.
+      void Promise.resolve(queryInstance.interrupt()).catch(() => {
+        // Expected: EPIPE when child process is already dead
+      });
       this.activeQueries.delete(id);
     }
     return count;

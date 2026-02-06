@@ -225,60 +225,65 @@ function interactiveSelect<T extends string>(
     };
 
     const onKeypress = (data: Buffer): void => {
-      const key = data.toString();
+      try {
+        const key = data.toString();
 
-      // Try custom key handler first
-      if (callbacks?.onKeyPress && selectedIndex < currentOptions.length) {
-        const item = currentOptions[selectedIndex];
-        if (item) {
-          const customResult = callbacks.onKeyPress(key, item.value, selectedIndex);
-          if (customResult !== null) {
-            // Custom handler processed the key
-            const currentValue = item.value;
-            currentOptions = customResult;
-            totalItems = hasCancelOption ? currentOptions.length + 1 : currentOptions.length;
-            const newIdx = currentOptions.findIndex((o) => o.value === currentValue);
-            selectedIndex = newIdx >= 0 ? newIdx : Math.min(selectedIndex, currentOptions.length - 1);
-            totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
-            return;
+        // Try custom key handler first
+        if (callbacks?.onKeyPress && selectedIndex < currentOptions.length) {
+          const item = currentOptions[selectedIndex];
+          if (item) {
+            const customResult = callbacks.onKeyPress(key, item.value, selectedIndex);
+            if (customResult !== null) {
+              // Custom handler processed the key
+              const currentValue = item.value;
+              currentOptions = customResult;
+              totalItems = hasCancelOption ? currentOptions.length + 1 : currentOptions.length;
+              const newIdx = currentOptions.findIndex((o) => o.value === currentValue);
+              selectedIndex = newIdx >= 0 ? newIdx : Math.min(selectedIndex, currentOptions.length - 1);
+              totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
+              return;
+            }
           }
         }
-      }
 
-      // Delegate to default handler
-      const result = handleKeyInput(
-        key,
-        selectedIndex,
-        totalItems,
-        hasCancelOption,
-        currentOptions.length,
-      );
+        // Delegate to default handler
+        const result = handleKeyInput(
+          key,
+          selectedIndex,
+          totalItems,
+          hasCancelOption,
+          currentOptions.length,
+        );
 
-      switch (result.action) {
-        case 'move':
-          selectedIndex = result.newIndex;
-          totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
-          break;
-        case 'confirm':
-          cleanup(onKeypress);
-          resolve({ selectedIndex: result.selectedIndex, finalOptions: currentOptions });
-          break;
-        case 'cancel':
-          cleanup(onKeypress);
-          resolve({ selectedIndex: result.cancelIndex, finalOptions: currentOptions });
-          break;
-        case 'bookmark':
-          // Handled by custom onKeyPress
-          break;
-        case 'remove_bookmark':
-          // Ignore - should be handled by custom onKeyPress
-          break;
-        case 'exit':
-          cleanup(onKeypress);
-          process.exit(130);
-          break;
-        case 'none':
-          break;
+        switch (result.action) {
+          case 'move':
+            selectedIndex = result.newIndex;
+            totalLines = redrawMenu(currentOptions, selectedIndex, hasCancelOption, totalLines, cancelLabel);
+            break;
+          case 'confirm':
+            cleanup(onKeypress);
+            resolve({ selectedIndex: result.selectedIndex, finalOptions: currentOptions });
+            break;
+          case 'cancel':
+            cleanup(onKeypress);
+            resolve({ selectedIndex: result.cancelIndex, finalOptions: currentOptions });
+            break;
+          case 'bookmark':
+            // Handled by custom onKeyPress
+            break;
+          case 'remove_bookmark':
+            // Ignore - should be handled by custom onKeyPress
+            break;
+          case 'exit':
+            cleanup(onKeypress);
+            process.exit(130);
+            break;
+          case 'none':
+            break;
+        }
+      } catch {
+        cleanup(onKeypress);
+        resolve({ selectedIndex: -1, finalOptions: currentOptions });
       }
     };
 
