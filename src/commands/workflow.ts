@@ -6,6 +6,7 @@ import { listWorkflows, loadWorkflow } from '../config/index.js';
 import { getCurrentWorkflow, setCurrentWorkflow } from '../config/paths.js';
 import { info, success, error } from '../utils/ui.js';
 import { selectOption } from '../prompt/index.js';
+import { isNonInteractiveMode } from '../utils/runtime.js';
 
 /**
  * Get all available workflow options
@@ -33,6 +34,10 @@ function getAllWorkflowOptions(cwd: string): { label: string; value: string }[] 
 export async function switchWorkflow(cwd: string, workflowName?: string): Promise<boolean> {
   // No workflow specified - show selection prompt
   if (!workflowName) {
+    if (isNonInteractiveMode()) {
+      error('Non-interactive mode requires --workflow <name>.');
+      return false;
+    }
     const current = getCurrentWorkflow(cwd);
     info(`Current workflow: ${current}`);
 

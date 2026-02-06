@@ -13,11 +13,11 @@
 import * as readline from 'node:readline';
 import chalk from 'chalk';
 import { loadGlobalConfig } from '../config/globalConfig.js';
-import { isQuietMode } from '../cli.js';
+import { isQuietMode, isNonInteractiveMode } from '../utils/runtime.js';
 import { loadAgentSessions, updateAgentSession } from '../config/paths.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
 import { createLogger } from '../utils/debug.js';
-import { info, StreamDisplay } from '../utils/ui.js';
+import { info, error, StreamDisplay } from '../utils/ui.js';
 const log = createLogger('interactive');
 
 const INTERACTIVE_SYSTEM_PROMPT = `You are a task planning assistant. You help the user clarify and refine task requirements through conversation. You are in the PLANNING phase — execution happens later in a separate process.
@@ -138,6 +138,11 @@ export async function interactiveMode(
   projectDir: string,
   initialInput?: string,
 ): Promise<InteractiveModeResult> {
+  if (isNonInteractiveMode()) {
+    error('Non-interactive mode does not support interactive prompts.');
+    return { confirmed: false, task: '' };
+  }
+
   const globalConfig = loadGlobalConfig();
   const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
   const provider = getProvider(providerType);

@@ -19,18 +19,21 @@ import {
   type BranchListItem,
 } from '../task/branchList.js';
 import { autoCommitAndPush } from '../task/autoCommit.js';
-import { selectOption, confirm, promptInput } from '../prompt/index.js';
+import { selectOption, confirm, promptInput, promptMultiline } from '../prompt/index.js';
 import { info, success, error as logError, warn } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
 import { executeTask, type TaskExecutionOptions } from './taskExecution.js';
 import { listWorkflows } from '../config/workflowLoader.js';
 import { getCurrentWorkflow } from '../config/paths.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
+import { buildBranchContext } from '../task/branchContext.js';
+import { askAboutBranch } from './ask.js';
+import { isNonInteractiveMode } from '../utils/runtime.js';
 
 const log = createLogger('list-tasks');
 
 /** Actions available for a listed branch */
-export type ListAction = 'diff' | 'resume' | 'try' | 'merge' | 'delete';
+export type ListAction = 'diff' | 'resume' | 'ask' | 'try' | 'merge' | 'delete';
 
 /**
  * Check if a branch has already been merged into HEAD.
@@ -102,6 +105,7 @@ async function showDiffAndPromptAction(
     [
       { label: 'View diff', value: 'diff', description: 'Show full diff in pager' },
       { label: 'Resume', value: 'resume', description: 'Continue work on the branch (worktree)' },
+      { label: 'Ask', value: 'ask', description: 'Ask about outcome or next steps' },
       { label: 'Try merge', value: 'try', description: 'Squash merge (stage changes without commit)' },
       { label: 'Merge & cleanup', value: 'merge', description: 'Merge and delete branch' },
       { label: 'Delete', value: 'delete', description: 'Discard changes, delete branch' },
@@ -259,46 +263,6 @@ async function selectWorkflowForInstruction(projectDir: string): Promise<string 
 /**
  * Get branch context: diff stat and commit log from main branch.
  */
-function getBranchContext(projectDir: string, branch: string): string {
-  const defaultBranch = detectDefaultBranch(projectDir);
-  const lines: string[] = [];
-
-  // Get diff stat
-  try {
-    const diffStat = execFileSync(
-      'git', ['diff', '--stat', `${defaultBranch}...${branch}`],
-      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' }
-    ).trim();
-    if (diffStat) {
-      lines.push('## 現在の変更内容（mainからの差分）');
-      lines.push('```');
-      lines.push(diffStat);
-      lines.push('```');
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  // Get commit log
-  try {
-    const commitLog = execFileSync(
-      'git', ['log', '--oneline', `${defaultBranch}..${branch}`],
-      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' }
-    ).trim();
-    if (commitLog) {
-      lines.push('');
-      lines.push('## コミット履歴');
-      lines.push('```');
-      lines.push(commitLog);
-      lines.push('```');
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return lines.length > 0 ? lines.join('\n') + '\n\n' : '';
-}
-
 /**
  * Resume branch: reuse or create a worktree, give additional instructions,
  * and continue the workflow.
@@ -332,7 +296,9 @@ export async function resumeBranch(
 
   try {
     // 4. Build instruction with branch context
-    const branchContext = getBranchContext(projectDir, branch);
+    const branchContext = buildBranchContext(projectDir, branch, {
+      originalInstruction: item.originalInstruction,
+    });
     const fullInstruction = branchContext
       ? `${branchContext}## 追加指示\n${instruction}`
       : instruction;
@@ -366,6 +332,11 @@ export async function resumeBranch(
  */
 export async function listTasks(cwd: string, options?: TaskExecutionOptions): Promise<void> {
   log.info('Starting list-tasks');
+
+  if (isNonInteractiveMode()) {
+    logError('Non-interactive mode does not support `takt list`.');
+    return;
+  }
 
   const defaultBranch = detectDefaultBranch(cwd);
   let branches = listTaktBranches(cwd);
@@ -421,6 +392,23 @@ export async function listTasks(cwd: string, options?: TaskExecutionOptions): Pr
       case 'resume':
         await resumeBranch(cwd, item, options);
         break;
+      case 'ask': {
+        let question = await promptMultiline('質問を入力（空行で送信）');
+        while (question) {
+          await askAboutBranch(cwd, {
+            branch: item.info.branch,
+            question,
+            originalInstruction: item.originalInstruction,
+            provider: options?.provider,
+            model: options?.model,
+          });
+          if (isNonInteractiveMode()) {
+            break;
+          }
+          question = await promptMultiline('追加の質問を入力（空行で送信）');
+        }
+        break;
+      }
       case 'try':
         tryMergeBranch(cwd, item);
         break;

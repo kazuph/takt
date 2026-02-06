@@ -24,6 +24,7 @@ vi.mock('../prompt/index.js', () => ({
   promptInput: vi.fn(),
   confirm: vi.fn(),
   selectOption: vi.fn(),
+  promptMultiline: vi.fn(),
 }));
 
 vi.mock('../task/summarize.js', () => ({

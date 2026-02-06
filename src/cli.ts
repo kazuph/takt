@@ -46,7 +46,7 @@ import {
 import { retryPrCreation } from './commands/prRetry.js';
 import { listWorkflows, loadAllWorkflows, isWorkflowPath } from './config/workflowLoader.js';
 import { getLanguage } from './config/globalConfig.js';
-import { selectOptionWithDefault, confirm } from './prompt/index.js';
+import { selectOptionWithDefault, confirm, promptMultiline } from './prompt/index.js';
 import { createSharedClone } from './task/clone.js';
 import { autoCommitAndPush } from './task/autoCommit.js';
 import { summarizeTaskName } from './task/summarize.js';
@@ -56,6 +56,8 @@ import { resolveIssueTask, isIssueReference } from './github/issue.js';
 import { createPullRequest, getDefaultBranch, hasCommitsBetween, hasRemoteBranch, pushBranch, buildPrBody } from './github/pr.js';
 import { generatePrDraft } from './github/pr-writer.js';
 import { loadLatestSessionLog } from './utils/session.js';
+import { isNonInteractiveMode, setNonInteractiveMode, setQuietMode } from './utils/runtime.js';
+import { askAboutBranch } from './commands/ask.js';
 import type { TaskExecutionOptions } from './commands/taskExecution.js';
 import type { ProviderType } from './providers/index.js';
 
@@ -147,6 +149,11 @@ async function selectAndExecuteTask(
     return;
   }
 
+  if (isNonInteractiveMode() && options?.createWorktree === undefined) {
+    error('Non-interactive mode requires --create-worktree yes|no.');
+    return;
+  }
+
   const { execCwd, isWorktree, branch } = await confirmAndCreateWorktree(
     cwd,
     task,
@@ -169,7 +176,8 @@ async function selectAndExecuteTask(
 
     // PR creation: --auto-pr → create automatically, otherwise ask
     if (commitResult.success && commitResult.commitHash && branch) {
-      const shouldCreatePr = options?.autoPr === true || await confirm('Create pull request?', false);
+      const shouldCreatePr = options?.autoPr === true
+        || (!isNonInteractiveMode() && await confirm('Create pull request?', false));
       if (shouldCreatePr) {
         const base = getDefaultBranch(cwd);
         if (!hasCommitsBetween(cwd, base, branch)) {
@@ -222,6 +230,24 @@ async function selectAndExecuteTask(
     }
   }
 
+  if (taskSuccess && isWorktree && branch && !isNonInteractiveMode()) {
+    const shouldAsk = await confirm('成果について質問しますか？', false);
+    if (shouldAsk) {
+      let question = await promptMultiline('質問を入力（空行で送信）');
+      while (question) {
+        await askAboutBranch(cwd, {
+          branch,
+          task,
+          workflow: workflowIdentifier,
+          question,
+          provider: agentOverrides?.provider,
+          model: agentOverrides?.model,
+        });
+        question = await promptMultiline('追加の質問を入力（空行で送信）');
+      }
+    }
+  }
+
   if (!taskSuccess) {
     process.exit(1);
   }
@@ -248,6 +274,10 @@ async function determineWorkflow(projectDir: string, override?: string): Promise
       return null;
     }
     return override;
+  }
+  if (isNonInteractiveMode()) {
+    error('Non-interactive mode requires --workflow <name|path>.');
+    return null;
   }
   return selectWorkflow(projectDir);
 }
@@ -321,6 +351,7 @@ program
   .option('-w, --workflow <name>', 'Workflow name or path to workflow file')
   .option('-b, --branch <name>', 'Branch name (auto-generated if omitted)')
   .option('--auto-pr', 'Create PR after successful execution')
+  .option('--non-interactive', 'Disable prompts; require explicit flags')
   .option('--repo <owner/repo>', 'Repository (defaults to current)')
   .option('--provider <name>', 'Override agent provider (claude|codex|gemini|mock)')
   .option('--model <name>', 'Override agent model')
@@ -339,8 +370,9 @@ program.hook('preAction', async () => {
   // Pipeline mode: triggered by --pipeline flag
   const rootOpts = program.opts();
   pipelineMode = rootOpts.pipeline === true;
+  setNonInteractiveMode(rootOpts.nonInteractive === true || pipelineMode);
 
-  await initGlobalDirs({ nonInteractive: pipelineMode });
+  await initGlobalDirs({ nonInteractive: rootOpts.nonInteractive === true || pipelineMode });
   initProjectDirs(projectRoot);
 
   const verbose = rootOpts.verbose === true || isVerboseMode(projectRoot);
@@ -364,8 +396,17 @@ program.hook('preAction', async () => {
 
   // Quiet mode: CLI flag takes precedence over config
   quietMode = rootOpts.quiet === true || config.minimalOutput === true;
+  setQuietMode(quietMode);
 
-  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, projectRoot, verbose, pipelineMode, quietMode });
+  log.info('TAKT CLI starting', {
+    version: cliVersion,
+    cwd: resolvedCwd,
+    projectRoot,
+    verbose,
+    pipelineMode,
+    quietMode,
+    nonInteractive: rootOpts.nonInteractive === true || pipelineMode,
+  });
 });
 
 /** Get whether quiet mode is active (CLI flag or config, resolved in preAction) */
@@ -562,6 +603,11 @@ program
 
       await selectAndExecuteTask(resolvedCwd, projectRoot, resolvedTask, selectOptions, agentOverrides);
       return;
+    }
+
+    if (isNonInteractiveMode()) {
+      error('Non-interactive mode requires --task, --issue, or a direct task argument.');
+      process.exit(1);
     }
 
     // Short single word or no task → interactive mode (with optional initial input)

@@ -110,6 +110,7 @@ vi.mock('../cli.js', () => ({
 vi.mock('../prompt/index.js', () => ({
   selectOption: vi.fn().mockResolvedValue('stop'),
   promptInput: vi.fn().mockResolvedValue(null),
+  promptMultiline: vi.fn(),
 }));
 
 vi.mock('../workflow/phase-runner.js', () => ({

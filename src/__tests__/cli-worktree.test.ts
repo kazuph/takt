@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../prompt/index.js', () => ({
   confirm: vi.fn(),
   selectOptionWithDefault: vi.fn(),
+  promptMultiline: vi.fn(),
 }));
 
 vi.mock('../task/clone.js', () => ({

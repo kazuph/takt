@@ -22,6 +22,7 @@ vi.mock('node:os', async () => {
 // Mock the prompt to avoid interactive input
 vi.mock('../prompt/index.js', () => ({
   selectOptionWithDefault: vi.fn().mockResolvedValue('ja'),
+  promptMultiline: vi.fn(),
 }));
 
 // Import after mocks are set up

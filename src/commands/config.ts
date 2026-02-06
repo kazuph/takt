@@ -6,8 +6,9 @@
  */
 
 import chalk from 'chalk';
-import { info, success } from '../utils/ui.js';
+import { info, success, error } from '../utils/ui.js';
 import { selectOption } from '../prompt/index.js';
+import { isNonInteractiveMode } from '../utils/runtime.js';
 import {
   loadProjectConfig,
   updateProjectConfig,
@@ -104,6 +105,10 @@ export async function switchConfig(cwd: string, modeName?: string): Promise<bool
 
   // No mode specified - show selection prompt
   if (!modeName) {
+    if (isNonInteractiveMode()) {
+      error('Non-interactive mode requires a permission mode argument.');
+      return false;
+    }
     info(`Current mode: ${currentMode}`);
 
     const options = getPermissionModeOptions(currentMode);

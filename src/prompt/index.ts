@@ -297,6 +297,68 @@ export async function promptInput(message: string): Promise<string | null> {
 }
 
 /**
+ * Prompt user for multiline input.
+ * Finish input with an empty line. Empty input returns null.
+ */
+export async function promptMultiline(message: string): Promise<string | null> {
+  const stdin = process.stdin;
+  const wasRaw = stdin.isRaw;
+  const wasPaused = typeof stdin.isPaused === 'function' ? stdin.isPaused() : false;
+
+  if (wasRaw) {
+    stdin.setRawMode(false);
+  }
+  if (wasPaused && stdin.readable && !stdin.destroyed) {
+    stdin.resume();
+  }
+
+  console.log(chalk.green(message));
+
+  return await new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: stdin,
+      output: process.stdout,
+      terminal: true,
+    });
+    const lines: string[] = [];
+    let resolved = false;
+
+    const finalize = (result: string | null): void => {
+      if (resolved) return;
+      resolved = true;
+      rl.close();
+      resolve(result);
+    };
+
+    rl.on('line', (line) => {
+      if (line === '') {
+        const result = lines.length > 0 ? lines.join('\n').trim() : null;
+        finalize(result);
+        return;
+      }
+      lines.push(line);
+    });
+
+    rl.on('SIGINT', () => {
+      finalize(null);
+    });
+
+    rl.on('close', () => {
+      if (!resolved) {
+        const result = lines.length > 0 ? lines.join('\n').trim() : null;
+        resolve(result);
+      }
+      if (wasRaw) {
+        stdin.setRawMode(true);
+      }
+      if (wasPaused && typeof stdin.pause === 'function') {
+        stdin.pause();
+      }
+    });
+  });
+}
+
+/**
  * Read multiline input from a readable stream.
  * An empty line finishes input. If the first line is empty, returns null.
  * Exported for testing.

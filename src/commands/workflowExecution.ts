@@ -14,7 +14,7 @@ import {
   updateWorktreeSession,
 } from '../config/paths.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
-import { isQuietMode } from '../cli.js';
+import { isQuietMode, isNonInteractiveMode } from '../utils/runtime.js';
 import {
   header,
   info,
@@ -239,6 +239,11 @@ export async function executeWorkflow(
     );
     info(`現在のステップ: ${request.currentStep}`);
 
+    if (isNonInteractiveMode()) {
+      warn('Non-interactive mode: iteration limit reached, aborting.');
+      return null;
+    }
+
     const action = await selectOption('続行しますか？', [
       {
         label: '続行する（追加イテレーション数を入力）',
@@ -277,6 +282,10 @@ export async function executeWorkflow(
     onUserInput: async (request) => {
       const questions = extractInfoQuestions(request);
       if (questions.length === 0) {
+        if (isNonInteractiveMode()) {
+          warn('Non-interactive mode: skipping user input prompt.');
+          return null;
+        }
         return promptInput('追加情報を入力してください（空で中断）');
       }
 
@@ -288,6 +297,11 @@ export async function executeWorkflow(
         timestamp: new Date().toISOString(),
       };
       appendNdjsonLine(ndjsonLogPath, needsRecord);
+
+      if (isNonInteractiveMode()) {
+        warn('Non-interactive mode: skipping user input prompt.');
+        return null;
+      }
 
       const action = await selectOption('情報不足のため確認が必要です。回答しますか？', [
         { label: '回答する', value: 'answer' },

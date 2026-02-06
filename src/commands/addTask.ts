@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import { promptInput, confirm, selectOption } from '../prompt/index.js';
-import { success, info } from '../utils/ui.js';
+import { success, info, error } from '../utils/ui.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
@@ -19,6 +19,7 @@ import { getCurrentWorkflow } from '../config/paths.js';
 import { interactiveMode } from './interactive.js';
 import { isIssueReference, resolveIssueTask } from '../github/issue.js';
 import type { TaskFileData } from '../task/schema.js';
+import { isNonInteractiveMode } from '../utils/runtime.js';
 
 const log = createLogger('add-task');
 
@@ -76,6 +77,11 @@ async function generateFilename(tasksDir: string, taskContent: string, cwd: stri
  *   5. YAMLファイル作成
  */
 export async function addTask(cwd: string, task?: string): Promise<void> {
+  if (isNonInteractiveMode()) {
+    error('Non-interactive mode does not support `takt add`.');
+    return;
+  }
+
   const tasksDir = path.join(cwd, '.takt', 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
 

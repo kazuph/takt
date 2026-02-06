@@ -27,6 +27,7 @@ vi.mock('../config/paths.js', () => ({
 
 vi.mock('../utils/ui.js', () => ({
   info: vi.fn(),
+  error: vi.fn(),
   StreamDisplay: vi.fn().mockImplementation(() => ({
     createHandler: vi.fn(() => vi.fn()),
     flush: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('node:readline', () => ({
 import { createInterface } from 'node:readline';
 import { getProvider } from '../providers/index.js';
 import { interactiveMode } from '../commands/interactive.js';
+import { setNonInteractiveMode } from '../utils/runtime.js';
 
 const mockGetProvider = vi.mocked(getProvider);
 const mockCreateInterface = vi.mocked(createInterface);
@@ -105,9 +107,18 @@ function setupMockProvider(responses: string[]): void {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  setNonInteractiveMode(false);
 });
 
 describe('interactiveMode', () => {
+  it('should return confirmed=false when non-interactive mode is enabled', async () => {
+    setNonInteractiveMode(true);
+
+    const result = await interactiveMode('/project', '/project');
+
+    expect(result.confirmed).toBe(false);
+  });
+
   it('should return confirmed=false when user types /cancel', async () => {
     // Given
     setupInputSequence(['/cancel']);
