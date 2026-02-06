@@ -346,6 +346,8 @@ describe('listTasks non-interactive JSON output', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'takt-test-json-'));
     // Initialize as a git repo so detectDefaultBranch works
     execFileSync('git', ['init', '--initial-branch', 'main'], { cwd: tmpDir, stdio: 'pipe' });
+    execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: tmpDir, stdio: 'pipe' });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: tmpDir, stdio: 'pipe' });
     execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: tmpDir, stdio: 'pipe' });
   });
 
