@@ -107,18 +107,14 @@ export async function saveTaskFromInteractive(
  * add command handler
  *
  * Flow:
- *   1. ピース選択
- *   2. AI対話モードでタスクを詰める
- *   3. 会話履歴からAIがタスク要約を生成
- *   4. 要約からファイル名をAIで生成
- *   5. ワークツリー/ブランチ設定
- *   6. YAMLファイル作成
+ *   A) Issue参照の場合: issue取得 → ピース選択 → ワークツリー設定 → YAML作成
+ *   B) それ以外: ピース選択 → AI対話モード → ワークツリー設定 → YAML作成
  */
 export async function addTask(cwd: string, task?: string): Promise<void> {
   const tasksDir = path.join(cwd, '.takt', 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
 
-  // 1. ピース選択（Issue参照以外の場合、対話モードの前に実施）
+  // ピース選択とタスク内容の決定
   let taskContent: string;
   let issueNumber: number | undefined;
   let piece: string | undefined;
@@ -138,6 +134,14 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
       info(`Failed to fetch issue ${task}: ${msg}`);
       return;
     }
+
+    // ピース選択（issue取得成功後）
+    const pieceId = await determinePiece(cwd);
+    if (pieceId === null) {
+      info('Cancelled.');
+      return;
+    }
+    piece = pieceId;
   } else {
     // ピース選択を先に行い、結果を対話モードに渡す
     const pieceId = await determinePiece(cwd);
@@ -185,7 +189,7 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     autoPr = await confirm('Auto-create PR?', false);
   }
 
-  // 4. YAMLファイル作成
+  // YAMLファイル作成
   const filePath = await saveTaskFile(cwd, taskContent, {
     piece,
     issue: issueNumber,

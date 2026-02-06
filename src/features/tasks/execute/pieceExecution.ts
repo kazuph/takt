@@ -46,7 +46,7 @@ import {
   type NdjsonInteractiveStart,
   type NdjsonInteractiveEnd,
 } from '../../../infra/fs/index.js';
-import { createLogger, notifySuccess, notifyError } from '../../../shared/utils/index.js';
+import { createLogger, notifySuccess, notifyError, preventSleep } from '../../../shared/utils/index.js';
 import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
 import { getLabel } from '../../../shared/i18n/index.js';
@@ -141,7 +141,13 @@ export async function executePiece(
 
   // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
-  const currentProvider = loadGlobalConfig().provider ?? 'claude';
+  const globalConfig = loadGlobalConfig();
+  const currentProvider = globalConfig.provider ?? 'claude';
+
+  // Prevent macOS idle sleep if configured
+  if (globalConfig.preventSleep) {
+    preventSleep();
+  }
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
     : loadAgentSessions(projectCwd, currentProvider);
@@ -273,8 +279,17 @@ export async function executePiece(
       log.debug('Step instruction', instruction);
     }
 
+    // Find movement index for progress display
+    const movementIndex = pieceConfig.movements.findIndex((m) => m.name === step.name);
+    const totalMovements = pieceConfig.movements.length;
+
     // Use quiet mode from CLI (already resolved CLI flag + config in preAction)
-    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode());
+    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode(), {
+      iteration,
+      maxIterations: pieceConfig.maxIterations,
+      movementIndex: movementIndex >= 0 ? movementIndex : 0,
+      totalMovements,
+    });
 
     // Write step_start record to NDJSON log
     const record: NdjsonStepStart = {
