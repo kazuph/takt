@@ -46,7 +46,7 @@ import {
   type NdjsonInteractiveStart,
   type NdjsonInteractiveEnd,
 } from '../../../infra/fs/index.js';
-import { createLogger, notifySuccess, notifyError } from '../../../shared/utils/index.js';
+import { createLogger, notifySuccess, notifyError, preventSleep } from '../../../shared/utils/index.js';
 import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
 import { getLabel } from '../../../shared/i18n/index.js';
@@ -141,7 +141,13 @@ export async function executePiece(
 
   // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
-  const currentProvider = loadGlobalConfig().provider ?? 'claude';
+  const globalConfig = loadGlobalConfig();
+  const currentProvider = globalConfig.provider ?? 'claude';
+
+  // Prevent macOS idle sleep if configured
+  if (globalConfig.preventSleep) {
+    preventSleep();
+  }
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
     : loadAgentSessions(projectCwd, currentProvider);

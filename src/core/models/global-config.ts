@@ -63,6 +63,8 @@ export interface GlobalConfig {
   pieceCategoriesFile?: string;
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branchNameStrategy?: 'romaji' | 'ai';
+  /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
+  preventSleep?: boolean;
 }
 
 /** Project-level configuration */

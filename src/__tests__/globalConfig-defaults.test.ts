@@ -193,4 +193,51 @@ describe('loadGlobalConfig', () => {
     expect(config3.language).toBe('en');
     expect(config3).not.toBe(config1);
   });
+
+  it('should load prevent_sleep config from config.yaml', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(
+      getGlobalConfigPath(),
+      'language: en\nprevent_sleep: true\n',
+      'utf-8',
+    );
+
+    const config = loadGlobalConfig();
+
+    expect(config.preventSleep).toBe(true);
+  });
+
+  it('should save and reload prevent_sleep config', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.preventSleep = true;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.preventSleep).toBe(true);
+  });
+
+  it('should save prevent_sleep: false when explicitly set', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.preventSleep = false;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.preventSleep).toBe(false);
+  });
+
+  it('should have undefined preventSleep by default', () => {
+    const config = loadGlobalConfig();
+    expect(config.preventSleep).toBeUndefined();
+  });
 });

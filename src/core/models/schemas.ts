@@ -272,6 +272,8 @@ export const GlobalConfigSchema = z.object({
   piece_categories_file: z.string().optional(),
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branch_name_strategy: z.enum(['romaji', 'ai']).optional(),
+  /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
+  prevent_sleep: z.boolean().optional(),
 });
 
 /** Project config schema */

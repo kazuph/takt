@@ -89,6 +89,7 @@ export class GlobalConfigManager {
       bookmarksFile: parsed.bookmarks_file,
       pieceCategoriesFile: parsed.piece_categories_file,
       branchNameStrategy: parsed.branch_name_strategy,
+      preventSleep: parsed.prevent_sleep,
     };
     this.cachedConfig = config;
     return config;
@@ -150,6 +151,9 @@ export class GlobalConfigManager {
     }
     if (config.branchNameStrategy) {
       raw.branch_name_strategy = config.branchNameStrategy;
+    }
+    if (config.preventSleep !== undefined) {
+      raw.prevent_sleep = config.preventSleep;
     }
     writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
     this.invalidateCache();
