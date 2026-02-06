@@ -43,7 +43,7 @@ async function generateFilename(tasksDir: string, taskContent: string, cwd: stri
 export async function saveTaskFile(
   cwd: string,
   taskContent: string,
-  options?: { piece?: string; issue?: number; worktree?: boolean | string; branch?: string },
+  options?: { piece?: string; issue?: number; worktree?: boolean | string; branch?: string; autoPr?: boolean },
 ): Promise<string> {
   const tasksDir = path.join(cwd, '.takt', 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
@@ -57,6 +57,7 @@ export async function saveTaskFile(
     ...(options?.branch && { branch: options.branch }),
     ...(options?.piece && { piece: options.piece }),
     ...(options?.issue !== undefined && { issue: options.issue }),
+    ...(options?.autoPr !== undefined && { auto_pr: options.autoPr }),
   };
 
   const filePath = path.join(tasksDir, filename);
@@ -169,9 +170,10 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     taskContent = result.task;
   }
 
-  // ワークツリー/ブランチ設定
+  // ワークツリー/ブランチ/PR設定
   let worktree: boolean | string | undefined;
   let branch: string | undefined;
+  let autoPr: boolean | undefined;
 
   const useWorktree = await confirm('Create worktree?', true);
   if (useWorktree) {
@@ -182,6 +184,8 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     if (customBranch) {
       branch = customBranch;
     }
+
+    autoPr = await confirm('Auto-create PR?', false);
   }
 
   // YAMLファイル作成
@@ -190,6 +194,7 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     issue: issueNumber,
     worktree,
     branch,
+    autoPr,
   });
 
   const filename = path.basename(filePath);
@@ -200,6 +205,9 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
   }
   if (branch) {
     info(`  Branch: ${branch}`);
+  }
+  if (autoPr) {
+    info(`  Auto-PR: yes`);
   }
   if (piece) {
     info(`  Piece: ${piece}`);
