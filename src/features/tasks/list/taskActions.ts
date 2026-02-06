@@ -15,11 +15,11 @@ import {
   removeClone,
   removeCloneMeta,
   cleanupOrphanedClone,
-  detectDefaultBranch,
+  buildBranchContext,
   autoCommitAndPush,
   type BranchListItem,
 } from '../../../infra/task/index.js';
-import { selectOption, promptInput } from '../../../shared/prompt/index.js';
+import { selectOption, promptInput, readMultilineFromStream } from '../../../shared/prompt/index.js';
 import { info, success, error as logError, warn, header, blankLine } from '../../../shared/ui/index.js';
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { executeTask } from '../execute/taskExecution.js';
@@ -27,11 +27,12 @@ import type { TaskExecutionOptions } from '../execute/types.js';
 import { listPieces, getCurrentPiece } from '../../../infra/config/index.js';
 import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import { encodeWorktreePath } from '../../../infra/config/project/sessionStore.js';
+import { askAboutBranch } from '../execute/ask.js';
 
 const log = createLogger('list-tasks');
 
 /** Actions available for a listed branch */
-export type ListAction = 'diff' | 'instruct' | 'try' | 'merge' | 'delete';
+export type ListAction = 'diff' | 'resume' | 'ask' | 'instruct' | 'try' | 'merge' | 'delete';
 
 /**
  * Check if a branch has already been merged into HEAD.
@@ -103,7 +104,8 @@ export async function showDiffAndPromptAction(
     `Action for ${item.info.branch}:`,
     [
       { label: 'View diff', value: 'diff', description: 'Show full diff in pager' },
-      { label: 'Instruct', value: 'instruct', description: 'Give additional instructions via temp clone' },
+      { label: 'Resume', value: 'resume', description: 'Give additional instructions via temp clone' },
+      { label: 'Ask', value: 'ask', description: 'Ask about outcome or next steps' },
       { label: 'Try merge', value: 'try', description: 'Squash merge (stage changes without commit)' },
       { label: 'Merge & cleanup', value: 'merge', description: 'Merge and delete branch' },
       { label: 'Delete', value: 'delete', description: 'Discard changes, delete branch' },
@@ -258,52 +260,36 @@ async function selectPieceForInstruction(projectDir: string): Promise<string | n
   return await selectOption('Select piece:', options);
 }
 
-/**
- * Get branch context: diff stat and commit log from main branch.
- */
-function getBranchContext(projectDir: string, branch: string): string {
-  const defaultBranch = detectDefaultBranch(projectDir);
-  const lines: string[] = [];
+async function promptMultiline(message: string): Promise<string | null> {
+  const stdin = process.stdin;
+  const wasRaw = stdin.isRaw;
+  const wasPaused = typeof stdin.isPaused === 'function' ? stdin.isPaused() : false;
 
-  try {
-    const diffStat = execFileSync(
-      'git', ['diff', '--stat', `${defaultBranch}...${branch}`],
-      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' },
-    ).trim();
-    if (diffStat) {
-      lines.push('## 現在の変更内容（mainからの差分）');
-      lines.push('```');
-      lines.push(diffStat);
-      lines.push('```');
-    }
-  } catch {
-    // Ignore errors
+  if (wasRaw && typeof stdin.setRawMode === 'function') {
+    stdin.setRawMode(false);
+  }
+  if (wasPaused && typeof stdin.resume === 'function') {
+    stdin.resume();
   }
 
-  try {
-    const commitLog = execFileSync(
-      'git', ['log', '--oneline', `${defaultBranch}..${branch}`],
-      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' },
-    ).trim();
-    if (commitLog) {
-      lines.push('');
-      lines.push('## コミット履歴');
-      lines.push('```');
-      lines.push(commitLog);
-      lines.push('```');
-    }
-  } catch {
-    // Ignore errors
+  console.log(chalk.green(message));
+  const result = await readMultilineFromStream(stdin);
+
+  if (wasRaw && typeof stdin.setRawMode === 'function') {
+    stdin.setRawMode(true);
+  }
+  if (wasPaused && typeof stdin.pause === 'function') {
+    stdin.pause();
   }
 
-  return lines.length > 0 ? lines.join('\n') + '\n\n' : '';
+  return result;
 }
 
 /**
- * Instruct branch: create a temp clone, give additional instructions,
+ * Resume branch: create a temp clone, give additional instructions,
  * auto-commit+push, then remove clone.
  */
-export async function instructBranch(
+export async function resumeBranch(
   projectDir: string,
   item: BranchListItem,
   options?: TaskExecutionOptions,
@@ -322,13 +308,15 @@ export async function instructBranch(
     return false;
   }
 
-  log.info('Instructing branch via temp clone', { branch, piece: selectedPiece });
+  log.info('Resuming branch via temp clone', { branch, piece: selectedPiece });
   info(`Running instruction on ${branch}...`);
 
   const clone = createTempCloneForBranch(projectDir, branch);
 
   try {
-    const branchContext = getBranchContext(projectDir, branch);
+    const branchContext = buildBranchContext(projectDir, branch, {
+      originalInstruction: item.originalInstruction,
+    });
     const fullInstruction = branchContext
       ? `${branchContext}## 追加指示\n${instruction}`
       : instruction;
@@ -362,3 +350,26 @@ export async function instructBranch(
   }
 }
 
+/** Backward-compatible alias */
+export const instructBranch = resumeBranch;
+
+/**
+ * Ask about branch outcome or next steps.
+ */
+export async function askBranch(
+  projectDir: string,
+  item: BranchListItem,
+  options?: TaskExecutionOptions,
+): Promise<void> {
+  let question = await promptMultiline('質問を入力（空行で送信）');
+  while (question) {
+    await askAboutBranch(projectDir, {
+      branch: item.info.branch,
+      question,
+      originalInstruction: item.originalInstruction,
+      provider: options?.provider,
+      model: options?.model,
+    });
+    question = await promptMultiline('追加の質問を入力（空行で送信）');
+  }
+}

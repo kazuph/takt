@@ -43,6 +43,7 @@ export {
   getOriginalInstruction,
   buildListItems,
 } from './branchList.js';
+export { buildBranchContext, type BranchContextOptions } from './branchContext.js';
 export { stageAndCommit } from './git.js';
 export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
 export { summarizeTaskName } from './summarize.js';

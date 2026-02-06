@@ -25,4 +25,6 @@ export {
   mergeBranch,
   deleteBranch,
   instructBranch,
+  resumeBranch,
+  askBranch,
 } from './list/index.js';

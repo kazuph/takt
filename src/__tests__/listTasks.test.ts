@@ -143,10 +143,12 @@ describe('buildListItems', () => {
 });
 
 describe('ListAction type', () => {
-  it('should include diff, instruct, try, merge, delete (no skip)', () => {
-    const actions: ListAction[] = ['diff', 'instruct', 'try', 'merge', 'delete'];
-    expect(actions).toHaveLength(5);
+  it('should include diff, resume, ask, instruct, try, merge, delete (no skip)', () => {
+    const actions: ListAction[] = ['diff', 'resume', 'ask', 'instruct', 'try', 'merge', 'delete'];
+    expect(actions).toHaveLength(7);
     expect(actions).toContain('diff');
+    expect(actions).toContain('resume');
+    expect(actions).toContain('ask');
     expect(actions).toContain('instruct');
     expect(actions).toContain('try');
     expect(actions).toContain('merge');

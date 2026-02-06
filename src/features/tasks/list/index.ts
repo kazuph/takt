@@ -3,7 +3,7 @@
  *
  * Interactive UI for reviewing branch-based task results,
  * pending tasks (.takt/tasks/), and failed tasks (.takt/failed/).
- * Individual actions (merge, delete, instruct, diff) are in taskActions.ts.
+ * Individual actions (merge, delete, resume, ask, diff) are in taskActions.ts.
  * Task delete actions are in taskDeleteActions.ts.
  * Non-interactive mode is in listNonInteractive.ts.
  */
@@ -26,6 +26,8 @@ import {
   mergeBranch,
   deleteBranch,
   instructBranch,
+  resumeBranch,
+  askBranch,
 } from './taskActions.js';
 import { deletePendingTask, deleteFailedTask } from './taskDeleteActions.js';
 import { listTasksNonInteractive, type ListNonInteractiveOptions } from './listNonInteractive.js';
@@ -40,6 +42,8 @@ export {
   mergeBranch,
   deleteBranch,
   instructBranch,
+  resumeBranch,
+  askBranch,
 } from './taskActions.js';
 
 /** Task action type for the task action selection menu */
@@ -147,8 +151,12 @@ export async function listTasks(
       if (action === null) continue;
 
       switch (action) {
+        case 'resume':
         case 'instruct':
-          await instructBranch(cwd, item, options);
+          await resumeBranch(cwd, item, options);
+          break;
+        case 'ask':
+          await askBranch(cwd, item, options);
           break;
         case 'try':
           tryMergeBranch(cwd, item);

@@ -37,7 +37,7 @@ program
 
 program
   .command('list')
-  .description('List task branches (merge/delete)')
+  .description('List task branches (resume/ask/merge/delete)')
   .option('--non-interactive', 'Run list in non-interactive mode')
   .option('--action <action>', 'Non-interactive action (diff|try|merge|delete)')
   .option('--format <format>', 'Output format for non-interactive list (text|json)')
