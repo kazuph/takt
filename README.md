@@ -732,7 +732,8 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure)
 | `provider` | - | Override provider for this movement (`claude` or `codex`) |
 | `model` | - | Override model for this movement |
 | `permission_mode` | - | Permission mode: `readonly`, `edit`, `full` (provider-independent) |
-| `report` | - | Auto-generated report file settings (name, format) |
+| `output_contracts` | - | Output contract definitions for report files |
+| `quality_gates` | - | AI directives for movement completion requirements |
 
 ## API Usage Example
 

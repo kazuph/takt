@@ -728,7 +728,8 @@ rules:
 | `provider` | - | このムーブメントのプロバイダーを上書き（`claude`または`codex`） |
 | `model` | - | このムーブメントのモデルを上書き |
 | `permission_mode` | - | パーミッションモード: `readonly`、`edit`、`full`（プロバイダー非依存） |
-| `report` | - | 自動生成レポートのファイル設定（name, format） |
+| `output_contracts` | - | レポートファイルの出力契約定義 |
+| `quality_gates` | - | ムーブメント完了要件のAIディレクティブ |
 
 ## API使用例
 
