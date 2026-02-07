@@ -5,7 +5,7 @@
  * Assembles template variables and renders a single complete template.
  */
 
-import type { PieceMovement, Language, OutputContractEntry } from '../../models/types.js';
+import type { PieceMovement, Language } from '../../models/types.js';
 import type { InstructionContext } from './instruction-context.js';
 import { replaceTemplatePlaceholders } from './escape.js';
 import { isOutputContractItem, renderReportContext, renderReportOutputInstruction } from './InstructionBuilder.js';
