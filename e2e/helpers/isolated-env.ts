@@ -24,11 +24,13 @@ export function createIsolatedEnv(): IsolatedEnv {
   const gitConfigPath = join(baseDir, '.gitconfig');
 
   // Create TAKT config directory and config.yaml
+  // Use TAKT_E2E_PROVIDER to match config provider with the actual provider being tested
+  const configProvider = process.env.TAKT_E2E_PROVIDER ?? 'claude';
   mkdirSync(taktDir, { recursive: true });
   writeFileSync(
     join(taktDir, 'config.yaml'),
     [
-      'provider: claude',
+      `provider: ${configProvider}`,
       'language: en',
       'log_level: info',
       'default_piece: default',

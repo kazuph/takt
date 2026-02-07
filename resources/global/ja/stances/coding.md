@@ -26,6 +26,7 @@
 | デフォルト引数の濫用 | `function f(x = 'default')` で全呼び出し元が省略 | 値がどこから来るか分からない |
 | null合体で渡す口がない | `options?.cwd ?? process.cwd()` で上位から渡す経路なし | 常にフォールバックになる（意味がない） |
 | try-catch で空値返却 | `catch { return ''; }` | エラーを握りつぶす |
+| 不整合な値のサイレントスキップ | `if (a !== expected) return undefined` | 設定ミスが実行時に黙って無視される |
 
 ### 正しい実装
 
@@ -73,6 +74,7 @@ function createEngine(config, cwd: string) {
 1. **必須データか？** → フォールバックせず、エラーにする
 2. **全呼び出し元が省略しているか？** → デフォルト引数を削除し、必須にする
 3. **上位から値を渡す経路があるか？** → なければ引数・フィールドを追加
+4. **関連する値に不変条件があるか？** → ロード・セットアップ時にクロスバリデーションする
 
 ## 抽象化
 
@@ -131,19 +133,19 @@ function processOrder(order) {
 
 ```typescript
 // ❌ メソッド増殖 — 構成の違いを呼び出し側に押し付けている
-interface Provider {
-  call(name, prompt, options)
-  callCustom(name, prompt, systemPrompt, options)
-  callAgent(name, prompt, options)
-  callSkill(name, prompt, options)
+interface NotificationService {
+  sendEmail(to, subject, body)
+  sendSMS(to, message)
+  sendPush(to, title, body)
+  sendSlack(channel, message)
 }
 
 // ✅ 構成と実行の分離
-interface Provider {
-  setup(config: Setup): Agent
+interface NotificationService {
+  setup(config: ChannelConfig): Channel
 }
-interface Agent {
-  call(prompt, options): Promise<Response>
+interface Channel {
+  send(message: Message): Promise<Result>
 }
 ```
 
@@ -153,14 +155,14 @@ interface Agent {
 
 ```typescript
 // ❌ 汎用層に特定実装のインポートと分岐
-import { callSpecificImpl } from '../specific/index.js'
-if (config.specificFlag) {
-  return callSpecificImpl(config.name, task, options)
+import { uploadToS3 } from '../aws/s3.js'
+if (config.storage === 's3') {
+  return uploadToS3(config.bucket, file, options)
 }
 
-// ✅ 汎用層はインターフェースのみ。非対応は setup 時にエラー
-const agent = provider.setup({ specificFlag: config.specificFlag })
-return agent.call(task, options)
+// ✅ 汎用層はインターフェースのみ。非対応は生成時にエラー
+const storage = createStorage(config)
+return storage.upload(file, options)
 ```
 
 ## 構造

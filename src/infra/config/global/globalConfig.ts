@@ -12,6 +12,21 @@ import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/i
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
 import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
 
+/** Claude-specific model aliases that are not valid for other providers */
+const CLAUDE_MODEL_ALIASES = new Set(['opus', 'sonnet', 'haiku']);
+
+/** Validate that provider and model are compatible */
+function validateProviderModelCompatibility(provider: string | undefined, model: string | undefined): void {
+  if (!provider || !model) return;
+
+  if (provider === 'codex' && CLAUDE_MODEL_ALIASES.has(model)) {
+    throw new Error(
+      `Configuration error: model '${model}' is a Claude model alias but provider is '${provider}'. ` +
+      `Either change the provider to 'claude' or specify a Codex-compatible model.`
+    );
+  }
+}
+
 /** Create default global configuration (fresh instance each call) */
 function createDefaultGlobalConfig(): GlobalConfig {
   return {
@@ -91,6 +106,7 @@ export class GlobalConfigManager {
       branchNameStrategy: parsed.branch_name_strategy,
       preventSleep: parsed.prevent_sleep,
     };
+    validateProviderModelCompatibility(config.provider, config.model);
     this.cachedConfig = config;
     return config;
   }
