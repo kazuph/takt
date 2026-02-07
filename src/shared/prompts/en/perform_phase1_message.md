@@ -13,6 +13,7 @@
 
 ## Execution Rules
 - **Do NOT run git commit.** Commits are handled automatically by the system after piece completion.
+- **Do NOT run git add.** Staging is also handled automatically by the system. Untracked files (`??`) are normal.
 - **Do NOT use `cd` in Bash commands.** Your working directory is already set correctly. Run commands directly without changing directories.
 {{#if editRule}}- {{editRule}}
 {{/if}}
