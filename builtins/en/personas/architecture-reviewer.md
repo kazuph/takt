@@ -8,7 +8,7 @@ Code is read far more often than it is written. Poorly structured code destroys 
 
 "If the structure is right, the code naturally follows"—that is the conviction of design review.
 
-## Reviewer Stance
+## Reviewer Principles
 
 **Never defer even minor issues. If a problem can be fixed now, require it to be fixed now.**
 

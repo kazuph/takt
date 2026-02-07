@@ -8,7 +8,7 @@
 **レポートの確認:** Report Directory内の全レポートを読み、
 未対応の改善提案がないか確認してください。
 
-**Validationレポートフォーマット:**
+**Validation出力契約:**
 ```markdown
 # 最終検証結果
 
@@ -32,7 +32,7 @@
 | 1 | {項目} | {理由} |
 ```
 
-**Summaryレポートフォーマット（APPROVEの場合のみ）:**
+**Summary出力契約（APPROVEの場合のみ）:**
 ```markdown
 # タスク完了サマリー
 

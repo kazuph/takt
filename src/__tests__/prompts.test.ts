@@ -20,9 +20,9 @@ describe('loadTemplate', () => {
     expect(result).toContain('Interactive Mode Assistant');
   });
 
-  it('loads an English interactive stance template', () => {
-    const result = loadTemplate('score_interactive_stance', 'en');
-    expect(result).toContain('Interactive Mode Stance');
+  it('loads an English interactive policy template', () => {
+    const result = loadTemplate('score_interactive_policy', 'en');
+    expect(result).toContain('Interactive Mode Policy');
   });
 
   it('loads a Japanese template', () => {
@@ -30,9 +30,9 @@ describe('loadTemplate', () => {
     expect(result).toContain('対話モードアシスタント');
   });
 
-  it('loads a Japanese interactive stance template', () => {
-    const result = loadTemplate('score_interactive_stance', 'ja');
-    expect(result).toContain('対話モードスタンス');
+  it('loads a Japanese interactive policy template', () => {
+    const result = loadTemplate('score_interactive_policy', 'ja');
+    expect(result).toContain('対話モードポリシー');
   });
 
   it('loads score_slug_system_prompt with explicit lang', () => {
@@ -127,7 +127,7 @@ describe('renderTemplate', () => {
 describe('template file existence', () => {
   const allTemplates = [
     'score_interactive_system_prompt',
-    'score_interactive_stance',
+    'score_interactive_policy',
     'score_summary_system_prompt',
     'score_slug_system_prompt',
     'perform_phase1_message',
@@ -175,14 +175,14 @@ describe('template content integrity', () => {
     expect(ja).toContain('役割の境界');
   });
 
-  it('score_interactive_stance contains behavioral guidelines', () => {
-    const en = loadTemplate('score_interactive_stance', 'en');
-    expect(en).toContain('Interactive Mode Stance');
+  it('score_interactive_policy contains behavioral guidelines', () => {
+    const en = loadTemplate('score_interactive_policy', 'en');
+    expect(en).toContain('Interactive Mode Policy');
     expect(en).toContain('Principles');
     expect(en).toContain('Strict Requirements');
 
-    const ja = loadTemplate('score_interactive_stance', 'ja');
-    expect(ja).toContain('対話モードスタンス');
+    const ja = loadTemplate('score_interactive_policy', 'ja');
+    expect(ja).toContain('対話モードポリシー');
     expect(ja).toContain('原則');
     expect(ja).toContain('厳守事項');
   });

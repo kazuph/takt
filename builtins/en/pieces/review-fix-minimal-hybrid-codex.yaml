@@ -4,10 +4,10 @@
 name: review-fix-minimal-hybrid-codex
 description: Review and fix piece for existing code (starts with review, no implementation)
 max_iterations: 20
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
-  testing: ../stances/testing.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
+  testing: ../policies/testing.md
 personas:
   coder: ../personas/coder.md
   ai-antipattern-reviewer: ../personas/ai-antipattern-reviewer.md
@@ -18,15 +18,15 @@ instructions:
   ai-fix: ../instructions/ai-fix.md
   supervise: ../instructions/supervise.md
   fix-supervisor: ../instructions/fix-supervisor.md
-report_formats:
-  ai-review: ../report-formats/ai-review.md
+output_contracts:
+  ai-review: ../output-contracts/ai-review.md
 initial_movement: reviewers
 movements:
   - name: implement
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     report:
@@ -57,7 +57,7 @@ movements:
       - name: ai_review
         edit: false
         persona: ai-antipattern-reviewer
-        stance: review
+        policy: review
         report:
           name: 03-ai-review.md
           format: ai-review
@@ -74,7 +74,7 @@ movements:
       - name: supervise
         edit: false
         persona: supervisor
-        stance: review
+        policy: review
         report:
           - Validation: 05-supervisor-validation.md
           - Summary: summary.md
@@ -104,7 +104,7 @@ movements:
         edit: true
         persona: coder
         provider: codex
-        stance:
+        policy:
           - coding
           - testing
         allowed_tools:
@@ -125,7 +125,7 @@ movements:
         edit: true
         persona: coder
         provider: codex
-        stance:
+        policy:
           - coding
           - testing
         allowed_tools:
@@ -150,7 +150,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     allowed_tools:
@@ -175,7 +175,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     allowed_tools:

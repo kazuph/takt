@@ -1,12 +1,12 @@
 /**
- * Tests for stance and persona features.
+ * Tests for policy and persona features.
  *
  * Covers:
  * - persona/persona_name fields in piece YAML (with agent/agent_name backward compat)
- * - Piece-level stances definition and resolution
- * - Movement-level stance references
- * - Stance injection in InstructionBuilder
- * - File-based stance content loading via resolveContentPath
+ * - Piece-level policies definition and resolution
+ * - Movement-level policy references
+ * - Policy injection in InstructionBuilder
+ * - File-based policy content loading via resolveContentPath
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -20,7 +20,7 @@ import type { InstructionContext } from '../core/piece/instruction/instruction-c
 // --- Test helpers ---
 
 function createTestDir(): string {
-  return mkdtempSync(join(tmpdir(), 'takt-stance-'));
+  return mkdtempSync(join(tmpdir(), 'takt-policy-'));
 }
 
 function makeContext(overrides: Partial<InstructionContext> = {}): InstructionContext {
@@ -183,9 +183,9 @@ describe('persona alias', () => {
   });
 });
 
-// --- stance tests ---
+// --- policy tests ---
 
-describe('stances', () => {
+describe('policies', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -196,10 +196,10 @@ describe('stances', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should resolve piece-level stances from inline content', () => {
+  it('should resolve piece-level policies from inline content', () => {
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         coding: 'Always write clean code.',
         review: 'Be thorough in reviews.',
       },
@@ -207,52 +207,52 @@ describe('stances', () => {
         {
           name: 'step1',
           persona: 'coder',
-          stance: 'coding',
+          policy: 'coding',
           instruction: '{task}',
         },
       ],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.stances).toEqual({
+    expect(config.policies).toEqual({
       coding: 'Always write clean code.',
       review: 'Be thorough in reviews.',
     });
-    expect(config.movements[0]!.stanceContents).toEqual(['Always write clean code.']);
+    expect(config.movements[0]!.policyContents).toEqual(['Always write clean code.']);
   });
 
-  it('should resolve stances from .md file paths', () => {
-    const stancesDir = join(testDir, 'stances');
-    mkdirSync(stancesDir, { recursive: true });
-    writeFileSync(join(stancesDir, 'coding.md'), '# Coding Stance\n\nWrite clean code.');
-    writeFileSync(join(stancesDir, 'review.md'), '# Review Stance\n\nBe thorough.');
+  it('should resolve policies from .md file paths', () => {
+    const policiesDir = join(testDir, 'policies');
+    mkdirSync(policiesDir, { recursive: true });
+    writeFileSync(join(policiesDir, 'coding.md'), '# Coding Policy\n\nWrite clean code.');
+    writeFileSync(join(policiesDir, 'review.md'), '# Review Policy\n\nBe thorough.');
 
     const raw = {
       name: 'test-piece',
-      stances: {
-        coding: './stances/coding.md',
-        review: './stances/review.md',
+      policies: {
+        coding: './policies/coding.md',
+        review: './policies/review.md',
       },
       movements: [
         {
           name: 'step1',
           persona: 'coder',
-          stance: 'coding',
+          policy: 'coding',
           instruction: '{task}',
         },
       ],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.stances!['coding']).toBe('# Coding Stance\n\nWrite clean code.');
-    expect(config.stances!['review']).toBe('# Review Stance\n\nBe thorough.');
-    expect(config.movements[0]!.stanceContents).toEqual(['# Coding Stance\n\nWrite clean code.']);
+    expect(config.policies!['coding']).toBe('# Coding Policy\n\nWrite clean code.');
+    expect(config.policies!['review']).toBe('# Review Policy\n\nBe thorough.');
+    expect(config.movements[0]!.policyContents).toEqual(['# Coding Policy\n\nWrite clean code.']);
   });
 
-  it('should support multiple stance references (array)', () => {
+  it('should support multiple policy references (array)', () => {
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         coding: 'Clean code rules.',
         testing: 'Test everything.',
       },
@@ -260,23 +260,23 @@ describe('stances', () => {
         {
           name: 'step1',
           persona: 'coder',
-          stance: ['coding', 'testing'],
+          policy: ['coding', 'testing'],
           instruction: '{task}',
         },
       ],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toEqual([
+    expect(config.movements[0]!.policyContents).toEqual([
       'Clean code rules.',
       'Test everything.',
     ]);
   });
 
-  it('should leave stanceContents undefined when no stance specified', () => {
+  it('should leave policyContents undefined when no policy specified', () => {
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         coding: 'Clean code rules.',
       },
       movements: [
@@ -289,33 +289,33 @@ describe('stances', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toBeUndefined();
+    expect(config.movements[0]!.policyContents).toBeUndefined();
   });
 
-  it('should treat unknown stance names as inline content', () => {
+  it('should treat unknown policy names as inline content', () => {
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         coding: 'Clean code rules.',
       },
       movements: [
         {
           name: 'step1',
           persona: 'coder',
-          stance: 'nonexistent',
+          policy: 'nonexistent',
           instruction: '{task}',
         },
       ],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toEqual(['nonexistent']);
+    expect(config.movements[0]!.policyContents).toEqual(['nonexistent']);
   });
 
-  it('should resolve stances in parallel sub-movements', () => {
+  it('should resolve policies in parallel sub-movements', () => {
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         review: 'Be thorough.',
         coding: 'Write clean code.',
       },
@@ -326,13 +326,13 @@ describe('stances', () => {
             {
               name: 'arch-review',
               persona: 'reviewer',
-              stance: 'review',
+              policy: 'review',
               instruction: '{task}',
             },
             {
               name: 'code-fix',
               persona: 'coder',
-              stance: ['coding', 'review'],
+              policy: ['coding', 'review'],
               instruction: '{task}',
             },
           ],
@@ -343,11 +343,11 @@ describe('stances', () => {
 
     const config = normalizePieceConfig(raw, testDir);
     const parallel = config.movements[0]!.parallel!;
-    expect(parallel[0]!.stanceContents).toEqual(['Be thorough.']);
-    expect(parallel[1]!.stanceContents).toEqual(['Write clean code.', 'Be thorough.']);
+    expect(parallel[0]!.policyContents).toEqual(['Be thorough.']);
+    expect(parallel[1]!.policyContents).toEqual(['Write clean code.', 'Be thorough.']);
   });
 
-  it('should leave config.stances undefined when no stances defined', () => {
+  it('should leave config.policies undefined when no policies defined', () => {
     const raw = {
       name: 'test-piece',
       movements: [
@@ -360,51 +360,51 @@ describe('stances', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.stances).toBeUndefined();
+    expect(config.policies).toBeUndefined();
   });
 });
 
-// --- stance injection in InstructionBuilder ---
+// --- policy injection in InstructionBuilder ---
 
-describe('InstructionBuilder stance injection', () => {
-  it('should inject stance content into instruction (JA)', () => {
+describe('InstructionBuilder policy injection', () => {
+  it('should inject policy content into instruction (JA)', () => {
     const step = {
       name: 'test-step',
       personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
-      stanceContents: ['# Coding Stance\n\nWrite clean code.'],
+      policyContents: ['# Coding Policy\n\nWrite clean code.'],
     };
 
     const ctx = makeContext({ language: 'ja' });
     const builder = new InstructionBuilder(step, ctx);
     const result = builder.build();
 
-    expect(result).toContain('## Stance');
-    expect(result).toContain('# Coding Stance');
+    expect(result).toContain('## Policy');
+    expect(result).toContain('# Coding Policy');
     expect(result).toContain('Write clean code.');
-    expect(result).toContain('Stance Reminder');
+    expect(result).toContain('Policy Reminder');
   });
 
-  it('should inject stance content into instruction (EN)', () => {
+  it('should inject policy content into instruction (EN)', () => {
     const step = {
       name: 'test-step',
       personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
-      stanceContents: ['# Coding Stance\n\nWrite clean code.'],
+      policyContents: ['# Coding Policy\n\nWrite clean code.'],
     };
 
     const ctx = makeContext({ language: 'en' });
     const builder = new InstructionBuilder(step, ctx);
     const result = builder.build();
 
-    expect(result).toContain('## Stance');
+    expect(result).toContain('## Policy');
     expect(result).toContain('Write clean code.');
-    expect(result).toContain('Stance Reminder');
+    expect(result).toContain('Policy Reminder');
   });
 
-  it('should not inject stance section when no stanceContents', () => {
+  it('should not inject policy section when no policyContents', () => {
     const step = {
       name: 'test-step',
       personaDisplayName: 'coder',
@@ -416,46 +416,46 @@ describe('InstructionBuilder stance injection', () => {
     const builder = new InstructionBuilder(step, ctx);
     const result = builder.build();
 
-    expect(result).not.toContain('## Stance');
-    expect(result).not.toContain('Stance Reminder');
+    expect(result).not.toContain('## Policy');
+    expect(result).not.toContain('Policy Reminder');
   });
 
-  it('should join multiple stances with separator', () => {
+  it('should join multiple policies with separator', () => {
     const step = {
       name: 'test-step',
       personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
-      stanceContents: ['Stance A content.', 'Stance B content.'],
+      policyContents: ['Policy A content.', 'Policy B content.'],
     };
 
     const ctx = makeContext({ language: 'en' });
     const builder = new InstructionBuilder(step, ctx);
     const result = builder.build();
 
-    expect(result).toContain('Stance A content.');
-    expect(result).toContain('Stance B content.');
+    expect(result).toContain('Policy A content.');
+    expect(result).toContain('Policy B content.');
     expect(result).toContain('---');
   });
 
-  it('should prefer context stanceContents over step stanceContents', () => {
+  it('should prefer context policyContents over step policyContents', () => {
     const step = {
       name: 'test-step',
       personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
-      stanceContents: ['Step stance.'],
+      policyContents: ['Step policy.'],
     };
 
     const ctx = makeContext({
       language: 'en',
-      stanceContents: ['Context stance.'],
+      policyContents: ['Context policy.'],
     });
     const builder = new InstructionBuilder(step, ctx);
     const result = builder.build();
 
-    expect(result).toContain('Context stance.');
-    expect(result).not.toContain('Step stance.');
+    expect(result).toContain('Context policy.');
+    expect(result).not.toContain('Step policy.');
   });
 });
 
@@ -468,15 +468,15 @@ describe('section reference resolution', () => {
     testDir = createTestDir();
     // Create resource files
     mkdirSync(join(testDir, 'personas'), { recursive: true });
-    mkdirSync(join(testDir, 'stances'), { recursive: true });
+    mkdirSync(join(testDir, 'policies'), { recursive: true });
     mkdirSync(join(testDir, 'instructions'), { recursive: true });
-    mkdirSync(join(testDir, 'report-formats'), { recursive: true });
+    mkdirSync(join(testDir, 'output-contracts'), { recursive: true });
 
     writeFileSync(join(testDir, 'personas', 'coder.md'), '# Coder\nYou are a coder.');
-    writeFileSync(join(testDir, 'stances', 'coding.md'), '# Coding Stance\nWrite clean code.');
-    writeFileSync(join(testDir, 'stances', 'testing.md'), '# Testing Stance\nTest everything.');
+    writeFileSync(join(testDir, 'policies', 'coding.md'), '# Coding Policy\nWrite clean code.');
+    writeFileSync(join(testDir, 'policies', 'testing.md'), '# Testing Policy\nTest everything.');
     writeFileSync(join(testDir, 'instructions', 'implement.md'), 'Implement the feature.');
-    writeFileSync(join(testDir, 'report-formats', 'plan.md'), '# Plan Report\n## Goal\n{goal}');
+    writeFileSync(join(testDir, 'output-contracts', 'plan.md'), '# Plan Report\n## Goal\n{goal}');
   });
 
   afterEach(() => {
@@ -499,38 +499,38 @@ describe('section reference resolution', () => {
     expect(config.movements[0]!.personaPath).toBe(join(testDir, 'personas', 'coder.md'));
   });
 
-  it('should resolve stance from stances section by name', () => {
+  it('should resolve policy from policies section by name', () => {
     const raw = {
       name: 'test-piece',
-      stances: { coding: './stances/coding.md' },
+      policies: { coding: './policies/coding.md' },
       movements: [{
         name: 'impl',
         persona: 'coder',
-        stance: 'coding',
+        policy: 'coding',
         instruction: '{task}',
       }],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toEqual(['# Coding Stance\nWrite clean code.']);
+    expect(config.movements[0]!.policyContents).toEqual(['# Coding Policy\nWrite clean code.']);
   });
 
-  it('should resolve mixed stance array: [section-name, ./path]', () => {
+  it('should resolve mixed policy array: [section-name, ./path]', () => {
     const raw = {
       name: 'test-piece',
-      stances: { coding: './stances/coding.md' },
+      policies: { coding: './policies/coding.md' },
       movements: [{
         name: 'impl',
         persona: 'coder',
-        stance: ['coding', './stances/testing.md'],
+        policy: ['coding', './policies/testing.md'],
         instruction: '{task}',
       }],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toEqual([
-      '# Coding Stance\nWrite clean code.',
-      '# Testing Stance\nTest everything.',
+    expect(config.movements[0]!.policyContents).toEqual([
+      '# Coding Policy\nWrite clean code.',
+      '# Testing Policy\nTest everything.',
     ]);
   });
 
@@ -549,10 +549,10 @@ describe('section reference resolution', () => {
     expect(config.movements[0]!.instructionTemplate).toBe('Implement the feature.');
   });
 
-  it('should resolve report format from report_formats section by name', () => {
+  it('should resolve output contract from output_contracts section by name', () => {
     const raw = {
       name: 'test-piece',
-      report_formats: { plan: './report-formats/plan.md' },
+      output_contracts: { plan: './output-contracts/plan.md' },
       movements: [{
         name: 'plan',
         persona: 'planner',
@@ -604,9 +604,9 @@ describe('section reference resolution', () => {
     const raw = {
       name: 'test-piece',
       personas: { coder: './personas/coder.md' },
-      stances: { coding: './stances/coding.md' },
+      policies: { coding: './policies/coding.md' },
       instructions: { implement: './instructions/implement.md' },
-      report_formats: { plan: './report-formats/plan.md' },
+      output_contracts: { plan: './output-contracts/plan.md' },
       movements: [{
         name: 'impl',
         persona: 'coder',
@@ -616,16 +616,16 @@ describe('section reference resolution', () => {
 
     const config = normalizePieceConfig(raw, testDir);
     expect(config.personas).toEqual({ coder: './personas/coder.md' });
-    expect(config.stances).toEqual({ coding: '# Coding Stance\nWrite clean code.' });
+    expect(config.policies).toEqual({ coding: '# Coding Policy\nWrite clean code.' });
     expect(config.instructions).toEqual({ implement: 'Implement the feature.' });
-    expect(config.reportFormats).toEqual({ plan: '# Plan Report\n## Goal\n{goal}' });
+    expect(config.outputContracts).toEqual({ plan: '# Plan Report\n## Goal\n{goal}' });
   });
 
   it('should work with section references in parallel sub-movements', () => {
     const raw = {
       name: 'test-piece',
       personas: { coder: './personas/coder.md' },
-      stances: { coding: './stances/coding.md', testing: './stances/testing.md' },
+      policies: { coding: './policies/coding.md', testing: './policies/testing.md' },
       instructions: { implement: './instructions/implement.md' },
       movements: [{
         name: 'parallel-step',
@@ -633,13 +633,13 @@ describe('section reference resolution', () => {
           {
             name: 'sub1',
             persona: 'coder',
-            stance: 'coding',
+            policy: 'coding',
             instruction: 'implement',
           },
           {
             name: 'sub2',
             persona: 'coder',
-            stance: ['coding', 'testing'],
+            policy: ['coding', 'testing'],
             instruction: '{task}',
           },
         ],
@@ -650,27 +650,27 @@ describe('section reference resolution', () => {
     const config = normalizePieceConfig(raw, testDir);
     const parallel = config.movements[0]!.parallel!;
     expect(parallel[0]!.persona).toBe('./personas/coder.md');
-    expect(parallel[0]!.stanceContents).toEqual(['# Coding Stance\nWrite clean code.']);
+    expect(parallel[0]!.policyContents).toEqual(['# Coding Policy\nWrite clean code.']);
     expect(parallel[0]!.instructionTemplate).toBe('Implement the feature.');
-    expect(parallel[1]!.stanceContents).toEqual([
-      '# Coding Stance\nWrite clean code.',
-      '# Testing Stance\nTest everything.',
+    expect(parallel[1]!.policyContents).toEqual([
+      '# Coding Policy\nWrite clean code.',
+      '# Testing Policy\nTest everything.',
     ]);
   });
 
-  it('should resolve stance by plain name (primary mechanism)', () => {
+  it('should resolve policy by plain name (primary mechanism)', () => {
     const raw = {
       name: 'test-piece',
-      stances: { coding: './stances/coding.md' },
+      policies: { coding: './policies/coding.md' },
       movements: [{
         name: 'impl',
         persona: 'coder',
-        stance: 'coding',
+        policy: 'coding',
         instruction: '{task}',
       }],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toEqual(['# Coding Stance\nWrite clean code.']);
+    expect(config.movements[0]!.policyContents).toEqual(['# Coding Policy\nWrite clean code.']);
   });
 });

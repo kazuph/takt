@@ -1,4 +1,4 @@
-# {Stance Name}
+# {Policy Name}
 
 {One-sentence purpose description.}
 

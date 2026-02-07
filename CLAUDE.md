@@ -205,8 +205,8 @@ Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method 
   logs/                   # Session logs in NDJSON format (gitignored)
 
 builtins/                 # Bundled defaults (builtin, read from dist/ at runtime)
-  en/                     # English personas, stances, instructions, and pieces
-  ja/                     # Japanese personas, stances, instructions, and pieces
+  en/                     # English personas, policies, instructions, and pieces
+  ja/                     # Japanese personas, policies, instructions, and pieces
   project/                # Project-level template files
   skill/                  # Claude Code skill files
 ```
@@ -236,7 +236,7 @@ steps:
     pass_previous_response: true        # Default: true
     report:
       name: 01-plan.md                 # Report file name
-      format: |                         # Report format template
+      format: |                         # Output contract template
         # Plan Report
         ...
     rules:

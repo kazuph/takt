@@ -11,18 +11,18 @@ max_iterations: 10            # 最大イテレーション数（必須）
 initial_movement: plan        # 最初に実行する movement 名（必須）
 
 # セクションマップ（キー → ファイルパスの対応表）
-stances:                      # スタンス定義（任意）
-  coding: ../stances/coding.md
-  review: ../stances/review.md
+policies:                     # ポリシー定義（任意）
+  coding: ../policies/coding.md
+  review: ../policies/review.md
 personas:                     # ペルソナ定義（任意）
   coder: ../personas/coder.md
   reviewer: ../personas/architecture-reviewer.md
 instructions:                 # 指示テンプレート定義（任意）
   plan: ../instructions/plan.md
   implement: ../instructions/implement.md
-report_formats:               # レポートフォーマット定義（任意）
-  plan: ../report-formats/plan.md
-  review: ../report-formats/architecture-review.md
+output_contracts:             # 出力契約定義（任意）
+  plan: ../output-contracts/plan.md
+  review: ../output-contracts/architecture-review.md
 knowledge:                    # ナレッジ定義（任意）
   architecture: ../knowledge/architecture.md
 
@@ -46,8 +46,8 @@ movement 内では**キー名**で参照する（パスを直接書かない）�
 ```yaml
 - name: movement-name          # movement 名（必須、一意）
   persona: coder               # ペルソナキー（personas マップを参照、任意）
-  stance: coding               # スタンスキー（stances マップを参照、任意）
-  stance: [coding, testing]    # 複数指定も可（配列）
+  policy: coding               # ポリシーキー（policies マップを参照、任意）
+  policy: [coding, testing]    # 複数指定も可（配列）
   instruction: implement       # 指示テンプレートキー（instructions マップを参照、任意）
   knowledge: architecture      # ナレッジキー（knowledge マップを参照、任意）
   edit: true                   # ファイル編集可否（必須）
@@ -70,7 +70,7 @@ movement 内では**キー名**で参照する（パスを直接書かない）�
   parallel:                    # 並列サブステップ配列（これがあると parallel movement）
     - name: arch-review
       persona: architecture-reviewer
-      stance: review
+      policy: review
       knowledge: architecture
       edit: false
       instruction: review-arch
@@ -83,7 +83,7 @@ movement 内では**キー名**で参照する（パスを直接書かない）�
 
     - name: qa-review
       persona: qa-reviewer
-      stance: review
+      policy: review
       edit: false
       instruction: review-qa
       rules:
@@ -136,10 +136,10 @@ rules:
 ```yaml
 report:
   name: 01-plan.md
-  format: plan                 # report_formats マップのキーを参照
+  format: plan                 # output_contracts マップのキーを参照
 ```
 
-`format` がキー文字列の場合、トップレベル `report_formats:` セクションから対応する .md ファイルを読み込み、フォーマット指示として使用する。
+`format` がキー文字列の場合、トップレベル `output_contracts:` セクションから対応する .md ファイルを読み込み、出力契約指示として使用する。
 
 ### 形式1b: 単一レポート（name + format インライン）
 

@@ -5,9 +5,9 @@
 | レイヤー | ガイド | 配置先 |
 |---------|--------|--------|
 | ペルソナ | [PERSONA_STYLE_GUIDE.md](PERSONA_STYLE_GUIDE.md) | system prompt（`{{agentDefinition}}`） |
-| スタンス | [STANCE_STYLE_GUIDE.md](STANCE_STYLE_GUIDE.md) | user message（instruction 内） |
+| ポリシー | [POLICY_STYLE_GUIDE.md](POLICY_STYLE_GUIDE.md) | user message（instruction 内） |
 | インストラクション | [INSTRUCTION_STYLE_GUIDE.md](INSTRUCTION_STYLE_GUIDE.md) | Phase 1 メッセージ（`{{instructions}}`） |
-| レポートフォーマット | [REPORT_STYLE_GUIDE.md](REPORT_STYLE_GUIDE.md) | `report.format` |
+| 出力契約 | [OUTPUT_CONTRACT_STYLE_GUIDE.md](OUTPUT_CONTRACT_STYLE_GUIDE.md) | `report.format` |
 
 ## テンプレート
 
@@ -19,8 +19,8 @@ templates/
 │   ├── simple.md      # ドメイン知識なし
 │   ├── expert.md      # ドメイン知識あり
 │   └── character.md   # キャラクター型
-├── stances/           # スタンステンプレート
-│   └── stance.md
+├── policies/          # ポリシーテンプレート
+│   └── policy.md
 ├── instructions/      # インストラクションテンプレート
 │   ├── plan.md
 │   ├── architect.md
@@ -31,7 +31,7 @@ templates/
 │   ├── fix.md
 │   ├── arbitrate.md
 │   └── supervise.md
-└── reports/           # レポートフォーマットテンプレート
+└── reports/           # 出力契約テンプレート
     ├── plan.md
     ├── architecture-design.md
     ├── review.md
@@ -53,7 +53,7 @@ User Message (Phase 1):
   [User Request]
   [Previous Response]
   [Instructions]          ← ムーブメント固有の手順
-    └── [スタンス]        ← 共有行動規範（instruction 内に含まれる）
+    └── [ポリシー]        ← 共有行動規範（instruction 内に含まれる）
 ```
 
 ## 分離の判断フロー
@@ -61,7 +61,7 @@ User Message (Phase 1):
 ```
 この内容は…
 ├── 特定のエージェントだけが必要 → ペルソナ
-├── 複数のエージェントが共有 → スタンス
+├── 複数のエージェントが共有 → ポリシー
 ├── ムーブメント固有の手順 → インストラクション
-└── エージェント出力の構造定義 → レポートフォーマット
+└── エージェント出力の構造定義 → 出力契約
 ```

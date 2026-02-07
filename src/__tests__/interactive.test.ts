@@ -240,13 +240,13 @@ describe('interactiveMode', () => {
     // When
     await interactiveMode('/project');
 
-    // Then: each call receives user input with stance injected (session maintains context)
+    // Then: each call receives user input with policy injected (session maintains context)
     const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
     expect(mockProvider._call.mock.calls[0]?.[0]).toContain('first msg');
     expect(mockProvider._call.mock.calls[1]?.[0]).toContain('second msg');
   });
 
-  it('should inject stance into user messages', async () => {
+  it('should inject policy into user messages', async () => {
     // Given
     setupInputSequence(['test message', '/cancel']);
     setupMockProvider(['response']);
@@ -254,12 +254,12 @@ describe('interactiveMode', () => {
     // When
     await interactiveMode('/project');
 
-    // Then: the prompt should contain stance section
+    // Then: the prompt should contain policy section
     const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
     const prompt = mockProvider._call.mock.calls[0]?.[0] as string;
-    expect(prompt).toContain('## Stance');
-    expect(prompt).toContain('Interactive Mode Stance');
-    expect(prompt).toContain('Stance Reminder');
+    expect(prompt).toContain('## Policy');
+    expect(prompt).toContain('Interactive Mode Policy');
+    expect(prompt).toContain('Policy Reminder');
     expect(prompt).toContain('test message');
   });
 
@@ -271,11 +271,11 @@ describe('interactiveMode', () => {
     // When
     const result = await interactiveMode('/project', 'a');
 
-    // Then: AI should have been called with initialInput (with stance injected)
+    // Then: AI should have been called with initialInput (with policy injected)
     const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
     expect(mockProvider._call).toHaveBeenCalledTimes(2);
     const firstPrompt = mockProvider._call.mock.calls[0]?.[0] as string;
-    expect(firstPrompt).toContain('## Stance');
+    expect(firstPrompt).toContain('## Policy');
     expect(firstPrompt).toContain('a');
 
     // /go should work because initialInput already started conversation
@@ -291,7 +291,7 @@ describe('interactiveMode', () => {
     // When
     const result = await interactiveMode('/project', 'a');
 
-    // Then: each call receives only its own input with stance (session handles history)
+    // Then: each call receives only its own input with policy (session handles history)
     const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
     expect(mockProvider._call).toHaveBeenCalledTimes(3);
     const firstPrompt = mockProvider._call.mock.calls[0]?.[0] as string;

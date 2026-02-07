@@ -20,32 +20,32 @@ Faceted Promptingはプロンプトを5つの直交する関心に分解する�
 
 | 関心 | 答える問い | 例 |
 |------|-----------|-----|
-| **Persona** | エージェントは*誰*か？ | 役割定義、専門性、判断基準 |
-| **Stance** | *どう*振る舞うべきか？ | コーディング規約、レビュー基準、行動規範 |
-| **Instruction** | *何を*すべきか？ | ステップ固有の手順、変数付きテンプレート |
-| **Knowledge** | *何を*知っているか？ | アーキテクチャ文書、API仕様、例示、参照資料 |
-| **Report Format** | *何を*出力すべきか？ | 出力構造、レポートテンプレート |
+| **Persona** | *誰*として判断するか？ | 役割定義、専門性 |
+| **Policy** | *何を*守るか？ | 禁止事項、品質基準、優先順位 |
+| **Instruction** | *何を*するか？ | 目標、ステップ固有の手順 |
+| **Knowledge** | *何を*参照するか？ | 前提知識、ドメイン資料、API仕様 |
+| **Output Contract** | *どう*出すか？ | 出力構造、レポートテンプレート |
 
 各関心はそれぞれのディレクトリに独立したファイル（Markdownまたはテンプレート）として格納される。
 
 ```
 workflows/       # ワークフロー定義
 personas/        # WHO — 役割定義
-stances/         # HOW — 行動規範
+policies/        # RULES — 禁止事項・品質基準
 instructions/    # WHAT — ステップ手順
-knowledge/       # CONTEXT — ドメイン情報
-report-formats/  # OUTPUT — レポートテンプレート
+knowledge/       # CONTEXT — 前提知識・参照資料
+output-contracts/ # OUTPUT — 出力契約テンプレート
 ```
 
 ### なぜこの5つか？
 
 **Persona** と **Instruction** は最低限必要なもの — エージェントが誰で、何をすべきかを定義する必要がある。しかし実際には、さらに3つの関心が独立した軸として現れる。
 
-- **Stance** はタスクをまたがって適用される行動規範を捉える。「コーディングスタンス」（命名規則、エラーハンドリングのルール、テスト要件）は、機能実装でもバグ修正でも同じように適用される。スタンスは「横断的関心事」であり、作業内容に関係なく作業の*やり方*を規定する。
+- **Policy** はタスクをまたがって適用される規約・基準を捉える。「何を守るか」を定義する関心であり、禁止事項（フォールバック濫用の禁止、未使用コードの禁止）、品質基準（REJECT/APPROVE判定）、優先順位（正確性 > 速度）を含む。コーディングポリシーは機能実装でもバグ修正でも同じように適用される。ポリシーは「横断的関心事」であり、作業内容に関係なく守るべきルールを規定する。
 
-- **Knowledge** は複数のエージェントが必要とするドメイン知識を捉える。アーキテクチャ文書はプランナーにもレビュアーにも関係がある。ナレッジをインストラクションから分離することで重複を防ぎ、インストラクションを手順に集中させる。
+- **Knowledge** はエージェントが判断の前提として参照する情報を捉える。アーキテクチャ文書はプランナーにもレビュアーにも関係がある。ナレッジをインストラクションから分離することで重複を防ぎ、インストラクションを手順に集中させる。ナレッジは記述的（「このドメインはこうなっている」）であり、規範的（「こうすべき」）なルールはPolicyに属する。
 
-- **Report Format** は作業そのものとは独立した出力構造を捉える。同じレビューフォーマットをアーキテクチャレビュアーとセキュリティレビュアーの両方で使える。出力形式の変更がエージェントの振る舞いに影響しない。
+- **Output Contract** は作業そのものとは独立した出力構造を捉える。同じレビューフォーマットをアーキテクチャレビュアーとセキュリティレビュアーの両方で使える。出力形式の変更がエージェントの振る舞いに影響しない。
 
 ## 宣言的な合成
 
@@ -55,8 +55,8 @@ Faceted Promptingの中核メカニズムは**宣言的な合成**である。�
 
 - **各ファイルは1つの関心だけを持つ。** ペルソナファイルには役割と専門性のみを記述し、ステップ固有の手順は書かない。
 - **合成は宣言的。** ワークフローは*どの*関心を組み合わせるかを記述し、プロンプトを*どう*組み立てるかは記述しない。
-- **自由に組み合わせ可能。** 同じ `coder` ペルソナを異なるスタンスとインストラクションで異なるステップに使える。
-- **ファイルが再利用の単位。** 同じファイルを指すことでスタンスをワークフロー間で共有する。
+- **自由に組み合わせ可能。** 同じ `coder` ペルソナを異なるポリシーとインストラクションで異なるステップに使える。
+- **ファイルが再利用の単位。** 同じファイルを指すことでポリシーをワークフロー間で共有する。
 
 ### TAKTでの実装例
 
@@ -72,9 +72,9 @@ personas:
   coder: ../personas/coder.md
   reviewer: ../personas/architecture-reviewer.md
 
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
 
 instructions:
   plan: ../instructions/plan.md
@@ -83,13 +83,13 @@ instructions:
 knowledge:
   architecture: ../knowledge/architecture.md
 
-report_formats:
-  review: ../report-formats/review.md
+output_contracts:
+  review: ../output-contracts/review.md
 
 movements:
   - name: implement
     persona: coder            # WHO — personas.coder を参照
-    stance: coding            # HOW — stances.coding を参照
+    policy: coding            # RULES — policies.coding を参照
     instruction: implement    # WHAT — instructions.implement を参照
     knowledge: architecture   # CONTEXT — knowledge.architecture を参照
     edit: true
@@ -99,12 +99,12 @@ movements:
 
   - name: review
     persona: reviewer         # 異なる WHO
-    stance: review            # 異なる HOW
+    policy: review            # 異なる RULES
     instruction: review       # 異なる WHAT（共有も可能）
     knowledge: architecture   # 同じ CONTEXT — 再利用
     report:
       name: review.md
-      format: review          # OUTPUT — report_formats.review を参照
+      format: review          # OUTPUT — output_contracts.review を参照
     edit: false
     rules:
       - condition: Approved
@@ -123,27 +123,27 @@ movements:
 | **Modular Prompting** | XML/HTMLタグを使った単一プロンプト内のセクション分け | 関心を*独立ファイル*に分離し、宣言的に合成する |
 | **Prompt Layering** (Airia) | エンタープライズ向けのスタック可能なプロンプトセグメント | 管理ツールであり、プロンプト設計のデザインパターンではない |
 | **PDL** (IBM) | データパイプライン向けのYAMLベースプロンプトプログラミング言語 | 制御フロー（if/for/model呼び出し）が焦点で、関心の分離ではない |
-| **Role/Persona Prompting** | 役割を割り当ててレスポンスを方向付ける | ペルソナは5つの関心の1つにすぎない — スタンス、インストラクション、ナレッジ、出力形式も分離する |
+| **Role/Persona Prompting** | 役割を割り当ててレスポンスを方向付ける | ペルソナは5つの関心の1つにすぎない — ポリシー、インストラクション、ナレッジ、出力契約も分離する |
 
 核心的な違いは次の点にある。既存手法は*タスク*（何をするか）を分解するか、*プロンプトの構造*（どう書式化するか）を整理する。Faceted Promptingは*プロンプトの関心*（各部分がなぜ存在するか）を独立した再利用可能な単位に分解する。
 
 ## 実用上の利点
 
 **ワークフロー作者にとって:**
-- コーディング規約を1つのスタンスファイルで変更すれば、それを使うすべてのワークフローに反映される
-- 既存のペルソナ、スタンス、インストラクションを組み合わせて新しいワークフローを作れる
+- コーディングポリシーを1つのファイルで変更すれば、それを使うすべてのワークフローに反映される
+- 既存のペルソナ、ポリシー、インストラクションを組み合わせて新しいワークフローを作れる
 - 各ファイルを単一の責務に集中させられる
 
 **チームにとって:**
-- プロンプトを複製せずにプロジェクト間で振る舞い（スタンス）を標準化できる
+- プロンプトを複製せずにプロジェクト間でポリシー（品質基準・禁止事項）を標準化できる
 - ドメイン専門家がナレッジファイルを管理し、ワークフロー設計者がインストラクションを管理する分業ができる
 - 個々の関心を独立してレビューできる
 
 **エンジンにとって:**
 - プロンプト組み立ては決定的 — 同じワークフロー定義とファイルからは同じプロンプトが構築される
-- スタンスの配置を最適化できる（例: 「Lost in the Middle」効果に対抗するためプロンプトの先頭と末尾に配置）
+- ポリシーの配置を最適化できる（例: 「Lost in the Middle」効果に対抗するためプロンプトの先頭と末尾に配置）
 - 各関心を他の部分に影響を与えずにステップごとに注入・省略・上書きできる
 
 ## まとめ
 
-Faceted Promptingは、関心の分離（Separation of Concerns）をAIプロンプト工学に適用するデザインパターンである。プロンプトを5つの独立した関心 — Persona、Stance、Instruction、Knowledge、Report Format — に分解し、宣言的に合成することで、再利用可能で保守しやすく透明なマルチエージェントワークフローを実現する。
+Faceted Promptingは、関心の分離（Separation of Concerns）をAIプロンプト工学に適用するデザインパターンである。プロンプトを5つの独立した関心 — Persona、Policy、Instruction、Knowledge、Output Contract — に分解し、宣言的に合成することで、再利用可能で保守しやすく透明なマルチエージェントワークフローを実現する。

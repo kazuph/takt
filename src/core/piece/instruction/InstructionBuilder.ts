@@ -98,11 +98,11 @@ export class InstructionBuilder {
     const hasRetryNote = !!this.context.retryNote;
     const retryNote = hasRetryNote ? escapeTemplateChars(this.context.retryNote!) : '';
 
-    // Stance injection (top + bottom reminder per "Lost in the Middle" research)
-    const stanceContents = this.context.stanceContents ?? this.step.stanceContents;
-    const hasStance = !!(stanceContents && stanceContents.length > 0);
-    const stanceContent = hasStance ? stanceContents!.join('\n\n---\n\n') : '';
-    const stanceReminder = ''; // Reminder text is in the template itself
+    // Policy injection (top + bottom reminder per "Lost in the Middle" research)
+    const policyContents = this.context.policyContents ?? this.step.policyContents;
+    const hasPolicy = !!(policyContents && policyContents.length > 0);
+    const policyContent = hasPolicy ? policyContents!.join('\n\n---\n\n') : '';
+    const policyReminder = ''; // Reminder text is in the template itself
 
     // Knowledge injection (domain-specific knowledge, no reminder needed)
     const knowledgeContents = this.context.knowledgeContents ?? this.step.knowledgeContents;
@@ -130,9 +130,9 @@ export class InstructionBuilder {
       userInputs,
       hasRetryNote,
       retryNote,
-      hasStance,
-      stanceContent,
-      stanceReminder,
+      hasPolicy,
+      policyContent,
+      policyReminder,
       hasKnowledge,
       knowledgeContent,
       instructions,

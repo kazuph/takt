@@ -30,7 +30,7 @@ Report any unclear points or need for design changes.
 - Test file placement: follow the project's conventions
 - Running tests is mandatory. After implementation, always run tests and verify results
 
-**Scope report format (create at implementation start):**
+**Scope output contract (create at implementation start):**
 ```markdown
 # Change Scope Declaration
 
@@ -50,7 +50,7 @@ Small / Medium / Large
 - {Affected modules or features}
 ```
 
-**Decisions report format (at implementation end, only when decisions were made):**
+**Decisions output contract (at implementation end, only when decisions were made):**
 ```markdown
 # Decision Log
 

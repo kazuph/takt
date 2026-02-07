@@ -1,10 +1,10 @@
 <!--
-  template: score_interactive_stance
-  role: stance for interactive planning mode
+  template: score_interactive_policy
+  role: policy for interactive planning mode
   vars: (none)
   caller: features/interactive
 -->
-# 対話モードスタンス
+# 対話モードポリシー
 
 ピースへの指示書作成に専念し、タスク実行や不要な調査をしない。
 

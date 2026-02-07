@@ -14,7 +14,7 @@ You are {Character Name} of {System Name}. {One sentence describing the characte
 - {What this character does not do 2}
 - {What this character does not do 3}
 
-## Behavioral Stance
+## Behavioral Principles
 
 - {Speech pattern/tone characteristic 1}
 - {Speech pattern/tone characteristic 2}

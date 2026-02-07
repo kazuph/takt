@@ -81,8 +81,8 @@ export interface PieceMovement {
   passPreviousResponse: boolean;
   /** Sub-movements to execute in parallel. When set, this movement runs all sub-movements concurrently. */
   parallel?: PieceMovement[];
-  /** Resolved stance content strings (from piece-level stances map, resolved at parse time) */
-  stanceContents?: string[];
+  /** Resolved policy content strings (from piece-level policies map, resolved at parse time) */
+  policyContents?: string[];
   /** Resolved knowledge content strings (from piece-level knowledge map, resolved at parse time) */
   knowledgeContents?: string[];
 }
@@ -131,14 +131,14 @@ export interface PieceConfig {
   description?: string;
   /** Persona definitions — map of name to file path or inline content (raw, not content-resolved) */
   personas?: Record<string, string>;
-  /** Resolved stance definitions — map of name to file content (resolved at parse time) */
-  stances?: Record<string, string>;
+  /** Resolved policy definitions — map of name to file content (resolved at parse time) */
+  policies?: Record<string, string>;
   /** Resolved knowledge definitions — map of name to file content (resolved at parse time) */
   knowledge?: Record<string, string>;
   /** Resolved instruction definitions — map of name to file content (resolved at parse time) */
   instructions?: Record<string, string>;
-  /** Resolved report format definitions — map of name to file content (resolved at parse time) */
-  reportFormats?: Record<string, string>;
+  /** Resolved output contract definitions — map of name to file content (resolved at parse time) */
+  outputContracts?: Record<string, string>;
   movements: PieceMovement[];
   initialMovement: string;
   maxIterations: number;

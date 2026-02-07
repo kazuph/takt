@@ -8,7 +8,7 @@ Run tests, verify the build, and perform final approval.
 **Report verification:** Read all reports in the Report Directory and
 check for any unaddressed improvement suggestions.
 
-**Validation report format:**
+**Validation output contract:**
 ```markdown
 # Final Verification Results
 
@@ -32,7 +32,7 @@ check for any unaddressed improvement suggestions.
 | 1 | {Item} | {Reason} |
 ```
 
-**Summary report format (only if APPROVE):**
+**Summary output contract (only if APPROVE):**
 ```markdown
 # Task Completion Summary
 

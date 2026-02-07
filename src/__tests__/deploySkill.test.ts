@@ -56,7 +56,6 @@ const { confirm } = await import('../shared/prompt/index.js');
 
 describe('deploySkill', () => {
   let skillDir: string;
-  let commandDir: string;
 
   beforeEach(() => {
     // Create fake resources directory with skill files
@@ -66,8 +65,6 @@ describe('deploySkill', () => {
     const skillResourcesDir = join(fakeResourcesDir, 'skill');
     mkdirSync(skillResourcesDir, { recursive: true });
     writeFileSync(join(skillResourcesDir, 'SKILL.md'), '# SKILL');
-    writeFileSync(join(skillResourcesDir, 'takt-command.md'), '# Command');
-
     // Create skill/references/ directory
     const refsDir = join(skillResourcesDir, 'references');
     mkdirSync(refsDir, { recursive: true });
@@ -78,26 +75,24 @@ describe('deploySkill', () => {
     const langDir = join(fakeResourcesDir, 'en');
     mkdirSync(join(langDir, 'pieces'), { recursive: true });
     mkdirSync(join(langDir, 'personas'), { recursive: true });
-    mkdirSync(join(langDir, 'stances'), { recursive: true });
+    mkdirSync(join(langDir, 'policies'), { recursive: true });
     mkdirSync(join(langDir, 'instructions'), { recursive: true });
     mkdirSync(join(langDir, 'knowledge'), { recursive: true });
-    mkdirSync(join(langDir, 'report-formats'), { recursive: true });
+    mkdirSync(join(langDir, 'output-contracts'), { recursive: true });
     mkdirSync(join(langDir, 'templates'), { recursive: true });
 
     // Add sample files
     writeFileSync(join(langDir, 'pieces', 'default.yaml'), 'name: default');
     writeFileSync(join(langDir, 'personas', 'coder.md'), '# Coder');
-    writeFileSync(join(langDir, 'stances', 'coding.md'), '# Coding');
+    writeFileSync(join(langDir, 'policies', 'coding.md'), '# Coding');
     writeFileSync(join(langDir, 'instructions', 'init.md'), '# Init');
     writeFileSync(join(langDir, 'knowledge', 'patterns.md'), '# Patterns');
-    writeFileSync(join(langDir, 'report-formats', 'summary.md'), '# Summary');
+    writeFileSync(join(langDir, 'output-contracts', 'summary.md'), '# Summary');
     writeFileSync(join(langDir, 'templates', 'task.md'), '# Task');
 
     // Create target directories
     skillDir = join(testHomeDir, '.claude', 'skills', 'takt');
-    commandDir = join(testHomeDir, '.claude', 'commands');
     mkdirSync(skillDir, { recursive: true });
-    mkdirSync(commandDir, { recursive: true });
 
     // Reset mocks
     vi.clearAllMocks();
@@ -123,13 +118,6 @@ describe('deploySkill', () => {
       expect(readFileSync(join(skillDir, 'SKILL.md'), 'utf-8')).toBe('# SKILL');
     });
 
-    it('should copy command file to commands directory', async () => {
-      await deploySkill();
-
-      expect(existsSync(join(commandDir, 'takt.md'))).toBe(true);
-      expect(readFileSync(join(commandDir, 'takt.md'), 'utf-8')).toBe('# Command');
-    });
-
     it('should copy references directory', async () => {
       await deploySkill();
 
@@ -145,10 +133,10 @@ describe('deploySkill', () => {
       // Verify each resource directory is copied
       expect(existsSync(join(skillDir, 'pieces', 'default.yaml'))).toBe(true);
       expect(existsSync(join(skillDir, 'personas', 'coder.md'))).toBe(true);
-      expect(existsSync(join(skillDir, 'stances', 'coding.md'))).toBe(true);
+      expect(existsSync(join(skillDir, 'policies', 'coding.md'))).toBe(true);
       expect(existsSync(join(skillDir, 'instructions', 'init.md'))).toBe(true);
       expect(existsSync(join(skillDir, 'knowledge', 'patterns.md'))).toBe(true);
-      expect(existsSync(join(skillDir, 'report-formats', 'summary.md'))).toBe(true);
+      expect(existsSync(join(skillDir, 'output-contracts', 'summary.md'))).toBe(true);
       expect(existsSync(join(skillDir, 'templates', 'task.md'))).toBe(true);
     });
   });

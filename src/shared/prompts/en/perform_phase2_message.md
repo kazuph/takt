@@ -2,7 +2,7 @@
   template: perform_phase2_message
   phase: 2 (report output)
   vars: workingDirectory, reportContext, hasReportOutput, reportOutput,
-        hasReportFormat, reportFormat
+        hasOutputContract, outputContract
   builder: ReportInstructionBuilder
 -->
 ## Execution Context
@@ -25,7 +25,7 @@ Respond with the results of the work you just completed as a report. **Tools are
 
 {{reportOutput}}
 {{/if}}
-{{#if hasReportFormat}}
+{{#if hasOutputContract}}
 
-{{reportFormat}}
+{{outputContract}}
 {{/if}}

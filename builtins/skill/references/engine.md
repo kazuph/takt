@@ -58,7 +58,7 @@ Task tool:
 
 ## セクションマップの解決
 
-ピースYAMLのトップレベルにある `personas:`, `stances:`, `instructions:`, `report_formats:`, `knowledge:` はキーとファイルパスの対応表。movement 内ではキー名で参照する。
+ピースYAMLのトップレベルにある `personas:`, `policies:`, `instructions:`, `output_contracts:`, `knowledge:` はキーとファイルパスの対応表。movement 内ではキー名で参照する。
 
 ### 解決手順
 
@@ -68,7 +68,7 @@ Task tool:
 
 例: ピースが `~/.claude/skills/takt/pieces/default.yaml` の場合
 - `personas.coder: ../personas/coder.md` → `~/.claude/skills/takt/personas/coder.md`
-- `stances.coding: ../stances/coding.md` → `~/.claude/skills/takt/stances/coding.md`
+- `policies.coding: ../policies/coding.md` → `~/.claude/skills/takt/policies/coding.md`
 - `instructions.plan: ../instructions/plan.md` → `~/.claude/skills/takt/instructions/plan.md`
 
 ## プロンプト構築
@@ -80,7 +80,7 @@ Task tool:
 ```
 1. ペルソナプロンプト（persona: で参照される .md の全内容）
 2. ---（区切り線）
-3. スタンス（stance: で参照される .md の内容。複数ある場合は結合）
+3. ポリシー（policy: で参照される .md の内容。複数ある場合は結合）
 4. ---（区切り線）
 5. 実行コンテキスト情報
 6. ナレッジ（knowledge: で参照される .md の内容）
@@ -89,28 +89,28 @@ Task tool:
 9. 前の movement の出力（pass_previous_response: true の場合、自動追加）
 10. レポート出力指示（report フィールドがある場合、自動追加）
 11. ステータスタグ出力指示（rules がある場合、自動追加）
-12. スタンスリマインダー（スタンスがある場合、末尾に再掲）
+12. ポリシーリマインダー（ポリシーがある場合、末尾に再掲）
 ```
 
 ### ペルソナプロンプト
 
 movement の `persona:` キーからセクションマップを経由して .md ファイルを解決し、その全内容をプロンプトの冒頭に配置する。ペルソナはドメイン知識と行動原則のみを含む（ピース固有の手順は含まない）。
 
-### スタンス注入
+### ポリシー注入
 
-movement の `stance:` キー（単一または配列）からスタンスファイルを解決し、内容を結合する。スタンスは行動ルール（コーディング規約、レビュー基準等）を定義する。
+movement の `policy:` キー（単一または配列）からポリシーファイルを解決し、内容を結合する。ポリシーは行動ルール（コーディング規約、レビュー基準等）を定義する。
 
-**Lost in the Middle 対策**: スタンスはプロンプトの前半に配置し、末尾にリマインダーとして再掲する。
+**Lost in the Middle 対策**: ポリシーはプロンプトの前半に配置し、末尾にリマインダーとして再掲する。
 
 ```
 （プロンプト冒頭付近）
-## スタンス（行動ルール）
-{スタンスの内容}
+## ポリシー（行動ルール）
+{ポリシーの内容}
 
 （プロンプト末尾）
 ---
-**リマインダー**: 以下のスタンスに従ってください。
-{スタンスの内容（再掲）}
+**リマインダー**: 以下のポリシーに従ってください。
+{ポリシーの内容（再掲）}
 ```
 
 ### ナレッジ注入
@@ -171,20 +171,20 @@ movement に `report` フィールドがある場合、プロンプト末尾に�
 ```yaml
 report:
   name: 01-plan.md
-  format: plan                 # report_formats セクションのキー
+  format: plan                 # output_contracts セクションのキー
 ```
 
-→ `report_formats:` セクションの `plan` キーから .md ファイルを解決し、Read で読んだ内容をフォーマット指示に使う:
+→ `output_contracts:` セクションの `plan` キーから .md ファイルを解決し、Read で読んだ内容を出力契約指示に使う:
 
 ```
 ---
 ## レポート出力（必須）
-作業完了後、以下のフォーマットに従ってレポートを出力してください。
+作業完了後、以下の出力契約に従ってレポートを出力してください。
 レポートは ```markdown ブロックで囲んで出力してください。
 
 ファイル名: 01-plan.md
-フォーマット:
-{report_formats の plan キーの .md ファイル内容}
+出力契約:
+{output_contracts の plan キーの .md ファイル内容}
 ```
 
 ### 形式2: 配列（複数レポート）
@@ -388,7 +388,7 @@ loop_monitors:
 ```
 [開始]
   ↓
-ピースYAML読み込み + セクションマップ解決（personas, stances, instructions, report_formats, knowledge）
+ピースYAML読み込み + セクションマップ解決（personas, policies, instructions, output_contracts, knowledge）
   ↓
 TeamCreate でチーム作成
   ↓
@@ -398,9 +398,9 @@ initial_movement を取得
   ↓
 ┌─→ Task tool でチームメイト起動
 │     ├── 通常: 1つの Task tool 呼び出し
-│     │     prompt = persona + stance + context + knowledge
+│     │     prompt = persona + policy + context + knowledge
 │     │           + instruction + task + previous_response
-│     │           + レポート指示 + タグ指示 + スタンスリマインダー
+│     │           + レポート指示 + タグ指示 + ポリシーリマインダー
 │     └── parallel: 複数の Task tool を1メッセージで並列呼び出し
 │           各サブステップを別々のチームメイトとして起動
 │   ↓

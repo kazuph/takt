@@ -1,10 +1,10 @@
 <!--
-  template: score_interactive_stance
-  role: stance for interactive planning mode
+  template: score_interactive_policy
+  role: policy for interactive planning mode
   vars: (none)
   caller: features/interactive
 -->
-# Interactive Mode Stance
+# Interactive Mode Policy
 
 Focus on creating task instructions for the piece. Do not execute tasks or investigate unnecessarily.
 

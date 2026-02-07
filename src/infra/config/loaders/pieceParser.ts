@@ -104,14 +104,14 @@ function resolvePersona(
 interface PieceSections {
   /** Persona name → file path (raw, not content-resolved) */
   personas?: Record<string, string>;
-  /** Stance name → resolved content */
-  resolvedStances?: Record<string, string>;
+  /** Policy name → resolved content */
+  resolvedPolicies?: Record<string, string>;
   /** Knowledge name → resolved content */
   resolvedKnowledge?: Record<string, string>;
   /** Instruction name → resolved content */
   resolvedInstructions?: Record<string, string>;
-  /** Report format name → resolved content */
-  resolvedReportFormats?: Record<string, string>;
+  /** Output contract name → resolved content */
+  resolvedOutputContracts?: Record<string, string>;
 }
 
 /** Check if a raw report value is the object form (has 'name' property). */
@@ -123,15 +123,15 @@ function isReportObject(raw: unknown): raw is { name: string; order?: string; fo
 function normalizeReport(
   raw: string | Record<string, string>[] | { name: string; order?: string; format?: string } | undefined,
   pieceDir: string,
-  resolvedReportFormats?: Record<string, string>,
+  resolvedOutputContracts?: Record<string, string>,
 ): string | ReportConfig[] | ReportObjectConfig | undefined {
   if (raw == null) return undefined;
   if (typeof raw === 'string') return raw;
   if (isReportObject(raw)) {
     return {
       name: raw.name,
-      order: raw.order ? resolveRefToContent(raw.order, resolvedReportFormats, pieceDir) : undefined,
-      format: raw.format ? resolveRefToContent(raw.format, resolvedReportFormats, pieceDir) : undefined,
+      order: raw.order ? resolveRefToContent(raw.order, resolvedOutputContracts, pieceDir) : undefined,
+      format: raw.format ? resolveRefToContent(raw.format, resolvedOutputContracts, pieceDir) : undefined,
     };
   }
   return (raw as Record<string, string>[]).flatMap((entry) =>
@@ -231,8 +231,8 @@ function normalizeStepFromRaw(
   const displayName: string | undefined = (step as Record<string, unknown>).persona_name as string
     || undefined;
 
-  const stanceRef = (step as Record<string, unknown>).stance as string | string[] | undefined;
-  const stanceContents = resolveRefList(stanceRef, sections.resolvedStances, pieceDir);
+  const policyRef = (step as Record<string, unknown>).policy as string | string[] | undefined;
+  const policyContents = resolveRefList(policyRef, sections.resolvedPolicies, pieceDir);
 
   const knowledgeRef = (step as Record<string, unknown>).knowledge as string | string[] | undefined;
   const knowledgeContents = resolveRefList(knowledgeRef, sections.resolvedKnowledge, pieceDir);
@@ -255,9 +255,9 @@ function normalizeStepFromRaw(
     edit: step.edit,
     instructionTemplate: resolveResourceContent(step.instruction_template, pieceDir) || expandedInstruction || '{task}',
     rules,
-    report: normalizeReport(step.report, pieceDir, sections.resolvedReportFormats),
+    report: normalizeReport(step.report, pieceDir, sections.resolvedOutputContracts),
     passPreviousResponse: step.pass_previous_response ?? true,
-    stanceContents,
+    policyContents,
     knowledgeContents,
   };
 
@@ -304,17 +304,17 @@ function normalizeLoopMonitors(
 export function normalizePieceConfig(raw: unknown, pieceDir: string): PieceConfig {
   const parsed = PieceConfigRawSchema.parse(raw);
 
-  const resolvedStances = resolveSectionMap(parsed.stances, pieceDir);
+  const resolvedPolicies = resolveSectionMap(parsed.policies, pieceDir);
   const resolvedKnowledge = resolveSectionMap(parsed.knowledge, pieceDir);
   const resolvedInstructions = resolveSectionMap(parsed.instructions, pieceDir);
-  const resolvedReportFormats = resolveSectionMap(parsed.report_formats, pieceDir);
+  const resolvedOutputContracts = resolveSectionMap(parsed.output_contracts, pieceDir);
 
   const sections: PieceSections = {
     personas: parsed.personas,
-    resolvedStances,
+    resolvedPolicies,
     resolvedKnowledge,
     resolvedInstructions,
-    resolvedReportFormats,
+    resolvedOutputContracts,
   };
 
   const movements: PieceMovement[] = parsed.movements.map((step) =>
@@ -328,10 +328,10 @@ export function normalizePieceConfig(raw: unknown, pieceDir: string): PieceConfi
     name: parsed.name,
     description: parsed.description,
     personas: parsed.personas,
-    stances: resolvedStances,
+    policies: resolvedPolicies,
     knowledge: resolvedKnowledge,
     instructions: resolvedInstructions,
-    reportFormats: resolvedReportFormats,
+    outputContracts: resolvedOutputContracts,
     movements,
     initialMovement,
     maxIterations: parsed.max_iterations,

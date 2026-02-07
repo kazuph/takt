@@ -79,12 +79,12 @@ export class ReportInstructionBuilder {
       }
     }
 
-    // Build report format
-    let reportFormat = '';
-    let hasReportFormat = false;
+    // Build output contract
+    let outputContract = '';
+    let hasOutputContract = false;
     if (isReportObjectConfig(this.step.report) && this.step.report.format) {
-      reportFormat = replaceTemplatePlaceholders(this.step.report.format.trimEnd(), this.step, instrContext);
-      hasReportFormat = true;
+      outputContract = replaceTemplatePlaceholders(this.step.report.format.trimEnd(), this.step, instrContext);
+      hasOutputContract = true;
     }
 
     return loadTemplate('perform_phase2_message', language, {
@@ -92,8 +92,8 @@ export class ReportInstructionBuilder {
       reportContext,
       hasReportOutput,
       reportOutput,
-      hasReportFormat,
-      reportFormat,
+      hasOutputContract,
+      outputContract,
     });
   }
 }

@@ -5,10 +5,10 @@
  * Resources are organized into:
  * - builtins/{lang}/pieces/    - Builtin pieces (loaded via fallback)
  * - builtins/{lang}/personas/  - Builtin personas (loaded via fallback)
- * - builtins/{lang}/stances/   - Builtin stances
+ * - builtins/{lang}/policies/  - Builtin policies
  * - builtins/{lang}/instructions/ - Builtin instructions
  * - builtins/{lang}/knowledge/ - Builtin knowledge files
- * - builtins/{lang}/report-formats/ - Builtin report formats
+ * - builtins/{lang}/output-contracts/ - Builtin output contracts
  * - builtins/{lang}/templates/ - Builtin templates
  * - builtins/project/          - Project-level template files (.gitignore)
  * - builtins/skill/            - Claude Code skill files

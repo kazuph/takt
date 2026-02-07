@@ -4,15 +4,17 @@
 name: expert-hybrid-codex
 description: アーキテクチャ・フロントエンド・セキュリティ・QA専門家レビュー
 max_iterations: 30
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
-  testing: ../stances/testing.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
+  testing: ../policies/testing.md
 knowledge:
   frontend: ../knowledge/frontend.md
   backend: ../knowledge/backend.md
   security: ../knowledge/security.md
   architecture: ../knowledge/architecture.md
+  ai-antipattern: ../knowledge/ai-antipattern.md
+  qa: ../knowledge/qa.md
 personas:
   planner: ../personas/planner.md
   coder: ../personas/coder.md
@@ -35,15 +37,15 @@ instructions:
   fix: ../instructions/fix.md
   supervise: ../instructions/supervise.md
   fix-supervisor: ../instructions/fix-supervisor.md
-report_formats:
-  plan: ../report-formats/plan.md
-  ai-review: ../report-formats/ai-review.md
-  architecture-review: ../report-formats/architecture-review.md
-  frontend-review: ../report-formats/frontend-review.md
-  security-review: ../report-formats/security-review.md
-  qa-review: ../report-formats/qa-review.md
-  validation: ../report-formats/validation.md
-  summary: ../report-formats/summary.md
+output_contracts:
+  plan: ../output-contracts/plan.md
+  ai-review: ../output-contracts/ai-review.md
+  architecture-review: ../output-contracts/architecture-review.md
+  frontend-review: ../output-contracts/frontend-review.md
+  security-review: ../output-contracts/security-review.md
+  qa-review: ../output-contracts/qa-review.md
+  validation: ../output-contracts/validation.md
+  summary: ../output-contracts/summary.md
 initial_movement: plan
 movements:
   - name: plan
@@ -69,7 +71,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -105,7 +107,8 @@ movements:
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
-    stance: review
+    policy: review
+    knowledge: ai-antipattern
     report:
       name: 03-ai-review.md
       format: ai-review
@@ -125,7 +128,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -154,7 +157,7 @@ movements:
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
-    stance: review
+    policy: review
     allowed_tools:
       - Read
       - Glob
@@ -170,7 +173,7 @@ movements:
       - name: arch-review
         edit: false
         persona: architecture-reviewer
-        stance: review
+        policy: review
         knowledge:
           - architecture
           - backend
@@ -190,7 +193,7 @@ movements:
       - name: frontend-review
         edit: false
         persona: frontend-reviewer
-        stance: review
+        policy: review
         knowledge: frontend
         report:
           name: 05-frontend-review.md
@@ -208,7 +211,7 @@ movements:
       - name: security-review
         edit: false
         persona: security-reviewer
-        stance: review
+        policy: review
         knowledge: security
         report:
           name: 06-security-review.md
@@ -226,7 +229,8 @@ movements:
       - name: qa-review
         edit: false
         persona: qa-reviewer
-        stance: review
+        policy: review
+        knowledge: qa
         report:
           name: 07-qa-review.md
           format: qa-review
@@ -249,7 +253,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     knowledge:
@@ -276,7 +280,7 @@ movements:
   - name: supervise
     edit: false
     persona: expert-supervisor
-    stance: review
+    policy: review
     report:
       - Validation: 08-supervisor-validation.md
       - Summary: summary.md
@@ -296,7 +300,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     knowledge:

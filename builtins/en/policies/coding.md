@@ -1,4 +1,4 @@
-# Coding Stance
+# Coding Policy
 
 Prioritize correctness over speed, and code accuracy over ease of implementation.
 

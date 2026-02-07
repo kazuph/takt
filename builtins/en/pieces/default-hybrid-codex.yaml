@@ -4,10 +4,10 @@
 name: default-hybrid-codex
 description: Standard development piece with planning and specialized reviews
 max_iterations: 30
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
-  testing: ../stances/testing.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
+  testing: ../policies/testing.md
 knowledge:
   backend: ../knowledge/backend.md
   architecture: ../knowledge/architecture.md
@@ -30,14 +30,14 @@ instructions:
   review-qa: ../instructions/review-qa.md
   fix: ../instructions/fix.md
   supervise: ../instructions/supervise.md
-report_formats:
-  plan: ../report-formats/plan.md
-  architecture-design: ../report-formats/architecture-design.md
-  ai-review: ../report-formats/ai-review.md
-  architecture-review: ../report-formats/architecture-review.md
-  qa-review: ../report-formats/qa-review.md
-  validation: ../report-formats/validation.md
-  summary: ../report-formats/summary.md
+output_contracts:
+  plan: ../output-contracts/plan.md
+  architecture-design: ../output-contracts/architecture-design.md
+  ai-review: ../output-contracts/ai-review.md
+  architecture-review: ../output-contracts/architecture-review.md
+  qa-review: ../output-contracts/qa-review.md
+  validation: ../output-contracts/validation.md
+  summary: ../output-contracts/summary.md
 initial_movement: plan
 loop_monitors:
   - cycle:
@@ -114,7 +114,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -149,7 +149,7 @@ movements:
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
-    stance: review
+    policy: review
     report:
       name: 04-ai-review.md
       format: ai-review
@@ -169,7 +169,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -197,7 +197,7 @@ movements:
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
-    stance: review
+    policy: review
     allowed_tools:
       - Read
       - Glob
@@ -213,7 +213,7 @@ movements:
       - name: arch-review
         edit: false
         persona: architecture-reviewer
-        stance: review
+        policy: review
         knowledge:
           - architecture
           - backend
@@ -233,7 +233,7 @@ movements:
       - name: qa-review
         edit: false
         persona: qa-reviewer
-        stance: review
+        policy: review
         report:
           name: 06-qa-review.md
           format: qa-review
@@ -256,7 +256,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     knowledge:
@@ -281,7 +281,7 @@ movements:
   - name: supervise
     edit: false
     persona: supervisor
-    stance: review
+    policy: review
     report:
       - Validation: 07-supervisor-validation.md
       - Summary: summary.md

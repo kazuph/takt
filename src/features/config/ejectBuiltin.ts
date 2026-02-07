@@ -1,7 +1,7 @@
 /**
  * /eject command implementation
  *
- * Copies a builtin piece (and its personas/stances/instructions) for user customization.
+ * Copies a builtin piece (and its personas/policies/instructions) for user customization.
  * Directory structure is mirrored so relative paths work as-is.
  *
  * Default target: project-local (.takt/)
@@ -71,7 +71,7 @@ export async function ejectBuiltin(name?: string, options: EjectOptions = {}): P
     success(`Ejected piece: ${pieceDest}`);
   }
 
-  // Copy related resource files (personas, stances, instructions, report-formats)
+  // Copy related resource files (personas, policies, instructions, output-contracts)
   const resourceRefs = extractResourceRelativePaths(builtinPath);
   let copiedCount = 0;
 
@@ -125,14 +125,14 @@ function listAvailableBuiltins(builtinPiecesDir: string, isGlobal?: boolean): vo
 
 /** Resource reference extracted from piece YAML */
 interface ResourceRef {
-  /** Resource type directory (personas, stances, instructions, report-formats) */
+  /** Resource type directory (personas, policies, instructions, output-contracts) */
   type: string;
   /** Relative path within the resource type directory */
   path: string;
 }
 
 /** Known resource type directories that can be referenced from piece YAML */
-const RESOURCE_TYPES = ['personas', 'stances', 'knowledge', 'instructions', 'report-formats'];
+const RESOURCE_TYPES = ['personas', 'policies', 'knowledge', 'instructions', 'output-contracts'];
 
 /**
  * Extract resource relative paths from a builtin piece YAML.

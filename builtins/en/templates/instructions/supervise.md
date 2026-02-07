@@ -26,7 +26,7 @@ Reaching this movement means all of the following reviews have been APPROVED:
 **Report verification:** Read all reports in the Report Directory and
 check for any unaddressed improvement suggestions.
 
-**Validation report format:**
+**Validation output contract:**
 ```markdown
 # Final Verification Results
 
@@ -50,7 +50,7 @@ check for any unaddressed improvement suggestions.
 | 1 | {item} | {reason} |
 ```
 
-**Summary report format (APPROVE only):**
+**Summary output contract (APPROVE only):**
 ```markdown
 # Task Completion Summary
 

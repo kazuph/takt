@@ -14,7 +14,7 @@ You are an expert in {domain}. {One sentence describing the role}.
 - {Out-of-scope responsibility 2} (delegate to {responsible agent name})
 - {Out-of-scope responsibility 3}
 
-## Behavioral Stance
+## Behavioral Principles
 
 - {Agent-specific behavioral guideline 1}
 - {Agent-specific behavioral guideline 2}

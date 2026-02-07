@@ -4,8 +4,8 @@
   vars: workingDirectory, editRule, pieceName, pieceDescription, hasPieceDescription,
         pieceStructure, iteration, movementIteration, movement, hasReport, reportInfo,
         phaseNote, hasTaskSection, userRequest, hasPreviousResponse, previousResponse,
-        hasUserInputs, userInputs, hasRetryNote, retryNote, hasStance, stanceContent,
-        stanceReminder, hasKnowledge, knowledgeContent, instructions
+        hasUserInputs, userInputs, hasRetryNote, retryNote, hasPolicy, policyContent,
+        policyReminder, hasKnowledge, knowledgeContent, instructions
   builder: InstructionBuilder
 -->
 ## 実行コンテキスト
@@ -17,12 +17,12 @@
 - **Bashコマンドで `cd` を使用しないでください。** 作業ディレクトリは既に正しく設定されています。ディレクトリを変更せずにコマンドを実行してください。
 {{#if editRule}}- {{editRule}}
 {{/if}}
-{{#if hasStance}}
+{{#if hasPolicy}}
 
-## Stance
-以下のスタンスはこのムーブメントに適用される行動規範です。必ず遵守してください。
+## Policy
+以下のポリシーはこのムーブメントに適用される行動規範です。必ず遵守してください。
 
-{{stanceContent}}
+{{policyContent}}
 {{/if}}
 {{#if hasKnowledge}}
 
@@ -67,8 +67,8 @@
 
 ## Instructions
 {{instructions}}
-{{#if hasStance}}
+{{#if hasPolicy}}
 
 ---
-**Stance Reminder:** 上記の Stance セクションで定義されたスタンス規範を遵守してください。{{stanceReminder}}
+**Policy Reminder:** 上記の Policy セクションで定義されたポリシー規範を遵守してください。{{policyReminder}}
 {{/if}}

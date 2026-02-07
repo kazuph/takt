@@ -24,8 +24,9 @@ description: レビュー専用ピース - コードをレビューするだけ�
 
 max_iterations: 10
 
-stances:
-  review: ../stances/review.md
+policies:
+  review: ../policies/review.md
+  ai-antipattern: ../policies/ai-antipattern.md
 
 knowledge:
   architecture: ../knowledge/architecture.md
@@ -44,11 +45,11 @@ instructions:
   review-security: ../instructions/review-security.md
   review-ai: ../instructions/review-ai.md
 
-report_formats:
-  architecture-review: ../report-formats/architecture-review.md
-  security-review: ../report-formats/security-review.md
-  ai-review: ../report-formats/ai-review.md
-  review-summary: ../report-formats/review-summary.md
+output_contracts:
+  architecture-review: ../output-contracts/architecture-review.md
+  security-review: ../output-contracts/security-review.md
+  ai-review: ../output-contracts/ai-review.md
+  review-summary: ../output-contracts/review-summary.md
 
 initial_movement: plan
 
@@ -93,7 +94,7 @@ movements:
       - name: arch-review
         edit: false
         persona: architecture-reviewer
-        stance: review
+        policy: review
         knowledge: architecture
         report:
           name: 01-architect-review.md
@@ -113,7 +114,7 @@ movements:
       - name: security-review
         edit: false
         persona: security-reviewer
-        stance: review
+        policy: review
         knowledge: security
         report:
           name: 02-security-review.md
@@ -133,7 +134,9 @@ movements:
       - name: ai-review
         edit: false
         persona: ai-antipattern-reviewer
-        stance: review
+        policy:
+          - review
+          - ai-antipattern
         report:
           name: 03-ai-review.md
           format: ai-review
@@ -157,7 +160,7 @@ movements:
   - name: supervise
     edit: false
     persona: supervisor
-    stance: review
+    policy: review
     report:
       - Review Summary: 04-review-summary.md
     allowed_tools:
@@ -191,7 +194,7 @@ movements:
          - ローカルレビューのみ → COMPLETE（condition: "approved"）
          - 重大な問題が見つかった場合 → ABORT（condition: "rejected"）
 
-      **Review Summaryレポートフォーマット:**
+      **Review Summary出力契約:**
       ```markdown
       # レビューサマリー
 

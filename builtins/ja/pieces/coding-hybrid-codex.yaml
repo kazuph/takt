@@ -4,12 +4,13 @@
 name: coding-hybrid-codex
 description: Lightweight development piece with planning and parallel reviews (plan -> implement -> parallel review -> complete)
 max_iterations: 20
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
-  testing: ../stances/testing.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
+  testing: ../policies/testing.md
 knowledge:
   architecture: ../knowledge/architecture.md
+  ai-antipattern: ../knowledge/ai-antipattern.md
 personas:
   architect-planner: ../personas/architect-planner.md
   coder: ../personas/coder.md
@@ -21,10 +22,10 @@ instructions:
   ai-review: ../instructions/ai-review.md
   review-arch: ../instructions/review-arch.md
   fix: ../instructions/fix.md
-report_formats:
-  plan: ../report-formats/plan.md
-  ai-review: ../report-formats/ai-review.md
-  architecture-review: ../report-formats/architecture-review.md
+output_contracts:
+  plan: ../output-contracts/plan.md
+  ai-review: ../output-contracts/ai-review.md
+  architecture-review: ../output-contracts/architecture-review.md
 initial_movement: plan
 movements:
   - name: plan
@@ -52,7 +53,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -87,7 +88,8 @@ movements:
       - name: ai_review
         edit: false
         persona: ai-antipattern-reviewer
-        stance: review
+        policy: review
+        knowledge: ai-antipattern
         report:
           name: 04-ai-review.md
           format: ai-review
@@ -104,7 +106,7 @@ movements:
       - name: arch-review
         edit: false
         persona: architecture-reviewer
-        stance: review
+        policy: review
         knowledge: architecture
         report:
           name: 05-architect-review.md
@@ -128,7 +130,7 @@ movements:
     edit: true
     persona: coder
     provider: codex
-    stance:
+    policy:
       - coding
       - testing
     knowledge: architecture

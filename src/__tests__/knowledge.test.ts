@@ -105,11 +105,11 @@ describe('PieceMovementRawSchema knowledge field', () => {
     }
   });
 
-  it('should accept both stance and knowledge fields', () => {
+  it('should accept both policy and knowledge fields', () => {
     const raw = {
       name: 'implement',
       persona: 'coder.md',
-      stance: 'coding',
+      policy: 'coding',
       knowledge: 'frontend',
       instruction: '{task}',
     };
@@ -117,7 +117,7 @@ describe('PieceMovementRawSchema knowledge field', () => {
     const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.stance).toBe('coding');
+      expect(result.data.policy).toBe('coding');
       expect(result.data.knowledge).toBe('frontend');
     }
   });
@@ -401,26 +401,26 @@ describe('InstructionBuilder knowledge injection', () => {
   });
 });
 
-describe('knowledge and stance coexistence', () => {
+describe('knowledge and policy coexistence', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'takt-knowledge-stance-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'takt-knowledge-policy-test-'));
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('should resolve both stance and knowledge for same movement', () => {
-    const stanceContent = '# Coding Stance\nWrite clean code.';
+  it('should resolve both policy and knowledge for same movement', () => {
+    const policyContent = '# Coding Policy\nWrite clean code.';
     const knowledgeContent = '# Frontend Knowledge\nUse TypeScript.';
-    writeFileSync(join(tempDir, 'coding.md'), stanceContent);
+    writeFileSync(join(tempDir, 'coding.md'), policyContent);
     writeFileSync(join(tempDir, 'frontend.md'), knowledgeContent);
 
     const raw = {
       name: 'test-piece',
-      stances: {
+      policies: {
         coding: 'coding.md',
       },
       knowledge: {
@@ -430,7 +430,7 @@ describe('knowledge and stance coexistence', () => {
         {
           name: 'implement',
           persona: 'coder.md',
-          stance: 'coding',
+          policy: 'coding',
           knowledge: 'frontend',
           instruction: '{task}',
         },
@@ -439,9 +439,9 @@ describe('knowledge and stance coexistence', () => {
 
     const piece = normalizePieceConfig(raw, tempDir);
 
-    expect(piece.stances!['coding']).toBe(stanceContent);
+    expect(piece.policies!['coding']).toBe(policyContent);
     expect(piece.knowledge!['frontend']).toBe(knowledgeContent);
-    expect(piece.movements[0].stanceContents).toEqual([stanceContent]);
+    expect(piece.movements[0].policyContents).toEqual([policyContent]);
     expect(piece.movements[0].knowledgeContents).toEqual([knowledgeContent]);
   });
 });

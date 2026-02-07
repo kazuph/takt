@@ -6,10 +6,10 @@
  *   references/               — Engine logic + YAML schema
  *   pieces/                   — Builtin piece YAML files
  *   personas/                 — Builtin persona .md files
- *   stances/                  — Builtin stance files
+ *   policies/                 — Builtin policy files
  *   instructions/             — Builtin instruction files
  *   knowledge/                — Builtin knowledge files
- *   report-formats/           — Builtin report format files
+ *   output-contracts/         — Builtin output contract files
  *   templates/                — Builtin template files
  *
  * Piece YAML persona paths (../personas/...) work as-is because
@@ -37,10 +37,10 @@ function getSkillDir(): string {
 const RESOURCE_DIRS = [
   'pieces',
   'personas',
-  'stances',
+  'policies',
   'instructions',
   'knowledge',
-  'report-formats',
+  'output-contracts',
   'templates',
 ] as const;
 
@@ -112,10 +112,10 @@ export async function deploySkill(): Promise<void> {
     );
     const pieceFiles = copiedFiles.filter((f) => f.includes('/pieces/'));
     const personaFiles = copiedFiles.filter((f) => f.includes('/personas/'));
-    const stanceFiles = copiedFiles.filter((f) => f.includes('/stances/'));
+    const policyFiles = copiedFiles.filter((f) => f.includes('/policies/'));
     const instructionFiles = copiedFiles.filter((f) => f.includes('/instructions/'));
     const knowledgeFiles = copiedFiles.filter((f) => f.includes('/knowledge/'));
-    const reportFormatFiles = copiedFiles.filter((f) => f.includes('/report-formats/'));
+    const outputContractFiles = copiedFiles.filter((f) => f.includes('/output-contracts/'));
     const templateFiles = copiedFiles.filter((f) => f.includes('/templates/'));
 
     if (skillFiles.length > 0) {
@@ -130,8 +130,8 @@ export async function deploySkill(): Promise<void> {
     if (personaFiles.length > 0) {
       info(`  ペルソナ:      ${personaFiles.length} ファイル`);
     }
-    if (stanceFiles.length > 0) {
-      info(`  スタンス:      ${stanceFiles.length} ファイル`);
+    if (policyFiles.length > 0) {
+      info(`  ポリシー:      ${policyFiles.length} ファイル`);
     }
     if (instructionFiles.length > 0) {
       info(`  インストラクション: ${instructionFiles.length} ファイル`);
@@ -139,8 +139,8 @@ export async function deploySkill(): Promise<void> {
     if (knowledgeFiles.length > 0) {
       info(`  ナレッジ:      ${knowledgeFiles.length} ファイル`);
     }
-    if (reportFormatFiles.length > 0) {
-      info(`  レポート形式:  ${reportFormatFiles.length} ファイル`);
+    if (outputContractFiles.length > 0) {
+      info(`  出力契約:      ${outputContractFiles.length} ファイル`);
     }
     if (templateFiles.length > 0) {
       info(`  テンプレート:  ${templateFiles.length} ファイル`);

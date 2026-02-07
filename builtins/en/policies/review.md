@@ -1,4 +1,4 @@
-# Review Stance
+# Review Policy
 
 Define the shared judgment criteria and behavioral principles for all reviewers.
 

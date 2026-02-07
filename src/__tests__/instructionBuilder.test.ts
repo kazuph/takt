@@ -575,7 +575,7 @@ describe('instruction-builder', () => {
       expect(result).not.toContain('**Report output:**');
     });
 
-    it('should NOT include report format in buildInstruction', () => {
+    it('should NOT include output contract in buildInstruction', () => {
       const step = createMinimalStep('Do work');
       step.report = { name: '00-plan.md', format: '**Format:**\n# Plan' };
       const context = createMinimalContext({

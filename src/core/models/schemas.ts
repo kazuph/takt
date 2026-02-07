@@ -64,7 +64,7 @@ export const PermissionModeSchema = z.enum(['readonly', 'edit', 'full']);
  *     order: |
  *       **レポート出力:** {report:00-plan.md} に出力してください。
  *     format: |
- *       **レポートフォーマット:**
+ *       **出力契約:**
  *       ```markdown
  *       ...
  *       ```
@@ -120,8 +120,8 @@ export const ParallelSubMovementRawSchema = z.object({
   persona: z.string().optional(),
   /** Display name for the persona (shown in output) */
   persona_name: z.string().optional(),
-  /** Stance reference(s) — key name(s) from piece-level stances map */
-  stance: z.union([z.string(), z.array(z.string())]).optional(),
+  /** Policy reference(s) — key name(s) from piece-level policies map */
+  policy: z.union([z.string(), z.array(z.string())]).optional(),
   /** Knowledge reference(s) — key name(s) from piece-level knowledge map */
   knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
@@ -146,8 +146,8 @@ export const PieceMovementRawSchema = z.object({
   persona: z.string().optional(),
   /** Display name for the persona (shown in output) */
   persona_name: z.string().optional(),
-  /** Stance reference(s) — key name(s) from piece-level stances map */
-  stance: z.union([z.string(), z.array(z.string())]).optional(),
+  /** Policy reference(s) — key name(s) from piece-level policies map */
+  policy: z.union([z.string(), z.array(z.string())]).optional(),
   /** Knowledge reference(s) — key name(s) from piece-level knowledge map */
   knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
@@ -202,14 +202,14 @@ export const PieceConfigRawSchema = z.object({
   description: z.string().optional(),
   /** Piece-level persona definitions — map of name to .md file path or inline content */
   personas: z.record(z.string(), z.string()).optional(),
-  /** Piece-level stance definitions — map of name to .md file path or inline content */
-  stances: z.record(z.string(), z.string()).optional(),
+  /** Piece-level policy definitions — map of name to .md file path or inline content */
+  policies: z.record(z.string(), z.string()).optional(),
   /** Piece-level knowledge definitions — map of name to .md file path or inline content */
   knowledge: z.record(z.string(), z.string()).optional(),
   /** Piece-level instruction definitions — map of name to .md file path or inline content */
   instructions: z.record(z.string(), z.string()).optional(),
-  /** Piece-level report format definitions — map of name to .md file path or inline content */
-  report_formats: z.record(z.string(), z.string()).optional(),
+  /** Piece-level output contract definitions — map of name to .md file path or inline content */
+  output_contracts: z.record(z.string(), z.string()).optional(),
   movements: z.array(PieceMovementRawSchema).min(1),
   initial_movement: z.string().optional(),
   max_iterations: z.number().int().positive().optional().default(10),

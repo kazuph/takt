@@ -4,8 +4,8 @@
   vars: workingDirectory, editRule, pieceName, pieceDescription, hasPieceDescription,
         pieceStructure, iteration, movementIteration, movement, hasReport, reportInfo,
         phaseNote, hasTaskSection, userRequest, hasPreviousResponse, previousResponse,
-        hasUserInputs, userInputs, hasRetryNote, retryNote, hasStance, stanceContent,
-        stanceReminder, hasKnowledge, knowledgeContent, instructions
+        hasUserInputs, userInputs, hasRetryNote, retryNote, hasPolicy, policyContent,
+        policyReminder, hasKnowledge, knowledgeContent, instructions
   builder: InstructionBuilder
 -->
 ## Execution Context
@@ -18,12 +18,12 @@
 {{#if editRule}}- {{editRule}}
 {{/if}}
 Note: This section is metadata. Follow the language used in the rest of the prompt.
-{{#if hasStance}}
+{{#if hasPolicy}}
 
-## Stance
-The following stances are behavioral standards applied to this movement. You MUST comply with them.
+## Policy
+The following policies are behavioral standards applied to this movement. You MUST comply with them.
 
-{{stanceContent}}
+{{policyContent}}
 {{/if}}
 {{#if hasKnowledge}}
 
@@ -68,8 +68,8 @@ The following knowledge is domain-specific information for this movement. Use it
 
 ## Instructions
 {{instructions}}
-{{#if hasStance}}
+{{#if hasPolicy}}
 
 ---
-**Stance Reminder:** Comply with the stance standards defined in the Stance section above.{{stanceReminder}}
+**Policy Reminder:** Comply with the policy standards defined in the Policy section above.{{policyReminder}}
 {{/if}}

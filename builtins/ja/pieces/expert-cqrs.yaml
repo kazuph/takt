@@ -32,10 +32,12 @@ description: CQRS+ES・フロントエンド・セキュリティ・QA専門家�
 
 max_iterations: 30
 
-stances:
-  coding: ../stances/coding.md
-  review: ../stances/review.md
-  testing: ../stances/testing.md
+policies:
+  coding: ../policies/coding.md
+  review: ../policies/review.md
+  testing: ../policies/testing.md
+  ai-antipattern: ../policies/ai-antipattern.md
+  qa: ../policies/qa.md
 
 knowledge:
   frontend: ../knowledge/frontend.md
@@ -69,15 +71,15 @@ instructions:
   supervise: ../instructions/supervise.md
   fix-supervisor: ../instructions/fix-supervisor.md
 
-report_formats:
-  plan: ../report-formats/plan.md
-  ai-review: ../report-formats/ai-review.md
-  cqrs-es-review: ../report-formats/cqrs-es-review.md
-  frontend-review: ../report-formats/frontend-review.md
-  security-review: ../report-formats/security-review.md
-  qa-review: ../report-formats/qa-review.md
-  validation: ../report-formats/validation.md
-  summary: ../report-formats/summary.md
+output_contracts:
+  plan: ../output-contracts/plan.md
+  ai-review: ../output-contracts/ai-review.md
+  cqrs-es-review: ../output-contracts/cqrs-es-review.md
+  frontend-review: ../output-contracts/frontend-review.md
+  security-review: ../output-contracts/security-review.md
+  qa-review: ../output-contracts/qa-review.md
+  validation: ../output-contracts/validation.md
+  summary: ../output-contracts/summary.md
 
 initial_movement: plan
 
@@ -111,7 +113,7 @@ movements:
   - name: implement
     edit: true
     persona: coder
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -147,7 +149,9 @@ movements:
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
-    stance: review
+    policy:
+      - review
+      - ai-antipattern
     report:
       name: 03-ai-review.md
       format: ai-review
@@ -167,7 +171,7 @@ movements:
   - name: ai_fix
     edit: true
     persona: coder
-    stance:
+    policy:
       - coding
       - testing
     session: refresh
@@ -193,7 +197,7 @@ movements:
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
-    stance: review
+    policy: review
     allowed_tools:
       - Read
       - Glob
@@ -213,7 +217,7 @@ movements:
       - name: cqrs-es-review
         edit: false
         persona: cqrs-es-reviewer
-        stance: review
+        policy: review
         knowledge: [cqrs-es, backend]
         report:
           name: 04-cqrs-es-review.md
@@ -233,7 +237,7 @@ movements:
       - name: frontend-review
         edit: false
         persona: frontend-reviewer
-        stance: review
+        policy: review
         knowledge: frontend
         report:
           name: 05-frontend-review.md
@@ -253,7 +257,7 @@ movements:
       - name: security-review
         edit: false
         persona: security-reviewer
-        stance: review
+        policy: review
         knowledge: security
         report:
           name: 06-security-review.md
@@ -273,7 +277,9 @@ movements:
       - name: qa-review
         edit: false
         persona: qa-reviewer
-        stance: review
+        policy:
+          - review
+          - qa
         report:
           name: 07-qa-review.md
           format: qa-review
@@ -297,7 +303,7 @@ movements:
   - name: fix
     edit: true
     persona: coder
-    stance:
+    policy:
       - coding
       - testing
     knowledge: [frontend, backend, cqrs-es, security, architecture]
@@ -324,7 +330,7 @@ movements:
   - name: supervise
     edit: false
     persona: expert-supervisor
-    stance: review
+    policy: review
     report:
       - Validation: 08-supervisor-validation.md
       - Summary: summary.md
@@ -344,7 +350,7 @@ movements:
   - name: fix_supervisor
     edit: true
     persona: coder
-    stance:
+    policy:
       - coding
       - testing
     knowledge: [frontend, backend, cqrs-es, security, architecture]

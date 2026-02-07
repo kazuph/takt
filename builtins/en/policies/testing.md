@@ -1,4 +1,4 @@
-# Testing Stance
+# Testing Policy
 
 Every behavior change requires a corresponding test, and every bug fix requires a regression test.
 

@@ -7,7 +7,7 @@ Refer only to files within the Report Directory shown in the Piece Context. Do n
 - Test file placement: follow the project's conventions
 - Running tests is mandatory. After completing implementation, always run tests and verify results
 
-**Scope report format (create at the start of implementation):**
+**Scope output contract (create at the start of implementation):**
 ```markdown
 # Change Scope Declaration
 
@@ -27,7 +27,7 @@ Small / Medium / Large
 - {Affected modules or features}
 ```
 
-**Decisions report format (at implementation completion, only if decisions were made):**
+**Decisions output contract (at implementation completion, only if decisions were made):**
 ```markdown
 # Decision Log
 
