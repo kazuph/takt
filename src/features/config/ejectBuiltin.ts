@@ -71,7 +71,7 @@ export async function ejectBuiltin(name?: string, options: EjectOptions = {}): P
     success(`Ejected piece: ${pieceDest}`);
   }
 
-  // Copy related resource files (agents, personas, stances, instructions, report-formats)
+  // Copy related resource files (personas, stances, instructions, report-formats)
   const resourceRefs = extractResourceRelativePaths(builtinPath);
   let copiedCount = 0;
 

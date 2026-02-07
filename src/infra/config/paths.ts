@@ -21,11 +21,6 @@ export function getGlobalPersonasDir(): string {
   return join(getGlobalConfigDir(), 'personas');
 }
 
-/** @deprecated Use getGlobalPersonasDir(). Kept for backward compat with ~/.takt/agents/ */
-export function getGlobalAgentsDir(): string {
-  return join(getGlobalConfigDir(), 'agents');
-}
-
 /** Get takt global pieces directory (~/.takt/pieces) */
 export function getGlobalPiecesDir(): string {
   return join(getGlobalConfigDir(), 'pieces');

@@ -1,10 +1,9 @@
 /**
- * Agent and persona configuration loader
+ * Persona configuration loader
  *
  * Loads persona prompts with user → builtin fallback:
- * 1. User personas: ~/.takt/personas/*.md (preferred)
- * 2. User agents (legacy): ~/.takt/agents/*.md (backward compat)
- * 3. Builtin personas: resources/global/{lang}/personas/*.md
+ * 1. User personas: ~/.takt/personas/*.md
+ * 2. Builtin personas: resources/global/{lang}/personas/*.md
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -12,7 +11,6 @@ import { join, basename } from 'node:path';
 import type { CustomAgentConfig } from '../../../core/models/index.js';
 import {
   getGlobalPersonasDir,
-  getGlobalAgentsDir,
   getGlobalPiecesDir,
   getBuiltinPersonasDir,
   getBuiltinPiecesDir,
@@ -20,12 +18,11 @@ import {
 } from '../paths.js';
 import { getLanguage } from '../global/globalConfig.js';
 
-/** Get all allowed base directories for persona/agent prompt files */
+/** Get all allowed base directories for persona prompt files */
 function getAllowedPromptBases(): string[] {
   const lang = getLanguage();
   return [
     getGlobalPersonasDir(),
-    getGlobalAgentsDir(),
     getGlobalPiecesDir(),
     getBuiltinPersonasDir(lang),
     getBuiltinPiecesDir(lang),
@@ -51,20 +48,12 @@ export function loadAgentsFromDir(dirPath: string): CustomAgentConfig[] {
   return agents;
 }
 
-/** Load all custom agents from global directories (~/.takt/personas/, ~/.takt/agents/) */
+/** Load all custom agents from ~/.takt/personas/ */
 export function loadCustomAgents(): Map<string, CustomAgentConfig> {
   const agents = new Map<string, CustomAgentConfig>();
-
-  // Legacy: ~/.takt/agents/*.md (loaded first, overwritten by personas/)
-  for (const agent of loadAgentsFromDir(getGlobalAgentsDir())) {
-    agents.set(agent.name, agent);
-  }
-
-  // Preferred: ~/.takt/personas/*.md (takes priority)
   for (const agent of loadAgentsFromDir(getGlobalPersonasDir())) {
     agents.set(agent.name, agent);
   }
-
   return agents;
 }
 
@@ -73,13 +62,7 @@ export function listCustomAgents(): string[] {
   return Array.from(loadCustomAgents().keys()).sort();
 }
 
-/**
- * Load agent prompt content.
- * Prompts can be loaded from:
- * - ~/.takt/personas/*.md (preferred)
- * - ~/.takt/agents/*.md (legacy)
- * - ~/.takt/pieces/{piece}/*.md (piece-specific)
- */
+/** Load agent prompt content. */
 export function loadAgentPrompt(agent: CustomAgentConfig): string {
   if (agent.prompt) {
     return agent.prompt;
@@ -102,10 +85,7 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
   throw new Error(`Agent ${agent.name} has no prompt defined`);
 }
 
-/**
- * Load persona prompt from a resolved path.
- * Used by piece engine when personaPath is already resolved.
- */
+/** Load persona prompt from a resolved path. */
 export function loadPersonaPromptFromPath(personaPath: string): string {
   const isValid = getAllowedPromptBases().some((base) => isPathSafe(base, personaPath));
   if (!isValid) {

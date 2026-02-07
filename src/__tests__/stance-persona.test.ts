@@ -292,7 +292,7 @@ describe('stances', () => {
     expect(config.movements[0]!.stanceContents).toBeUndefined();
   });
 
-  it('should leave stanceContents undefined for unknown stance names', () => {
+  it('should treat unknown stance names as inline content', () => {
     const raw = {
       name: 'test-piece',
       stances: {
@@ -309,7 +309,7 @@ describe('stances', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.stanceContents).toBeUndefined();
+    expect(config.movements[0]!.stanceContents).toEqual(['nonexistent']);
   });
 
   it('should resolve stances in parallel sub-movements', () => {

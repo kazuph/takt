@@ -6,87 +6,110 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import type { z } from 'zod';
 import { PieceConfigRawSchema, PieceMovementRawSchema } from '../../../core/models/index.js';
 import type { PieceConfig, PieceMovement, PieceRule, ReportConfig, ReportObjectConfig, LoopMonitorConfig, LoopMonitorJudge } from '../../../core/models/index.js';
 
-/** Parsed movement type from Zod schema (replaces `any`) */
 type RawStep = z.output<typeof PieceMovementRawSchema>;
 
-/**
- * Resolve persona path from piece specification.
- * - Relative path (./persona.md): relative to piece directory
- * - Absolute path (/path/to/persona.md or ~/...): use as-is
- */
-function resolvePersonaPathForPiece(personaSpec: string, pieceDir: string): string {
-  if (personaSpec.startsWith('./')) {
-    return join(pieceDir, personaSpec.slice(2));
-  }
-  if (personaSpec.startsWith('~')) {
-    const homedir = process.env.HOME || process.env.USERPROFILE || '';
-    return join(homedir, personaSpec.slice(1));
-  }
-  if (personaSpec.startsWith('/')) {
-    return personaSpec;
-  }
-  return join(pieceDir, personaSpec);
+/** Resolve a resource spec to an absolute file path. */
+function resolveResourcePath(spec: string, pieceDir: string): string {
+  if (spec.startsWith('./')) return join(pieceDir, spec.slice(2));
+  if (spec.startsWith('~')) return join(homedir(), spec.slice(1));
+  if (spec.startsWith('/')) return spec;
+  return join(pieceDir, spec);
 }
 
 /**
- * Extract display name from persona path.
- * e.g., "~/.takt/personas/coder.md" -> "coder"
+ * Resolve a resource spec to its file content.
+ * If the spec ends with .md and the file exists, returns file content.
+ * Otherwise returns the spec as-is (treated as inline content).
  */
+function resolveResourceContent(spec: string | undefined, pieceDir: string): string | undefined {
+  if (spec == null) return undefined;
+  if (spec.endsWith('.md')) {
+    const resolved = resolveResourcePath(spec, pieceDir);
+    if (existsSync(resolved)) return readFileSync(resolved, 'utf-8');
+  }
+  return spec;
+}
+
+/**
+ * Resolve a section reference to content.
+ * Looks up ref in resolvedMap first, then falls back to resolveResourceContent.
+ */
+function resolveRefToContent(
+  ref: string,
+  resolvedMap: Record<string, string> | undefined,
+  pieceDir: string,
+): string | undefined {
+  const mapped = resolvedMap?.[ref];
+  if (mapped) return mapped;
+  return resolveResourceContent(ref, pieceDir);
+}
+
+/** Resolve multiple references to content strings (for fields that accept string | string[]). */
+function resolveRefList(
+  refs: string | string[] | undefined,
+  resolvedMap: Record<string, string> | undefined,
+  pieceDir: string,
+): string[] | undefined {
+  if (refs == null) return undefined;
+  const list = Array.isArray(refs) ? refs : [refs];
+  const contents: string[] = [];
+  for (const ref of list) {
+    const content = resolveRefToContent(ref, resolvedMap, pieceDir);
+    if (content) contents.push(content);
+  }
+  return contents.length > 0 ? contents : undefined;
+}
+
+/** Resolve a piece-level section map (each value resolved to file content or inline). */
+function resolveSectionMap(
+  raw: Record<string, string> | undefined,
+  pieceDir: string,
+): Record<string, string> | undefined {
+  if (!raw) return undefined;
+  const resolved: Record<string, string> = {};
+  for (const [name, value] of Object.entries(raw)) {
+    const content = resolveResourceContent(value, pieceDir);
+    if (content) resolved[name] = content;
+  }
+  return Object.keys(resolved).length > 0 ? resolved : undefined;
+}
+
+/** Extract display name from persona path (e.g., "coder.md" → "coder"). */
 function extractPersonaDisplayName(personaPath: string): string {
   return basename(personaPath, '.md');
 }
 
-/**
- * Resolve a string value that may be a file path.
- * If the value ends with .md and the file exists (resolved relative to pieceDir),
- * read and return the file contents. Otherwise return the value as-is.
- */
-function resolveContentPath(value: string | undefined, pieceDir: string): string | undefined {
-  if (value == null) return undefined;
-  if (value.endsWith('.md')) {
-    let resolvedPath = value;
-    if (value.startsWith('./')) {
-      resolvedPath = join(pieceDir, value.slice(2));
-    } else if (value.startsWith('~')) {
-      const homedir = process.env.HOME || process.env.USERPROFILE || '';
-      resolvedPath = join(homedir, value.slice(1));
-    } else if (!value.startsWith('/')) {
-      resolvedPath = join(pieceDir, value);
-    }
-    if (existsSync(resolvedPath)) {
-      return readFileSync(resolvedPath, 'utf-8');
-    }
-  }
-  return value;
+/** Resolve persona from YAML field to spec + absolute path. */
+function resolvePersona(
+  rawPersona: string | undefined,
+  sections: PieceSections,
+  pieceDir: string,
+): { personaSpec?: string; personaPath?: string } {
+  if (!rawPersona) return {};
+  const personaSpec = sections.personas?.[rawPersona] ?? rawPersona;
+
+  const resolved = resolveResourcePath(personaSpec, pieceDir);
+  const personaPath = existsSync(resolved) ? resolved : undefined;
+  return { personaSpec, personaPath };
 }
 
-/**
- * Resolve a value from a section map by key lookup.
- * If the value matches a key in sectionMap, return the mapped value.
- * Otherwise return the value as-is (treated as file path or inline content).
- */
-function resolveSectionReference(
-  value: string,
-  sectionMap: Record<string, string> | undefined,
-): string {
-  const resolved = sectionMap?.[value];
-  return resolved ?? value;
-}
-
-/** Section maps parsed from piece YAML for section reference expansion */
+/** Pre-resolved section maps passed to movement normalization. */
 interface PieceSections {
+  /** Persona name → file path (raw, not content-resolved) */
   personas?: Record<string, string>;
-  stances?: Record<string, string>;
-  /** Stances resolved to file content (for backward-compat plain name lookup) */
+  /** Stance name → resolved content */
   resolvedStances?: Record<string, string>;
-  instructions?: Record<string, string>;
-  reportFormats?: Record<string, string>;
+  /** Instruction name → resolved content */
+  resolvedInstructions?: Record<string, string>;
+  /** Report format name → resolved content */
+  resolvedReportFormats?: Record<string, string>;
 }
 
 /** Check if a raw report value is the object form (has 'name' property). */
@@ -94,24 +117,19 @@ function isReportObject(raw: unknown): raw is { name: string; order?: string; fo
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw) && 'name' in raw;
 }
 
-/**
- * Normalize the raw report field from YAML into internal format.
- * Supports section references for format/order fields via rawReportFormats section.
- */
+/** Normalize the raw report field from YAML into internal format. */
 function normalizeReport(
   raw: string | Record<string, string>[] | { name: string; order?: string; format?: string } | undefined,
   pieceDir: string,
-  rawReportFormats?: Record<string, string>,
+  resolvedReportFormats?: Record<string, string>,
 ): string | ReportConfig[] | ReportObjectConfig | undefined {
   if (raw == null) return undefined;
   if (typeof raw === 'string') return raw;
   if (isReportObject(raw)) {
-    const expandedFormat = raw.format ? resolveSectionReference(raw.format, rawReportFormats) : undefined;
-    const expandedOrder = raw.order ? resolveSectionReference(raw.order, rawReportFormats) : undefined;
     return {
       name: raw.name,
-      order: resolveContentPath(expandedOrder, pieceDir),
-      format: resolveContentPath(expandedFormat, pieceDir),
+      order: raw.order ? resolveRefToContent(raw.order, resolvedReportFormats, pieceDir) : undefined,
+      format: raw.format ? resolveRefToContent(raw.format, resolvedReportFormats, pieceDir) : undefined,
     };
   }
   return (raw as Record<string, string>[]).flatMap((entry) =>
@@ -197,34 +215,6 @@ function normalizeRule(r: {
   };
 }
 
-/**
- * Resolve stance references for a movement.
- *
- * Resolution priority:
- * 1. Section key → look up in resolvedStances (pre-resolved content)
- * 2. File path (`./path`, `../path`, `*.md`) → resolve file directly
- * 3. Unknown names are silently ignored
- */
-function resolveStanceContents(
-  stanceRef: string | string[] | undefined,
-  sections: PieceSections,
-  pieceDir: string,
-): string[] | undefined {
-  if (stanceRef == null) return undefined;
-  const refs = Array.isArray(stanceRef) ? stanceRef : [stanceRef];
-  const contents: string[] = [];
-  for (const ref of refs) {
-    const sectionContent = sections.resolvedStances?.[ref];
-    if (sectionContent) {
-      contents.push(sectionContent);
-    } else if (ref.endsWith('.md') || ref.startsWith('./') || ref.startsWith('../')) {
-      const content = resolveContentPath(ref, pieceDir);
-      if (content) contents.push(content);
-    }
-  }
-  return contents.length > 0 ? contents : undefined;
-}
-
 /** Normalize a raw step into internal PieceMovement format. */
 function normalizeStepFromRaw(
   step: RawStep,
@@ -233,31 +223,17 @@ function normalizeStepFromRaw(
 ): PieceMovement {
   const rules: PieceRule[] | undefined = step.rules?.map(normalizeRule);
 
-  // Resolve persona via section reference expansion
   const rawPersona = (step as Record<string, unknown>).persona as string | undefined;
-  const expandedPersona = rawPersona ? resolveSectionReference(rawPersona, sections.personas) : undefined;
-  const personaSpec: string | undefined = expandedPersona || undefined;
-
-  // Resolve persona path: if the resolved path exists on disk, use it; otherwise leave personaPath undefined
-  // so that the runner treats personaSpec as an inline system prompt string.
-  let personaPath: string | undefined;
-  if (personaSpec) {
-    const resolved = resolvePersonaPathForPiece(personaSpec, pieceDir);
-    if (existsSync(resolved)) {
-      personaPath = resolved;
-    }
-  }
+  const { personaSpec, personaPath } = resolvePersona(rawPersona, sections, pieceDir);
 
   const displayName: string | undefined = (step as Record<string, unknown>).persona_name as string
     || undefined;
 
-  // Resolve stance references (supports section key, file paths)
   const stanceRef = (step as Record<string, unknown>).stance as string | string[] | undefined;
-  const stanceContents = resolveStanceContents(stanceRef, sections, pieceDir);
+  const stanceContents = resolveRefList(stanceRef, sections.resolvedStances, pieceDir);
 
-  // Resolve instruction: instruction_template > instruction (with section reference expansion) > default
   const expandedInstruction = step.instruction
-    ? resolveContentPath(resolveSectionReference(step.instruction, sections.instructions), pieceDir)
+    ? resolveRefToContent(step.instruction, sections.resolvedInstructions, pieceDir)
     : undefined;
 
   const result: PieceMovement = {
@@ -272,9 +248,9 @@ function normalizeStepFromRaw(
     model: step.model,
     permissionMode: step.permission_mode,
     edit: step.edit,
-    instructionTemplate: resolveContentPath(step.instruction_template, pieceDir) || expandedInstruction || '{task}',
+    instructionTemplate: resolveResourceContent(step.instruction_template, pieceDir) || expandedInstruction || '{task}',
     rules,
-    report: normalizeReport(step.report, pieceDir, sections.reportFormats),
+    report: normalizeReport(step.report, pieceDir, sections.resolvedReportFormats),
     passPreviousResponse: step.pass_previous_response ?? true,
     stanceContents,
   };
@@ -286,31 +262,18 @@ function normalizeStepFromRaw(
   return result;
 }
 
-/**
- * Normalize a raw loop monitor judge from YAML into internal format.
- * Resolves persona paths and instruction_template content paths.
- */
+/** Normalize a raw loop monitor judge from YAML into internal format. */
 function normalizeLoopMonitorJudge(
   raw: { persona?: string; instruction_template?: string; rules: Array<{ condition: string; next: string }> },
   pieceDir: string,
   sections: PieceSections,
 ): LoopMonitorJudge {
-  const rawPersona = raw.persona || undefined;
-  const expandedPersona = rawPersona ? resolveSectionReference(rawPersona, sections.personas) : undefined;
-  const personaSpec = expandedPersona || undefined;
-
-  let personaPath: string | undefined;
-  if (personaSpec) {
-    const resolved = resolvePersonaPathForPiece(personaSpec, pieceDir);
-    if (existsSync(resolved)) {
-      personaPath = resolved;
-    }
-  }
+  const { personaSpec, personaPath } = resolvePersona(raw.persona, sections, pieceDir);
 
   return {
     persona: personaSpec,
     personaPath,
-    instructionTemplate: resolveContentPath(raw.instruction_template, pieceDir),
+    instructionTemplate: resolveResourceContent(raw.instruction_template, pieceDir),
     rules: raw.rules.map((r) => ({ condition: r.condition, next: r.next })),
   };
 }
@@ -331,52 +294,27 @@ function normalizeLoopMonitors(
   }));
 }
 
-/**
- * Resolve a piece-level section map.
- * Each value is resolved via resolveContentPath (supports .md file references).
- * Used for stances, instructions, and report_formats.
- */
-function resolveSectionMap(
-  raw: Record<string, string> | undefined,
-  pieceDir: string,
-): Record<string, string> | undefined {
-  if (!raw) return undefined;
-  const resolved: Record<string, string> = {};
-  for (const [name, value] of Object.entries(raw)) {
-    const content = resolveContentPath(value, pieceDir);
-    if (content) {
-      resolved[name] = content;
-    }
-  }
-  return Object.keys(resolved).length > 0 ? resolved : undefined;
-}
-
-/**
- * Convert raw YAML piece config to internal format.
- * Agent paths are resolved relative to the piece directory.
- */
+/** Convert raw YAML piece config to internal format. */
 export function normalizePieceConfig(raw: unknown, pieceDir: string): PieceConfig {
   const parsed = PieceConfigRawSchema.parse(raw);
 
-  // Resolve piece-level section maps
   const resolvedStances = resolveSectionMap(parsed.stances, pieceDir);
   const resolvedInstructions = resolveSectionMap(parsed.instructions, pieceDir);
   const resolvedReportFormats = resolveSectionMap(parsed.report_formats, pieceDir);
 
-  // Build sections for section reference expansion in movements
   const sections: PieceSections = {
     personas: parsed.personas,
-    stances: parsed.stances,
     resolvedStances,
-    instructions: parsed.instructions,
-    reportFormats: parsed.report_formats,
+    resolvedInstructions,
+    resolvedReportFormats,
   };
 
   const movements: PieceMovement[] = parsed.movements.map((step) =>
     normalizeStepFromRaw(step, pieceDir, sections),
   );
 
-  const initialMovement = parsed.initial_movement ?? movements[0]?.name ?? '';
+  // Schema guarantees movements.min(1)
+  const initialMovement = parsed.initial_movement ?? movements[0]!.name;
 
   return {
     name: parsed.name,
