@@ -6,13 +6,15 @@ max_iterations: 3
 movements:
   - name: execute
     edit: true
-    agent: ../agents/test-reporter.md
+    persona: ../agents/test-reporter.md
     allowed_tools:
       - Read
       - Write
       - Edit
     permission_mode: edit
-    report: report.md
+    output_contracts:
+      report:
+        - Report: report.md
     instruction_template: |
       {task}
     rules:
