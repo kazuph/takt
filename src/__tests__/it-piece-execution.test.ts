@@ -65,9 +65,9 @@ function makeRule(condition: string, next: string): PieceRule {
 function makeMovement(name: string, agentPath: string, rules: PieceRule[]): PieceMovement {
   return {
     name,
-    agent: `./agents/${name}.md`,
-    agentDisplayName: name,
-    agentPath,
+    persona: `./personas/${name}.md`,
+    personaDisplayName: name,
+    personaPath: agentPath,
     instructionTemplate: '{task}',
     passPreviousResponse: true,
     rules,
@@ -78,13 +78,13 @@ function createTestEnv(): { dir: string; agentPaths: Record<string, string> } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-wf-'));
   mkdirSync(join(dir, '.takt', 'reports', 'test-report-dir'), { recursive: true });
 
-  const agentsDir = join(dir, 'agents');
-  mkdirSync(agentsDir, { recursive: true });
+  const personasDir = join(dir, 'personas');
+  mkdirSync(personasDir, { recursive: true });
 
   const agents = ['planner', 'coder', 'reviewer', 'fixer', 'supervisor'];
   const agentPaths: Record<string, string> = {};
   for (const agent of agents) {
-    const path = join(agentsDir, `${agent}.md`);
+    const path = join(personasDir, `${agent}.md`);
     writeFileSync(path, `You are a ${agent}.`);
     agentPaths[agent] = path;
   }
@@ -172,9 +172,9 @@ describe('Piece Engine IT: Happy Path', () => {
 
   it('should complete: plan → implement → review → COMPLETE', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'review', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
     ]);
 
     const config = buildSimplePiece(agentPaths);
@@ -191,7 +191,7 @@ describe('Piece Engine IT: Happy Path', () => {
 
   it('should ABORT when plan returns rule 2', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
     ]);
 
     const config = buildSimplePiece(agentPaths);
@@ -225,16 +225,16 @@ describe('Piece Engine IT: Fix Loop', () => {
 
   it('should handle review → fix → review → supervise → COMPLETE', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
       // First review: needs fix
-      { agent: 'review', status: 'done', content: '[REVIEW:2]\n\nNeeds fix.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:2]\n\nNeeds fix.' },
       // Fix
-      { agent: 'fix', status: 'done', content: '[FIX:1]\n\nFix complete.' },
+      { persona: 'fix', status: 'done', content: '[FIX:1]\n\nFix complete.' },
       // Second review: approved
-      { agent: 'review', status: 'done', content: '[REVIEW:1]\n\nApproved.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:1]\n\nApproved.' },
       // Supervise
-      { agent: 'supervise', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { persona: 'supervise', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
     ]);
 
     const config = buildLoopPiece(agentPaths);
@@ -251,10 +251,10 @@ describe('Piece Engine IT: Fix Loop', () => {
 
   it('should ABORT if fix fails', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'review', status: 'done', content: '[REVIEW:2]\n\nNeeds fix.' },
-      { agent: 'fix', status: 'done', content: '[FIX:2]\n\nCannot fix.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:2]\n\nNeeds fix.' },
+      { persona: 'fix', status: 'done', content: '[FIX:2]\n\nCannot fix.' },
     ]);
 
     const config = buildLoopPiece(agentPaths);
@@ -326,9 +326,9 @@ describe('Piece Engine IT: Movement Output Tracking', () => {
 
   it('should track movement outputs through events', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nPlan output.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nImplement output.' },
-      { agent: 'review', status: 'done', content: '[REVIEW:1]\n\nReview output.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nPlan output.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nImplement output.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:1]\n\nReview output.' },
     ]);
 
     const config = buildSimplePiece(agentPaths);

@@ -24,19 +24,19 @@ function generateMockSessionId(): string {
  * Call mock agent - returns immediate fixed response
  */
 export async function callMock(
-  agentName: string,
+  personaName: string,
   prompt: string,
   options: MockCallOptions
 ): Promise<AgentResponse> {
   const sessionId = options.sessionId ?? generateMockSessionId();
 
   // Scenario queue takes priority over explicit options
-  const scenarioEntry = getScenarioQueue()?.consume(agentName);
+  const scenarioEntry = getScenarioQueue()?.consume(personaName);
 
   const status = scenarioEntry?.status ?? options.mockStatus ?? 'done';
   const statusMarker = `[MOCK:${status.toUpperCase()}]`;
   const content = scenarioEntry?.content ?? options.mockResponse ??
-    `${statusMarker}\n\nMock response for agent "${agentName}".\nPrompt: ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}`;
+    `${statusMarker}\n\nMock response for persona "${personaName}".\nPrompt: ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}`;
 
   // Emit stream events if callback is provided
   if (options.onStream) {
@@ -60,7 +60,7 @@ export async function callMock(
   }
 
   return {
-    agent: agentName,
+    persona: personaName,
     status,
     content,
     timestamp: new Date(),
@@ -72,11 +72,11 @@ export async function callMock(
  * Call mock agent with custom system prompt (same as callMock for mock provider)
  */
 export async function callMockCustom(
-  agentName: string,
+  personaName: string,
   prompt: string,
   _systemPrompt: string,
   options: MockCallOptions
 ): Promise<AgentResponse> {
   // For mock, system prompt is ignored - just return fixed response
-  return callMock(agentName, prompt, options);
+  return callMock(personaName, prompt, options);
 }

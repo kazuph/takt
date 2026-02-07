@@ -16,7 +16,7 @@ export interface SessionLog {
   status: 'running' | 'completed' | 'aborted';
   history: Array<{
     step: string;
-    agent: string;
+    persona: string;
     instruction: string;
     status: string;
     timestamp: string;
@@ -41,7 +41,7 @@ export interface NdjsonPieceStart {
 export interface NdjsonStepStart {
   type: 'step_start';
   step: string;
-  agent: string;
+  persona: string;
   iteration: number;
   timestamp: string;
   instruction?: string;
@@ -50,7 +50,7 @@ export interface NdjsonStepStart {
 export interface NdjsonStepComplete {
   type: 'step_complete';
   step: string;
-  agent: string;
+  persona: string;
   status: string;
   content: string;
   instruction: string;

@@ -121,6 +121,49 @@ describe('loadGlobalConfig', () => {
     expect(reloaded.pipeline!.commitMessageTemplate).toBe('feat: {title} (#{issue})');
   });
 
+  it('should load auto_pr config from config.yaml', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(
+      getGlobalConfigPath(),
+      'language: en\nauto_pr: true\n',
+      'utf-8',
+    );
+
+    const config = loadGlobalConfig();
+
+    expect(config.autoPr).toBe(true);
+  });
+
+  it('should save and reload auto_pr config', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    // Create minimal config first
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.autoPr = true;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.autoPr).toBe(true);
+  });
+
+  it('should save auto_pr: false when explicitly set', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.autoPr = false;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.autoPr).toBe(false);
+  });
+
   it('should read from cache without hitting disk on second call', () => {
     const taktDir = join(testHomeDir, '.takt');
     mkdirSync(taktDir, { recursive: true });
@@ -149,5 +192,126 @@ describe('loadGlobalConfig', () => {
     const config3 = loadGlobalConfig();
     expect(config3.language).toBe('en');
     expect(config3).not.toBe(config1);
+  });
+
+  it('should load prevent_sleep config from config.yaml', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(
+      getGlobalConfigPath(),
+      'language: en\nprevent_sleep: true\n',
+      'utf-8',
+    );
+
+    const config = loadGlobalConfig();
+
+    expect(config.preventSleep).toBe(true);
+  });
+
+  it('should save and reload prevent_sleep config', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.preventSleep = true;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.preventSleep).toBe(true);
+  });
+
+  it('should save prevent_sleep: false when explicitly set', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.preventSleep = false;
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.preventSleep).toBe(false);
+  });
+
+  it('should have undefined preventSleep by default', () => {
+    const config = loadGlobalConfig();
+    expect(config.preventSleep).toBeUndefined();
+  });
+
+  describe('provider/model compatibility validation', () => {
+    it('should throw when provider is codex but model is a Claude alias (opus)', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: codex\nmodel: opus\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'opus' is a Claude model alias but provider is 'codex'/);
+    });
+
+    it('should throw when provider is codex but model is sonnet', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: codex\nmodel: sonnet\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'sonnet' is a Claude model alias but provider is 'codex'/);
+    });
+
+    it('should throw when provider is codex but model is haiku', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: codex\nmodel: haiku\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'haiku' is a Claude model alias but provider is 'codex'/);
+    });
+
+    it('should not throw when provider is codex with a compatible model', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: codex\nmodel: gpt-4o\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).not.toThrow();
+    });
+
+    it('should not throw when provider is claude with Claude models', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: claude\nmodel: opus\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).not.toThrow();
+    });
+
+    it('should not throw when provider is codex without a model', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: codex\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).not.toThrow();
+    });
   });
 });

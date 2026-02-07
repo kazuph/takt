@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { callCodex, callCodexCustom, type CodexCallOptions } from '../codex/index.js';
 import { resolveOpenaiApiKey } from '../config/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
-import type { Provider, ProviderCallOptions } from './types.js';
+import type { AgentSetup, Provider, ProviderAgent, ProviderCallOptions } from './types.js';
 
 const NOT_GIT_REPO_MESSAGE =
   'Codex をご利用の場合 Git 管理下のディレクトリでのみ動作します。';
@@ -24,50 +24,51 @@ function isInsideGitRepo(cwd: string): boolean {
   }
 }
 
-/** Codex provider - wraps existing Codex client */
+function toCodexOptions(options: ProviderCallOptions): CodexCallOptions {
+  return {
+    cwd: options.cwd,
+    sessionId: options.sessionId,
+    model: options.model,
+    permissionMode: options.permissionMode,
+    onStream: options.onStream,
+    openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
+  };
+}
+
+function blockedResponse(agentName: string): AgentResponse {
+  return {
+    persona: agentName,
+    status: 'blocked',
+    content: NOT_GIT_REPO_MESSAGE,
+    timestamp: new Date(),
+  };
+}
+
+/** Codex provider — delegates to OpenAI Codex SDK */
 export class CodexProvider implements Provider {
-  async call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    if (!isInsideGitRepo(options.cwd)) {
+  setup(config: AgentSetup): ProviderAgent {
+    if (config.claudeAgent) {
+      throw new Error('Claude Code agent calls are not supported by the Codex provider');
+    }
+    if (config.claudeSkill) {
+      throw new Error('Claude Code skill calls are not supported by the Codex provider');
+    }
+
+    const { name, systemPrompt } = config;
+    if (systemPrompt) {
       return {
-        agent: agentName,
-        status: 'blocked',
-        content: NOT_GIT_REPO_MESSAGE,
-        timestamp: new Date(),
+        call: async (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> => {
+          if (!isInsideGitRepo(options.cwd)) return blockedResponse(name);
+          return callCodexCustom(name, prompt, systemPrompt, toCodexOptions(options));
+        },
       };
     }
 
-    const callOptions: CodexCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      model: options.model,
-      systemPrompt: options.systemPrompt,
-      permissionMode: options.permissionMode,
-      onStream: options.onStream,
-      openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
+    return {
+      call: async (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> => {
+        if (!isInsideGitRepo(options.cwd)) return blockedResponse(name);
+        return callCodex(name, prompt, toCodexOptions(options));
+      },
     };
-
-    return callCodex(agentName, prompt, callOptions);
-  }
-
-  async callCustom(agentName: string, prompt: string, systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    if (!isInsideGitRepo(options.cwd)) {
-      return {
-        agent: agentName,
-        status: 'blocked',
-        content: NOT_GIT_REPO_MESSAGE,
-        timestamp: new Date(),
-      };
-    }
-
-    const callOptions: CodexCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      model: options.model,
-      permissionMode: options.permissionMode,
-      onStream: options.onStream,
-      openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
-    };
-
-    return callCodexCustom(agentName, prompt, systemPrompt, callOptions);
   }
 }

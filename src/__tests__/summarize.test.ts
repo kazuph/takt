@@ -31,8 +31,7 @@ const mockLoadGlobalConfig = vi.mocked(loadGlobalConfig);
 
 const mockProviderCall = vi.fn();
 const mockProvider = {
-  call: mockProviderCall,
-  callCustom: vi.fn(),
+  setup: () => ({ call: mockProviderCall }),
 };
 
 beforeEach(() => {
@@ -44,6 +43,7 @@ beforeEach(() => {
     logLevel: 'info',
     provider: 'claude',
     model: undefined,
+    branchNameStrategy: 'ai',
   });
 });
 
@@ -51,7 +51,7 @@ describe('summarizeTaskName', () => {
   it('should return AI-generated slug for task name', async () => {
     // Given: AI returns a slug for input
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'add-auth',
       timestamp: new Date(),
@@ -64,7 +64,6 @@ describe('summarizeTaskName', () => {
     expect(result).toBe('add-auth');
     expect(mockGetProvider).toHaveBeenCalledWith('claude');
     expect(mockProviderCall).toHaveBeenCalledWith(
-      'summarizer',
       'long task name for testing',
       expect.objectContaining({
         cwd: '/project',
@@ -76,7 +75,7 @@ describe('summarizeTaskName', () => {
   it('should return AI-generated slug for English task name', async () => {
     // Given
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'fix-login-bug',
       timestamp: new Date(),
@@ -92,7 +91,7 @@ describe('summarizeTaskName', () => {
   it('should clean up AI response with extra characters', async () => {
     // Given: AI response has extra whitespace or formatting
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '  Add-User-Auth!  \n',
       timestamp: new Date(),
@@ -108,7 +107,7 @@ describe('summarizeTaskName', () => {
   it('should truncate long slugs to 30 characters without trailing hyphen', async () => {
     // Given: AI returns a long slug
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'this-is-a-very-long-slug-that-exceeds-thirty-characters',
       timestamp: new Date(),
@@ -126,7 +125,7 @@ describe('summarizeTaskName', () => {
   it('should return "task" as fallback for empty AI response', async () => {
     // Given: AI returns empty string
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '',
       timestamp: new Date(),
@@ -142,7 +141,7 @@ describe('summarizeTaskName', () => {
   it('should use custom model if specified in options', async () => {
     // Given
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'custom-task',
       timestamp: new Date(),
@@ -153,7 +152,6 @@ describe('summarizeTaskName', () => {
 
     // Then
     expect(mockProviderCall).toHaveBeenCalledWith(
-      'summarizer',
       expect.any(String),
       expect.objectContaining({
         model: 'sonnet',
@@ -162,16 +160,17 @@ describe('summarizeTaskName', () => {
   });
 
   it('should use provider from config.yaml', async () => {
-    // Given: config has codex provider
+    // Given: config has codex provider with branchNameStrategy: 'ai'
     mockLoadGlobalConfig.mockReturnValue({
       language: 'ja',
       defaultPiece: 'default',
       logLevel: 'info',
       provider: 'codex',
       model: 'gpt-4',
+      branchNameStrategy: 'ai',
     });
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'codex-task',
       timestamp: new Date(),
@@ -183,7 +182,6 @@ describe('summarizeTaskName', () => {
     // Then
     expect(mockGetProvider).toHaveBeenCalledWith('codex');
     expect(mockProviderCall).toHaveBeenCalledWith(
-      'summarizer',
       expect.any(String),
       expect.objectContaining({
         model: 'gpt-4',
@@ -194,7 +192,7 @@ describe('summarizeTaskName', () => {
   it('should remove consecutive hyphens', async () => {
     // Given: AI response has consecutive hyphens
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'fix---multiple---hyphens',
       timestamp: new Date(),
@@ -210,7 +208,7 @@ describe('summarizeTaskName', () => {
   it('should remove leading and trailing hyphens', async () => {
     // Given: AI response has leading/trailing hyphens
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '-leading-trailing-',
       timestamp: new Date(),
@@ -252,19 +250,110 @@ describe('summarizeTaskName', () => {
     expect(result).not.toMatch(/^-|-$/); // No leading/trailing hyphens
   });
 
-  it('should use LLM by default', async () => {
-    // Given
+  it('should use romaji by default', async () => {
+    // Given: branchNameStrategy is not set (undefined)
+    mockLoadGlobalConfig.mockReturnValue({
+      language: 'ja',
+      defaultPiece: 'default',
+      logLevel: 'info',
+      provider: 'claude',
+      model: undefined,
+      branchNameStrategy: undefined,
+    });
+
+    // When: useLLM not specified, branchNameStrategy not set
+    const result = await summarizeTaskName('test task', { cwd: '/project' });
+
+    // Then: should NOT call provider, should return romaji
+    expect(mockProviderCall).not.toHaveBeenCalled();
+    expect(result).toMatch(/^[a-z0-9-]+$/);
+  });
+
+  it('should use AI when branchNameStrategy is ai', async () => {
+    // Given: branchNameStrategy is 'ai'
+    mockLoadGlobalConfig.mockReturnValue({
+      language: 'ja',
+      defaultPiece: 'default',
+      logLevel: 'info',
+      provider: 'claude',
+      model: undefined,
+      branchNameStrategy: 'ai',
+    });
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
-      content: 'add-auth',
+      content: 'ai-generated-slug',
       timestamp: new Date(),
     });
 
-    // When: useLLM not specified (defaults to true)
-    await summarizeTaskName('test', { cwd: '/project' });
+    // When: useLLM not specified, branchNameStrategy is 'ai'
+    const result = await summarizeTaskName('test task', { cwd: '/project' });
 
     // Then: should call provider
     expect(mockProviderCall).toHaveBeenCalled();
+    expect(result).toBe('ai-generated-slug');
+  });
+
+  it('should use romaji when branchNameStrategy is romaji', async () => {
+    // Given: branchNameStrategy is 'romaji'
+    mockLoadGlobalConfig.mockReturnValue({
+      language: 'ja',
+      defaultPiece: 'default',
+      logLevel: 'info',
+      provider: 'claude',
+      model: undefined,
+      branchNameStrategy: 'romaji',
+    });
+
+    // When
+    const result = await summarizeTaskName('test task', { cwd: '/project' });
+
+    // Then: should NOT call provider
+    expect(mockProviderCall).not.toHaveBeenCalled();
+    expect(result).toMatch(/^[a-z0-9-]+$/);
+  });
+
+  it('should respect explicit useLLM option over config', async () => {
+    // Given: branchNameStrategy is 'romaji' but useLLM is explicitly true
+    mockLoadGlobalConfig.mockReturnValue({
+      language: 'ja',
+      defaultPiece: 'default',
+      logLevel: 'info',
+      provider: 'claude',
+      model: undefined,
+      branchNameStrategy: 'romaji',
+    });
+    mockProviderCall.mockResolvedValue({
+      persona: 'summarizer',
+      status: 'done',
+      content: 'explicit-ai-slug',
+      timestamp: new Date(),
+    });
+
+    // When: useLLM is explicitly true
+    const result = await summarizeTaskName('test task', { cwd: '/project', useLLM: true });
+
+    // Then: should call provider (explicit option overrides config)
+    expect(mockProviderCall).toHaveBeenCalled();
+    expect(result).toBe('explicit-ai-slug');
+  });
+
+  it('should respect explicit useLLM false over config with ai strategy', async () => {
+    // Given: branchNameStrategy is 'ai' but useLLM is explicitly false
+    mockLoadGlobalConfig.mockReturnValue({
+      language: 'ja',
+      defaultPiece: 'default',
+      logLevel: 'info',
+      provider: 'claude',
+      model: undefined,
+      branchNameStrategy: 'ai',
+    });
+
+    // When: useLLM is explicitly false
+    const result = await summarizeTaskName('test task', { cwd: '/project', useLLM: false });
+
+    // Then: should NOT call provider (explicit option overrides config)
+    expect(mockProviderCall).not.toHaveBeenCalled();
+    expect(result).toMatch(/^[a-z0-9-]+$/);
   });
 });

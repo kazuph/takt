@@ -28,7 +28,7 @@ max_iterations: 1
 
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "{task}"
 `;
 

@@ -21,11 +21,11 @@ export class StateManager {
   readonly state: PieceState;
 
   constructor(config: PieceConfig, options: PieceEngineOptions) {
-    // Restore agent sessions from options if provided
-    const agentSessions = new Map<string, string>();
+    // Restore persona sessions from options if provided
+    const personaSessions = new Map<string, string>();
     if (options.initialSessions) {
-      for (const [agent, sessionId] of Object.entries(options.initialSessions)) {
-        agentSessions.set(agent, sessionId);
+      for (const [persona, sessionId] of Object.entries(options.initialSessions)) {
+        personaSessions.set(persona, sessionId);
       }
     }
 
@@ -36,12 +36,12 @@ export class StateManager {
 
     this.state = {
       pieceName: config.name,
-      currentMovement: config.initialMovement,
+      currentMovement: options.startMovement ?? config.initialMovement,
       iteration: 0,
       movementOutputs: new Map(),
       lastOutput: undefined,
       userInputs,
-      agentSessions,
+      personaSessions,
       movementIterations: new Map(),
       status: 'running',
     };

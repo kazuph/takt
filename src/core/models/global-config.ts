@@ -43,9 +43,11 @@ export interface GlobalConfig {
   debug?: DebugConfig;
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktreeDir?: string;
+  /** Auto-create PR after worktree execution (default: prompt in interactive mode) */
+  autoPr?: boolean;
   /** List of builtin piece/agent names to exclude from fallback loading */
   disabledBuiltins?: string[];
-  /** Enable builtin pieces from resources/global/{lang}/pieces */
+  /** Enable builtin pieces from builtins/{lang}/pieces */
   enableBuiltinPieces?: boolean;
   /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
   anthropicApiKey?: string;
@@ -59,6 +61,10 @@ export interface GlobalConfig {
   bookmarksFile?: string;
   /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
   pieceCategoriesFile?: string;
+  /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
+  branchNameStrategy?: 'romaji' | 'ai';
+  /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
+  preventSleep?: boolean;
 }
 
 /** Project-level configuration */

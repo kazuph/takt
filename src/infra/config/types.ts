@@ -32,9 +32,9 @@ export interface ProjectLocalConfig {
   [key: string]: unknown;
 }
 
-/** Agent session data for persistence */
-export interface AgentSessionData {
-  agentSessions: Record<string, string>;
+/** Persona session data for persistence */
+export interface PersonaSessionData {
+  personaSessions: Record<string, string>;
   updatedAt: string;
   /** Provider that created these sessions (claude, codex, etc.) */
   provider?: string;

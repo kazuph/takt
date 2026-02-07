@@ -63,7 +63,7 @@ describe('PieceEngine Integration: Blocked Handling', () => {
     const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'plan', status: 'blocked', content: 'Need clarification' }),
+      makeResponse({ persona: 'plan', status: 'blocked', content: 'Need clarification' }),
     ]);
 
     mockDetectMatchedRuleSequence([
@@ -88,7 +88,7 @@ describe('PieceEngine Integration: Blocked Handling', () => {
     const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir, onUserInput });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'plan', status: 'blocked', content: 'Need info' }),
+      makeResponse({ persona: 'plan', status: 'blocked', content: 'Need info' }),
     ]);
 
     mockDetectMatchedRuleSequence([
@@ -108,14 +108,14 @@ describe('PieceEngine Integration: Blocked Handling', () => {
 
     mockRunAgentSequence([
       // First: plan is blocked
-      makeResponse({ agent: 'plan', status: 'blocked', content: 'Need info' }),
+      makeResponse({ persona: 'plan', status: 'blocked', content: 'Need info' }),
       // Second: plan succeeds after user input
-      makeResponse({ agent: 'plan', content: 'Plan done with user input' }),
-      makeResponse({ agent: 'implement', content: 'Impl done' }),
-      makeResponse({ agent: 'ai_review', content: 'OK' }),
-      makeResponse({ agent: 'arch-review', content: 'OK' }),
-      makeResponse({ agent: 'security-review', content: 'OK' }),
-      makeResponse({ agent: 'supervise', content: 'All passed' }),
+      makeResponse({ persona: 'plan', content: 'Plan done with user input' }),
+      makeResponse({ persona: 'implement', content: 'Impl done' }),
+      makeResponse({ persona: 'ai_review', content: 'OK' }),
+      makeResponse({ persona: 'arch-review', content: 'OK' }),
+      makeResponse({ persona: 'security-review', content: 'OK' }),
+      makeResponse({ persona: 'supervise', content: 'All passed' }),
     ]);
 
     mockDetectMatchedRuleSequence([

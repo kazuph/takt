@@ -6,7 +6,7 @@ max_iterations: 5
 movements:
   - name: execute
     edit: true
-    agent: ../agents/test-coder.md
+    persona: ../agents/test-coder.md
     allowed_tools:
       - Read
       - Write

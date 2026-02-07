@@ -111,7 +111,7 @@ export class ReportBasedStrategy extends JudgmentStrategyBase {
   readonly name = 'ReportBased';
 
   canApply(context: JudgmentContext): boolean {
-    return context.reportDir !== undefined && getReportFiles(context.step.report).length > 0;
+    return context.reportDir !== undefined && getReportFiles(context.step.outputContracts).length > 0;
   }
 
   protected async gatherInput(context: JudgmentContext): Promise<string> {
@@ -119,7 +119,7 @@ export class ReportBasedStrategy extends JudgmentStrategyBase {
       throw new Error('Report directory not provided');
     }
 
-    const reportFiles = getReportFiles(context.step.report);
+    const reportFiles = getReportFiles(context.step.outputContracts);
     if (reportFiles.length === 0) {
       throw new Error('No report files configured');
     }
@@ -197,7 +197,7 @@ export class AgentConsultStrategy implements JudgmentStrategy {
     try {
       const question = this.buildQuestion(context);
 
-      const response = await runAgent(context.step.agent ?? context.step.name, question, {
+      const response = await runAgent(context.step.persona ?? context.step.name, question, {
         cwd: context.cwd,
         sessionId: context.sessionId,
         maxTurns: 3,

@@ -88,8 +88,8 @@ vi.mock('../infra/config/paths.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../infra/config/paths.js')>();
   return {
     ...original,
-    loadAgentSessions: vi.fn().mockReturnValue({}),
-    updateAgentSession: vi.fn(),
+    loadPersonaSessions: vi.fn().mockReturnValue({}),
+    updatePersonaSession: vi.fn(),
     loadWorktreeSessions: vi.fn().mockReturnValue({}),
     updateWorktreeSession: vi.fn(),
     getCurrentPiece: vi.fn().mockReturnValue('default'),
@@ -142,12 +142,12 @@ function createTestPieceDir(): { dir: string; piecePath: string } {
   // Create .takt/reports structure
   mkdirSync(join(dir, '.takt', 'reports', 'test-report-dir'), { recursive: true });
 
-  // Create agent prompt files
-  const agentsDir = join(dir, 'agents');
-  mkdirSync(agentsDir, { recursive: true });
-  writeFileSync(join(agentsDir, 'planner.md'), 'You are a planner. Analyze the task.');
-  writeFileSync(join(agentsDir, 'coder.md'), 'You are a coder. Implement the task.');
-  writeFileSync(join(agentsDir, 'reviewer.md'), 'You are a reviewer. Review the code.');
+  // Create persona prompt files
+  const personasDir = join(dir, 'personas');
+  mkdirSync(personasDir, { recursive: true });
+  writeFileSync(join(personasDir, 'planner.md'), 'You are a planner. Analyze the task.');
+  writeFileSync(join(personasDir, 'coder.md'), 'You are a coder. Implement the task.');
+  writeFileSync(join(personasDir, 'reviewer.md'), 'You are a reviewer. Review the code.');
 
   // Create a simple piece YAML
   const pieceYaml = `
@@ -158,7 +158,7 @@ initial_movement: plan
 
 movements:
   - name: plan
-    agent: ./agents/planner.md
+    persona: ./personas/planner.md
     rules:
       - condition: Requirements are clear
         next: implement
@@ -167,7 +167,7 @@ movements:
     instruction: "{task}"
 
   - name: implement
-    agent: ./agents/coder.md
+    persona: ./personas/coder.md
     rules:
       - condition: Implementation complete
         next: review
@@ -176,7 +176,7 @@ movements:
     instruction: "{task}"
 
   - name: review
-    agent: ./agents/reviewer.md
+    persona: ./personas/reviewer.md
     rules:
       - condition: All checks passed
         next: COMPLETE
@@ -209,11 +209,11 @@ describe('Pipeline Integration Tests', () => {
 
   it('should complete pipeline with piece path + skip-git + mock scenario', async () => {
     // Scenario: plan -> implement -> review -> COMPLETE
-    // agent field must match extractAgentName(movement.agent), i.e., the .md filename without extension
+    // persona field must match extractPersonaName(movement.persona), i.e., the .md filename without extension
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nPlan completed. Requirements are clear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nPlan completed. Requirements are clear.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
+      { persona: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
     ]);
 
     const exitCode = await executePipeline({
@@ -230,12 +230,12 @@ describe('Pipeline Integration Tests', () => {
 
   it('should complete pipeline with piece name + skip-git + mock scenario', async () => {
     // Use builtin 'minimal' piece
-    // agent field: extractAgentName result (from .md filename)
+    // persona field: extractPersonaName result (from .md filename)
     // tag in content: [MOVEMENT_NAME:N] where MOVEMENT_NAME is the movement name uppercased
     setMockScenario([
-      { agent: 'coder', status: 'done', content: 'Implementation complete' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
-      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
+      { persona: 'coder', status: 'done', content: 'Implementation complete' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { persona: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const exitCode = await executePipeline({
@@ -267,7 +267,7 @@ describe('Pipeline Integration Tests', () => {
   it('should handle ABORT transition from piece', async () => {
     // Scenario: plan returns second rule -> ABORT
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear, insufficient info.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear, insufficient info.' },
     ]);
 
     const exitCode = await executePipeline({
@@ -286,12 +286,12 @@ describe('Pipeline Integration Tests', () => {
   it('should handle review reject → implement → review loop', async () => {
     setMockScenario([
       // First pass
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'reviewer', status: 'done', content: '[REVIEW:2]\n\nIssues found.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'reviewer', status: 'done', content: '[REVIEW:2]\n\nIssues found.' },
       // Fix loop
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nFixed.' },
-      { agent: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nFixed.' },
+      { persona: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
     ]);
 
     const exitCode = await executePipeline({

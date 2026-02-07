@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0-alpha.1] - 2026-02-07
+
+### Added
+
+- **Faceted Prompting アーキテクチャ**: プロンプト構成要素を独立ファイルとして管理し、ピース間で自由に組み合わせ可能に
+  - `personas/` — エージェントの役割・専門性を定義するペルソナプロンプト
+  - `policies/` — コーディング規約・品質基準・禁止事項を定義するポリシー
+  - `knowledge/` — ドメイン知識・アーキテクチャ情報を定義するナレッジ
+  - `instructions/` — ムーブメント固有の手順を定義するインストラクション
+  - `output-contracts/` — レポート出力フォーマットを定義するアウトプットコントラクト
+  - ピースYAMLのセクションマップ（`personas:`, `policies:`, `knowledge:`）でキーとファイルパスを対応付け、ムーブメントからキーで参照
+- **Output Contracts と Quality Gates**: レポート出力の構造化定義と品質基準の AI ディレクティブ
+  - `output_contracts` フィールドでレポート定義（`report` フィールドを置き換え）
+  - `quality_gates` フィールドでムーブメント完了要件の AI ディレクティブを指定
+- **Knowledge システム**: ドメイン知識をペルソナから分離し、ピースレベルで管理・注入
+  - ピースYAMLの `knowledge:` セクションマップでナレッジファイルを定義
+  - ムーブメントの `knowledge:` フィールドでキー参照して注入
+- **Faceted Prompting ドキュメント**: 設計思想と実践ガイドを `docs/faceted-prompting.md`（en/ja）に追加
+- **Hybrid Codex ピース生成ツール**: `tools/generate-hybrid-codex.mjs` で Claude ピースから Codex バリアントを自動生成
+- 失敗タスクの再投入機能: `takt list` から失敗タスクブランチを選択して再実行可能に (#110)
+- ブランチ名生成戦略を設定可能に（`branch_name_strategy` 設定）
+- auto-PR 機能の追加と PR 作成ロジックの共通化 (#98)
+- Issue 参照時にもピース選択を実施 (#97)
+- ステップ（ムーブメント）にいてのスリープ機能
+
+### Changed
+
+- **BREAKING:** `resources/global/` ディレクトリを `builtins/` にリネーム
+  - `resources/global/{lang}/` → `builtins/{lang}/`
+  - package.json の `files` フィールドを `resources/` → `builtins/` に変更
+- **BREAKING:** `agent` フィールドを `persona` にリネーム
+  - ピースYAMLの `agent:` → `persona:`、`agent_name:` → `persona_name:`
+  - 内部型: `agentPath` → `personaPath`、`agentDisplayName` → `personaDisplayName`、`agentSessions` → `personaSessions`
+  - ディレクトリ: `agents/` → `personas/`（グローバル・プロジェクト・ビルトイン全て）
+- **BREAKING:** `report` フィールドを `output_contracts` に変更
+  - 従来の `report: 00-plan.md` / `report: [{Scope: ...}]` / `report: {name, order, format}` 形式を `output_contracts: {report: [...]}` 形式に統一
+- **BREAKING:** `stances` → `policies`、`report_formats` → `output_contracts` にリネーム
+- 全ビルトインピースを Faceted Prompting アーキテクチャに移行（旧エージェントプロンプト内のドメイン知識をナレッジに分離）
+- SDK 更新: `@anthropic-ai/claude-agent-sdk` v0.2.19 → v0.2.34、`@openai/codex-sdk` v0.91.0 → v0.98.0
+- ムーブメントに `policy` / `knowledge` フィールドを追加（セクションマップのキーで参照）
+- 対話モードのスコアリングにポリシーベースの評価を追加
+- README を刷新: agent → persona、セクションマップの説明追加、制御・管理の分類を明記
+- ビルトインスキル（SKILL.md）をFaceted Prompting対応に刷新
+
+### Fixed
+
+- レポートディレクトリパスの解決バグを修正
+- PR の Issue 番号リンクが正しく設定されない問題を修正
+- `stageAndCommit` で gitignored ファイルがコミットされる問題を修正（`git add -f .takt/reports/` を削除）
+
+### Internal
+
+- ビルトインリソースの大規模再構成: 旧 `agents/` ディレクトリ構造（`default/`, `expert/`, `expert-cqrs/`, `magi/`, `research/`, `templates/`）を廃止し、フラットな `personas/`, `policies/`, `knowledge/`, `instructions/`, `output-contracts/` 構造に移行
+- Faceted Prompting のスタイルガイドとテンプレートを追加（`builtins/ja/` に `PERSONA_STYLE_GUIDE.md`, `POLICY_STYLE_GUIDE.md`, `INSTRUCTION_STYLE_GUIDE.md`, `OUTPUT_CONTRACT_STYLE_GUIDE.md` 等）
+- `pieceParser.ts` にポリシー・ナレッジ・インストラクションの解決ロジックを追加
+- テスト追加: knowledge, policy-persona, deploySkill, StreamDisplay, globalConfig-defaults, sleep, task, taskExecution, taskRetryActions, addTask, saveTaskFile, parallel-logger, summarize 拡充
+- `InstructionBuilder` にポリシー・ナレッジコンテンツの注入を追加
+- `taskRetryActions.ts` を追加（失敗タスクの再投入ロジック）
+- `sleep.ts` ユーティリティを追加
+- 旧プロンプトファイル（`interactive-summary.md`, `interactive-system.md`）を削除
+- 旧エージェントテンプレート（`templates/coder.md`, `templates/planner.md` 等）を削除
+
 ## [0.7.1] - 2026-02-06
 
 ### Fixed
@@ -22,39 +84,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Hybrid Codex ピース: 全主要ピース（default, minimal, expert, expert-cqrs, passthrough, review-fix-minimal, coding）の Codex バリアントを追加
-  - coder エージェントを Codex プロバイダーで実行し、レビュアーは Claude を使うハイブリッド構成
+  - coder エージェントを Codex プロバイダーで実行するハイブリッド構成
   - en/ja 両対応
-- `passthrough` ピース: タスクをそのまま coder に渡す最小構成ピース（レビューなし）
-- `coding` ピースを plan ベースに刷新: architect-planner による設計→実装→並列レビュー→修正の構成に変更
+- `passthrough` ピース: タスクをそのまま coder に渡す最小構成ピース
 - `takt export-cc` コマンド: ビルトインピース・エージェントを Claude Code Skill としてデプロイ
 - `takt list` に delete アクション追加、non-interactive モード分離
 - AI 相談アクション: `takt add` / インタラクティブモードで GitHub Issue 作成・タスクファイル保存が可能に
 - サイクル検出: ai_review ↔ ai_fix 間の無限ループを検出する `CycleDetector` を追加 (#102)
   - 修正不要時の裁定ステップ（`ai_no_fix`）を default ピースに追加
-- `architect-planner` エージェント: アーキテクチャ設計と実装計画を統合する新エージェント
-- ピースカテゴリに Hybrid Codex サブカテゴリを追加（en/ja）
 - CI: skipped な TAKT Action ランを週次で自動削除するワークフローを追加
+- ピースカテゴリに Hybrid Codex サブカテゴリを追加（en/ja）
 
 ### Changed
 
 - カテゴリ設定を簡素化: `default-categories.yaml` を `piece-categories.yaml` に統合し、ユーザーディレクトリへの自動コピー方式に変更
-- ピース選択UIのサブカテゴリナビゲーションを改善（再帰的な階層表示が正しく動作するように）
+- ピース選択UIのサブカテゴリナビゲーションを修正（再帰的な階層表示が正しく動作するように）
 - Claude Code Skill を Agent Team ベースに刷新
-- エージェントプロンプトにボーイスカウトルールと後方互換コード検出ルールを追加
 - `console.log` を `info()` に統一（list コマンド）
 
 ### Fixed
 
 - Hybrid Codex ピースの description に含まれるコロンが YAML パースエラーを起こす問題を修正
 - サブカテゴリ選択時に `selectPieceFromCategoryTree` に不正な引数が渡される問題を修正
-- GitHub Actions でテストが git user 未設定により失敗する問題を修正（listTasks, listNonInteractive）
 
 ### Internal
 
 - `list` コマンドのリファクタリング: `listNonInteractive.ts`, `taskDeleteActions.ts` を分離
 - `cycle-detector.ts` を追加、`PieceEngine` にサイクル検出を統合
 - ピースカテゴリローダーのリファクタリング（`pieceCategories.ts`, `pieceSelection/index.ts`）
-- 不要なワークツリーセッションテストを削除、ワークツリー削除テストを簡素化
 - テスト追加: cycle-detector, engine-loop-monitors, piece-selection, listNonInteractive, taskDeleteActions, createIssue, saveTaskFile
 
 ## [0.6.0] - 2026-02-05

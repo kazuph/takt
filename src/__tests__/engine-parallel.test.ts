@@ -64,12 +64,12 @@ describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
     const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'plan', content: 'Plan done' }),
-      makeResponse({ agent: 'implement', content: 'Impl done' }),
-      makeResponse({ agent: 'ai_review', content: 'OK' }),
-      makeResponse({ agent: 'arch-review', content: 'Architecture review content' }),
-      makeResponse({ agent: 'security-review', content: 'Security review content' }),
-      makeResponse({ agent: 'supervise', content: 'All passed' }),
+      makeResponse({ persona: 'plan', content: 'Plan done' }),
+      makeResponse({ persona: 'implement', content: 'Impl done' }),
+      makeResponse({ persona: 'ai_review', content: 'OK' }),
+      makeResponse({ persona: 'arch-review', content: 'Architecture review content' }),
+      makeResponse({ persona: 'security-review', content: 'Security review content' }),
+      makeResponse({ persona: 'supervise', content: 'All passed' }),
     ]);
 
     mockDetectMatchedRuleSequence([
@@ -101,12 +101,12 @@ describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
     const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'plan', content: 'Plan' }),
-      makeResponse({ agent: 'implement', content: 'Impl' }),
-      makeResponse({ agent: 'ai_review', content: 'OK' }),
-      makeResponse({ agent: 'arch-review', content: 'Arch content' }),
-      makeResponse({ agent: 'security-review', content: 'Sec content' }),
-      makeResponse({ agent: 'supervise', content: 'Pass' }),
+      makeResponse({ persona: 'plan', content: 'Plan' }),
+      makeResponse({ persona: 'implement', content: 'Impl' }),
+      makeResponse({ persona: 'ai_review', content: 'OK' }),
+      makeResponse({ persona: 'arch-review', content: 'Arch content' }),
+      makeResponse({ persona: 'security-review', content: 'Sec content' }),
+      makeResponse({ persona: 'supervise', content: 'Pass' }),
     ]);
 
     mockDetectMatchedRuleSequence([
@@ -133,12 +133,12 @@ describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
     const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'plan', content: 'Plan' }),
-      makeResponse({ agent: 'implement', content: 'Impl' }),
-      makeResponse({ agent: 'ai_review', content: 'OK' }),
-      makeResponse({ agent: 'arch-review', content: 'OK' }),
-      makeResponse({ agent: 'security-review', content: 'OK' }),
-      makeResponse({ agent: 'supervise', content: 'Pass' }),
+      makeResponse({ persona: 'plan', content: 'Plan' }),
+      makeResponse({ persona: 'implement', content: 'Impl' }),
+      makeResponse({ persona: 'ai_review', content: 'OK' }),
+      makeResponse({ persona: 'arch-review', content: 'OK' }),
+      makeResponse({ persona: 'security-review', content: 'OK' }),
+      makeResponse({ persona: 'supervise', content: 'Pass' }),
     ]);
 
     mockDetectMatchedRuleSequence([
@@ -157,7 +157,7 @@ describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
     expect(vi.mocked(runAgent)).toHaveBeenCalledTimes(6);
 
     const calledAgents = vi.mocked(runAgent).mock.calls.map(call => call[0]);
-    expect(calledAgents).toContain('../agents/arch-review.md');
-    expect(calledAgents).toContain('../agents/security-review.md');
+    expect(calledAgents).toContain('../personas/arch-review.md');
+    expect(calledAgents).toContain('../personas/security-review.md');
   });
 });

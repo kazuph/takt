@@ -72,7 +72,7 @@ describe('PieceEngine Integration: Error Handling', () => {
       const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Unclear output' }),
+        makeResponse({ persona: 'plan', content: 'Unclear output' }),
       ]);
 
       mockDetectMatchedRuleSequence([undefined]);
@@ -160,9 +160,9 @@ describe('PieceEngine Integration: Error Handling', () => {
       const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
-        makeResponse({ agent: 'ai_review', content: 'OK' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'ai_review', content: 'OK' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -196,13 +196,13 @@ describe('PieceEngine Integration: Error Handling', () => {
       });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
         // After hitting limit at iteration 2, onIterationLimit extends to 12
-        makeResponse({ agent: 'ai_review', content: 'OK' }),
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'OK' }),
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'ai_review', content: 'OK' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'OK' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([

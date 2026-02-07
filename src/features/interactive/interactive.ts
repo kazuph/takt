@@ -15,8 +15,8 @@ import chalk from 'chalk';
 import type { Language } from '../../core/models/index.js';
 import {
   loadGlobalConfig,
-  loadAgentSessions,
-  updateAgentSession,
+  loadPersonaSessions,
+  updatePersonaSession,
   loadSessionState,
   clearSessionState,
   type SessionState,
@@ -92,9 +92,11 @@ function resolveLanguage(lang?: Language): 'en' | 'ja' {
 
 function getInteractivePrompts(lang: 'en' | 'ja', pieceContext?: PieceContext) {
   const systemPrompt = loadTemplate('score_interactive_system_prompt', lang, {});
+  const policyContent = loadTemplate('score_interactive_policy', lang, {});
 
   return {
     systemPrompt,
+    policyContent,
     lang,
     pieceContext,
     conversationLabel: getLabel('interactive.conversationLabel', lang),
@@ -221,11 +223,11 @@ async function callAI(
   display: StreamDisplay,
   systemPrompt: string,
 ): Promise<CallAIResult> {
-  const response = await provider.call('interactive', prompt, {
+  const agent = provider.setup({ name: 'interactive', systemPrompt });
+  const response = await agent.call(prompt, {
     cwd,
     model,
     sessionId,
-    systemPrompt,
     allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'],
     onStream: display.createHandler(),
   });
@@ -278,9 +280,9 @@ export async function interactiveMode(
   const model = (globalConfig.model as string | undefined);
 
   const history: ConversationMessage[] = [];
-  const agentName = 'interactive';
-  const savedSessions = loadAgentSessions(cwd, providerType);
-  let sessionId: string | undefined = savedSessions[agentName];
+  const personaName = 'interactive';
+  const savedSessions = loadPersonaSessions(cwd, providerType);
+  let sessionId: string | undefined = savedSessions[personaName];
 
   // Load and display previous task state
   const sessionState = loadSessionState(cwd);
@@ -326,13 +328,13 @@ export async function interactiveMode(
         );
         if (retry.sessionId) {
           sessionId = retry.sessionId;
-          updateAgentSession(cwd, agentName, sessionId, providerType);
+          updatePersonaSession(cwd, personaName, sessionId, providerType);
         }
         return retry;
       }
       if (result.sessionId) {
         sessionId = result.sessionId;
-        updateAgentSession(cwd, agentName, sessionId, providerType);
+        updatePersonaSession(cwd, personaName, sessionId, providerType);
       }
       return result;
     } catch (e) {
@@ -344,12 +346,27 @@ export async function interactiveMode(
     }
   }
 
+  /**
+   * Inject policy into user message for AI call.
+   * Follows the same pattern as piece execution (perform_phase1_message.md).
+   */
+  function injectPolicy(userMessage: string): string {
+    const policyIntro = lang === 'ja'
+      ? '以下のポリシーは行動規範です。必ず遵守してください。'
+      : 'The following policy defines behavioral guidelines. Please follow them.';
+    const reminderLabel = lang === 'ja'
+      ? '上記の Policy セクションで定義されたポリシー規範を遵守してください。'
+      : 'Please follow the policy guidelines defined in the Policy section above.';
+    return `## Policy\n${policyIntro}\n\n${prompts.policyContent}\n\n---\n\n${userMessage}\n\n---\n**Policy Reminder:** ${reminderLabel}`;
+  }
+
   // Process initial input if provided (e.g. from `takt a`)
   if (initialInput) {
     history.push({ role: 'user', content: initialInput });
     log.debug('Processing initial input', { initialInput, sessionId });
 
-    const result = await callAIWithRetry(initialInput, prompts.systemPrompt);
+    const promptWithPolicy = injectPolicy(initialInput);
+    const result = await callAIWithRetry(promptWithPolicy, prompts.systemPrompt);
     if (result) {
       if (!result.success) {
         error(result.content);
@@ -440,7 +457,8 @@ export async function interactiveMode(
     log.debug('Sending to AI', { messageCount: history.length, sessionId });
     process.stdin.pause();
 
-    const result = await callAIWithRetry(trimmed, prompts.systemPrompt);
+    const promptWithPolicy = injectPolicy(trimmed);
+    const result = await callAIWithRetry(promptWithPolicy, prompts.systemPrompt);
     if (result) {
       if (!result.success) {
         error(result.content);

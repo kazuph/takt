@@ -41,8 +41,8 @@ function makeRule(condition: string, next: string, extra?: Partial<PieceRule>): 
 function makeMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'test-step',
-    agent: 'test-agent',
-    agentDisplayName: 'test-step',
+    persona: 'test-agent',
+    personaDisplayName: 'test-step',
     instructionTemplate: 'Do the work.',
     passPreviousResponse: false,
     rules: [
@@ -99,7 +99,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: 'Continue the work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'previous-agent',
+      persona: 'previous-agent',
       status: 'done',
       content: 'Previous agent completed step A.',
       timestamp: new Date(),
@@ -118,7 +118,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: 'Do fresh work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'previous-agent',
+      persona: 'previous-agent',
       status: 'done',
       content: 'Previous output.',
       timestamp: new Date(),
@@ -137,7 +137,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: '## Context\n{previous_response}\n\nDo work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'prev', status: 'done', content: 'Prior work done.', timestamp: new Date(),
+      persona: 'prev', status: 'done', content: 'Prior work done.', timestamp: new Date(),
     };
     const ctx = makeContext({ previousOutput });
 
@@ -284,7 +284,7 @@ describe('Instruction Builder IT: buildReportInstruction', () => {
   it('should build report instruction with report context', () => {
     const step = makeMovement({
       name: 'plan',
-      report: { name: '00-plan.md', format: '# Plan\n{movement_iteration}' },
+      outputContracts: [{ name: '00-plan.md', format: '# Plan\n{movement_iteration}' }],
     });
 
     const result = buildReportInstruction(step, {
@@ -299,8 +299,8 @@ describe('Instruction Builder IT: buildReportInstruction', () => {
     expect(result).toContain('report');
   });
 
-  it('should throw for step without report config', () => {
-    const step = makeMovement({ report: undefined });
+  it('should throw for step without output contracts', () => {
+    const step = makeMovement({ outputContracts: undefined });
 
     expect(() =>
       buildReportInstruction(step, {
@@ -308,7 +308,7 @@ describe('Instruction Builder IT: buildReportInstruction', () => {
         reportDir: '/tmp/reports',
         movementIteration: 1,
       }),
-    ).toThrow(/no report config/);
+    ).toThrow(/no output contracts/);
   });
 });
 
@@ -338,6 +338,44 @@ describe('Instruction Builder IT: buildStatusJudgmentInstruction', () => {
   });
 });
 
+describe('Instruction Builder IT: quality gates injection', () => {
+  it('should inject quality gates section when qualityGates is defined', () => {
+    const step = makeMovement({
+      qualityGates: [
+        'All tests must pass',
+        'No TypeScript errors',
+        'No ESLint violations',
+      ],
+    });
+    const ctx = makeContext();
+
+    const result = buildInstruction(step, ctx);
+
+    expect(result).toContain('## Quality Gates');
+    expect(result).toContain('- All tests must pass');
+    expect(result).toContain('- No TypeScript errors');
+    expect(result).toContain('- No ESLint violations');
+  });
+
+  it('should NOT inject quality gates section when qualityGates is undefined', () => {
+    const step = makeMovement({ qualityGates: undefined });
+    const ctx = makeContext();
+
+    const result = buildInstruction(step, ctx);
+
+    expect(result).not.toContain('## Quality Gates');
+  });
+
+  it('should NOT inject quality gates section when qualityGates is empty', () => {
+    const step = makeMovement({ qualityGates: [] });
+    const ctx = makeContext();
+
+    const result = buildInstruction(step, ctx);
+
+    expect(result).not.toContain('## Quality Gates');
+  });
+});
+
 describe('Instruction Builder IT: template injection prevention', () => {
   it('should escape curly braces in task content', () => {
     const step = makeMovement();
@@ -357,7 +395,7 @@ describe('Instruction Builder IT: template injection prevention', () => {
     });
     const ctx = makeContext({
       previousOutput: {
-        agent: 'prev', status: 'done',
+        persona: 'prev', status: 'done',
         content: 'Use {template} syntax', timestamp: new Date(),
       },
     });

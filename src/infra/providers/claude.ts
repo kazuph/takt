@@ -2,47 +2,57 @@
  * Claude provider implementation
  */
 
-import { callClaude, callClaudeCustom, type ClaudeCallOptions } from '../claude/index.js';
+import { callClaude, callClaudeCustom, callClaudeAgent, callClaudeSkill, type ClaudeCallOptions } from '../claude/index.js';
 import { resolveAnthropicApiKey } from '../config/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
-import type { Provider, ProviderCallOptions } from './types.js';
+import type { AgentSetup, Provider, ProviderAgent, ProviderCallOptions } from './types.js';
 
-/** Claude provider - wraps existing Claude client */
+function toClaudeOptions(options: ProviderCallOptions): ClaudeCallOptions {
+  return {
+    cwd: options.cwd,
+    sessionId: options.sessionId,
+    allowedTools: options.allowedTools,
+    model: options.model,
+    maxTurns: options.maxTurns,
+    permissionMode: options.permissionMode,
+    onStream: options.onStream,
+    onPermissionRequest: options.onPermissionRequest,
+    onAskUserQuestion: options.onAskUserQuestion,
+    bypassPermissions: options.bypassPermissions,
+    anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
+  };
+}
+
+/** Claude provider — delegates to Claude Code SDK */
 export class ClaudeProvider implements Provider {
-  async call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    const callOptions: ClaudeCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      allowedTools: options.allowedTools,
-      model: options.model,
-      maxTurns: options.maxTurns,
-      systemPrompt: options.systemPrompt,
-      permissionMode: options.permissionMode,
-      onStream: options.onStream,
-      onPermissionRequest: options.onPermissionRequest,
-      onAskUserQuestion: options.onAskUserQuestion,
-      bypassPermissions: options.bypassPermissions,
-      anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
+  setup(config: AgentSetup): ProviderAgent {
+    if (config.claudeAgent) {
+      const agentName = config.claudeAgent;
+      return {
+        call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+          callClaudeAgent(agentName, prompt, toClaudeOptions(options)),
+      };
+    }
+
+    if (config.claudeSkill) {
+      const skillName = config.claudeSkill;
+      return {
+        call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+          callClaudeSkill(skillName, prompt, toClaudeOptions(options)),
+      };
+    }
+
+    const { name, systemPrompt } = config;
+    if (systemPrompt) {
+      return {
+        call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+          callClaudeCustom(name, prompt, systemPrompt, toClaudeOptions(options)),
+      };
+    }
+
+    return {
+      call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+        callClaude(name, prompt, toClaudeOptions(options)),
     };
-
-    return callClaude(agentName, prompt, callOptions);
-  }
-
-  async callCustom(agentName: string, prompt: string, systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    const callOptions: ClaudeCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      allowedTools: options.allowedTools,
-      model: options.model,
-      maxTurns: options.maxTurns,
-      permissionMode: options.permissionMode,
-      onStream: options.onStream,
-      onPermissionRequest: options.onPermissionRequest,
-      onAskUserQuestion: options.onAskUserQuestion,
-      bypassPermissions: options.bypassPermissions,
-      anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
-    };
-
-    return callClaudeCustom(agentName, prompt, systemPrompt, callOptions);
   }
 }

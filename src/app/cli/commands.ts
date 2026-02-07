@@ -4,7 +4,7 @@
  * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config, prompt).
  */
 
-import { clearAgentSessions, getCurrentPiece } from '../../infra/config/index.js';
+import { clearPersonaSessions, getCurrentPiece } from '../../infra/config/index.js';
 import { success } from '../../shared/ui/index.js';
 import { runAllTasks, addTask, watchTasks, listTasks } from '../../features/tasks/index.js';
 import { switchPiece, switchConfig, ejectBuiltin, resetCategoriesToDefault, deploySkill } from '../../features/config/index.js';
@@ -69,7 +69,7 @@ program
   .command('clear')
   .description('Clear agent conversation sessions')
   .action(() => {
-    clearAgentSessions(resolvedCwd);
+    clearPersonaSessions(resolvedCwd);
     success('Agent sessions cleared');
   });
 

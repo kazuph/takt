@@ -16,7 +16,7 @@ import type {
 } from '../../models/types.js';
 import type { PhaseName } from '../types.js';
 import { runAgent } from '../../../agents/runner.js';
-import { InstructionBuilder, isReportObjectConfig } from '../instruction/InstructionBuilder.js';
+import { InstructionBuilder, isOutputContractItem } from '../instruction/InstructionBuilder.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { incrementMovementIteration, getPreviousOutput } from './state-manager.js';
@@ -35,6 +35,7 @@ export interface MovementExecutorDeps {
   readonly getPieceMovements: () => ReadonlyArray<{ name: string; description?: string }>;
   readonly getPieceName: () => string;
   readonly getPieceDescription: () => string | undefined;
+  readonly getRetryNote: () => string | undefined;
   readonly detectRuleIndex: (content: string, movementName: string) => number;
   readonly callAiJudge: (
     agentOutput: string,
@@ -68,13 +69,16 @@ export class MovementExecutor {
       projectCwd: this.deps.getProjectCwd(),
       userInputs: state.userInputs,
       previousOutput: getPreviousOutput(state),
-      reportDir: join(this.deps.getProjectCwd(), this.deps.getReportDir()),
+      reportDir: join(this.deps.getCwd(), this.deps.getReportDir()),
       language: this.deps.getLanguage(),
       interactive: this.deps.getInteractive(),
       pieceMovements: pieceMovements,
       currentMovementIndex: pieceMovements.findIndex(s => s.name === step.name),
       pieceName: this.deps.getPieceName(),
       pieceDescription: this.deps.getPieceDescription(),
+      retryNote: this.deps.getRetryNote(),
+      policyContents: step.policyContents,
+      knowledgeContents: step.knowledgeContents,
     }).build();
   }
 
@@ -89,33 +93,33 @@ export class MovementExecutor {
     state: PieceState,
     task: string,
     maxIterations: number,
-    updateAgentSession: (agent: string, sessionId: string | undefined) => void,
+    updatePersonaSession: (persona: string, sessionId: string | undefined) => void,
     prebuiltInstruction?: string,
   ): Promise<{ response: AgentResponse; instruction: string }> {
     const movementIteration = prebuiltInstruction
       ? state.movementIterations.get(step.name) ?? 1
       : incrementMovementIteration(state, step.name);
     const instruction = prebuiltInstruction ?? this.buildInstruction(step, movementIteration, state, task, maxIterations);
-    const sessionKey = step.agent ?? step.name;
+    const sessionKey = step.persona ?? step.name;
     log.debug('Running movement', {
       movement: step.name,
-      agent: step.agent ?? '(none)',
+      persona: step.persona ?? '(none)',
       movementIteration,
       iteration: state.iteration,
-      sessionId: state.agentSessions.get(sessionKey) ?? 'new',
+      sessionId: state.personaSessions.get(sessionKey) ?? 'new',
     });
 
     // Phase 1: main execution (Write excluded if movement has report)
     this.deps.onPhaseStart?.(step, 1, 'execute', instruction);
     const agentOptions = this.deps.optionsBuilder.buildAgentOptions(step);
-    let response = await runAgent(step.agent, instruction, agentOptions);
-    updateAgentSession(sessionKey, response.sessionId);
+    let response = await runAgent(step.persona, instruction, agentOptions);
+    updatePersonaSession(sessionKey, response.sessionId);
     this.deps.onPhaseComplete?.(step, 1, 'execute', response.content, response.status, response.error);
 
-    const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, response.content, updateAgentSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
+    const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, response.content, updatePersonaSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
 
     // Phase 2: report output (resume same session, Write only)
-    if (step.report) {
+    if (step.outputContracts && step.outputContracts.length > 0) {
       await runReportPhase(step, movementIteration, phaseCtx);
     }
 
@@ -145,18 +149,12 @@ export class MovementExecutor {
 
   /** Collect movement:report events for each report file that exists */
   emitMovementReports(step: PieceMovement): void {
-    if (!step.report) return;
-    const baseDir = join(this.deps.getProjectCwd(), this.deps.getReportDir());
+    if (!step.outputContracts || step.outputContracts.length === 0) return;
+    const baseDir = join(this.deps.getCwd(), this.deps.getReportDir());
 
-    if (typeof step.report === 'string') {
-      this.checkReportFile(step, baseDir, step.report);
-    } else if (isReportObjectConfig(step.report)) {
-      this.checkReportFile(step, baseDir, step.report.name);
-    } else {
-      // ReportConfig[] (array)
-      for (const rc of step.report) {
-        this.checkReportFile(step, baseDir, rc.path);
-      }
+    for (const entry of step.outputContracts) {
+      const fileName = isOutputContractItem(entry) ? entry.name : entry.path;
+      this.checkReportFile(step, baseDir, fileName);
     }
   }
 

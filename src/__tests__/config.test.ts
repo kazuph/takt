@@ -12,21 +12,21 @@ import {
   loadAllPieces,
   loadPiece,
   listPieces,
-  loadAgentPromptFromPath,
+  loadPersonaPromptFromPath,
   getCurrentPiece,
   setCurrentPiece,
   getProjectConfigDir,
-  getBuiltinAgentsDir,
+  getBuiltinPersonasDir,
   loadInputHistory,
   saveInputHistory,
   addToInputHistory,
   getInputHistoryPath,
   MAX_INPUT_HISTORY,
-  // Agent session functions
-  type AgentSessionData,
-  loadAgentSessions,
-  updateAgentSession,
-  getAgentSessionsPath,
+  // Persona session functions
+  type PersonaSessionData,
+  loadPersonaSessions,
+  updatePersonaSession,
+  getPersonaSessionsPath,
   // Worktree session functions
   getWorktreeSessionsDir,
   encodeWorktreePath,
@@ -140,21 +140,21 @@ describe('default piece parallel reviewers movement', () => {
     const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     const archReview = reviewersMovement.parallel!.find((s) => s.name === 'arch-review')!;
-    expect(archReview.agent).toContain('architecture-reviewer');
+    expect(archReview.persona).toContain('architecture-reviewer');
 
     const qaReview = reviewersMovement.parallel!.find((s) => s.name === 'qa-review')!;
-    expect(qaReview.agent).toContain('default/qa-reviewer');
+    expect(qaReview.persona).toContain('qa-reviewer');
   });
 
-  it('should have reports configured on sub-movements', () => {
+  it('should have output contracts configured on sub-movements', () => {
     const piece = getBuiltinPiece('default');
     const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     const archReview = reviewersMovement.parallel!.find((s) => s.name === 'arch-review')!;
-    expect(archReview.report).toBeDefined();
+    expect(archReview.outputContracts).toBeDefined();
 
     const qaReview = reviewersMovement.parallel!.find((s) => s.name === 'qa-review')!;
-    expect(qaReview.report).toBeDefined();
+    expect(qaReview.outputContracts).toBeDefined();
   });
 });
 
@@ -182,7 +182,7 @@ description: Test piece
 max_iterations: 10
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "{task}"
     rules:
       - condition: Task completed
@@ -267,14 +267,14 @@ describe('loadAllPieces (builtin fallback)', () => {
   });
 });
 
-describe('loadAgentPromptFromPath (builtin paths)', () => {
-  it('should load agent prompt from builtin resources path', () => {
+describe('loadPersonaPromptFromPath (builtin paths)', () => {
+  it('should load persona prompt from builtin resources path', () => {
     const lang = getLanguage();
-    const builtinAgentsDir = getBuiltinAgentsDir(lang);
-    const agentPath = join(builtinAgentsDir, 'default', 'coder.md');
+    const builtinPersonasDir = getBuiltinPersonasDir(lang);
+    const personaPath = join(builtinPersonasDir, 'coder.md');
 
-    if (existsSync(agentPath)) {
-      const prompt = loadAgentPromptFromPath(agentPath);
+    if (existsSync(personaPath)) {
+      const prompt = loadPersonaPromptFromPath(personaPath);
       expect(prompt).toBeTruthy();
       expect(typeof prompt).toBe('string');
     }
@@ -730,7 +730,7 @@ describe('loadWorktreeSessions', () => {
 
     const sessionPath = getWorktreeSessionPath(testDir, worktreePath);
     const data = {
-      agentSessions: { coder: 'session-123', reviewer: 'session-456' },
+      personaSessions: { coder: 'session-123', reviewer: 'session-456' },
       updatedAt: new Date().toISOString(),
     };
     writeFileSync(sessionPath, JSON.stringify(data));
@@ -839,45 +839,45 @@ describe('provider-based session management', () => {
     }
   });
 
-  describe('loadAgentSessions with provider', () => {
+  describe('loadPersonaSessions with provider', () => {
     it('should return sessions when provider matches', () => {
-      updateAgentSession(testDir, 'coder', 'session-1', 'claude');
+      updatePersonaSession(testDir, 'coder', 'session-1', 'claude');
 
-      const sessions = loadAgentSessions(testDir, 'claude');
+      const sessions = loadPersonaSessions(testDir, 'claude');
       expect(sessions.coder).toBe('session-1');
     });
 
     it('should return empty when provider has changed', () => {
-      updateAgentSession(testDir, 'coder', 'session-1', 'claude');
+      updatePersonaSession(testDir, 'coder', 'session-1', 'claude');
 
-      const sessions = loadAgentSessions(testDir, 'codex');
+      const sessions = loadPersonaSessions(testDir, 'codex');
       expect(sessions).toEqual({});
     });
 
     it('should return sessions when no provider is specified (legacy)', () => {
-      updateAgentSession(testDir, 'coder', 'session-1');
+      updatePersonaSession(testDir, 'coder', 'session-1');
 
-      const sessions = loadAgentSessions(testDir);
+      const sessions = loadPersonaSessions(testDir);
       expect(sessions.coder).toBe('session-1');
     });
   });
 
-  describe('updateAgentSession with provider', () => {
+  describe('updatePersonaSession with provider', () => {
     it('should discard old sessions when provider changes', () => {
-      updateAgentSession(testDir, 'coder', 'claude-session', 'claude');
-      updateAgentSession(testDir, 'coder', 'codex-session', 'codex');
+      updatePersonaSession(testDir, 'coder', 'claude-session', 'claude');
+      updatePersonaSession(testDir, 'coder', 'codex-session', 'codex');
 
-      const sessions = loadAgentSessions(testDir, 'codex');
+      const sessions = loadPersonaSessions(testDir, 'codex');
       expect(sessions.coder).toBe('codex-session');
       // Old claude sessions should not remain
       expect(Object.keys(sessions)).toHaveLength(1);
     });
 
     it('should store provider in session data', () => {
-      updateAgentSession(testDir, 'coder', 'session-1', 'claude');
+      updatePersonaSession(testDir, 'coder', 'session-1', 'claude');
 
-      const path = getAgentSessionsPath(testDir);
-      const data = JSON.parse(readFileSync(path, 'utf-8')) as AgentSessionData;
+      const path = getPersonaSessionsPath(testDir);
+      const data = JSON.parse(readFileSync(path, 'utf-8')) as PersonaSessionData;
       expect(data.provider).toBe('claude');
     });
   });
@@ -916,7 +916,7 @@ describe('provider-based session management', () => {
       updateWorktreeSession(testDir, worktreePath, 'coder', 'session-1', 'claude');
 
       const sessionPath = getWorktreeSessionPath(testDir, worktreePath);
-      const data = JSON.parse(readFileSync(sessionPath, 'utf-8')) as AgentSessionData;
+      const data = JSON.parse(readFileSync(sessionPath, 'utf-8')) as PersonaSessionData;
       expect(data.provider).toBe('claude');
     });
   });

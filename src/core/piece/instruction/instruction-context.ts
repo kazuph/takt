@@ -40,6 +40,12 @@ export interface InstructionContext {
   pieceName?: string;
   /** Piece description (optional) */
   pieceDescription?: string;
+  /** Retry note explaining why task is being retried */
+  retryNote?: string;
+  /** Resolved policy content strings for injection into instruction */
+  policyContents?: string[];
+  /** Resolved knowledge content strings for injection into instruction */
+  knowledgeContents?: string[];
 }
 
 /**

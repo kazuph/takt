@@ -22,7 +22,7 @@ const { listPieces } = await import('../infra/config/loaders/pieceLoader.js');
 const SAMPLE_PIECE = `name: test-piece
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "{task}"
 `;
 

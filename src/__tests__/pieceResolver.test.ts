@@ -28,14 +28,14 @@ max_iterations: 3
 movements:
   - name: plan
     description: タスク計画
-    agent: planner
+    persona: planner
     instruction: "Plan the task"
   - name: implement
     description: 実装
-    agent: coder
+    persona: coder
     instruction: "Implement"
   - name: review
-    agent: reviewer
+    persona: reviewer
     instruction: "Review"
 `;
 
@@ -60,20 +60,20 @@ max_iterations: 10
 movements:
   - name: plan
     description: タスク計画
-    agent: planner
+    persona: planner
     instruction: "Plan"
   - name: reviewers
     description: 並列レビュー
     parallel:
       - name: ai_review
-        agent: ai-reviewer
+        persona: ai-reviewer
         instruction: "AI review"
       - name: arch_review
-        agent: arch-reviewer
+        persona: arch-reviewer
         instruction: "Architecture review"
   - name: fix
     description: 修正
-    agent: coder
+    persona: coder
     instruction: "Fix"
 `;
 
@@ -100,10 +100,10 @@ max_iterations: 1
 
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "Do step1"
   - name: step2
-    agent: coder
+    persona: coder
     instruction: "Do step2"
 `;
 
@@ -134,10 +134,10 @@ movements:
   - name: parent
     parallel:
       - name: child1
-        agent: agent1
+        persona: agent1
         instruction: "Do child1"
       - name: child2
-        agent: agent2
+        persona: agent2
         instruction: "Do child2"
 `;
 

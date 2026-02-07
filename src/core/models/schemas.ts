@@ -56,20 +56,20 @@ export const StatusSchema = z.enum([
 export const PermissionModeSchema = z.enum(['readonly', 'edit', 'full']);
 
 /**
- * Report object schema (new structured format).
+ * Output contract item schema (new structured format).
  *
  * YAML format:
- *   report:
- *     name: 00-plan.md
- *     order: |
- *       **レポート出力:** {report:00-plan.md} に出力してください。
- *     format: |
- *       **レポートフォーマット:**
- *       ```markdown
- *       ...
- *       ```
+ *   output_contracts:
+ *     - name: 00-plan.md
+ *       order: |
+ *         **レポート出力:** {report:00-plan.md} に出力してください。
+ *       format: |
+ *         **出力契約:**
+ *         ```markdown
+ *         ...
+ *         ```
  */
-export const ReportObjectSchema = z.object({
+export const OutputContractItemSchema = z.object({
   /** Report file name */
   name: z.string().min(1),
   /** Instruction prepended before instruction_template (e.g., output destination) */
@@ -79,25 +79,37 @@ export const ReportObjectSchema = z.object({
 });
 
 /**
- * Report field schema.
+ * Raw output contract entry — array item in output_contracts.report
  *
- * YAML formats:
- *   report: 00-plan.md          # single file (string)
- *   report:                     # multiple files (label: path map entries)
- *     - Scope: 01-scope.md
- *     - Decisions: 02-decisions.md
- *   report:                     # object form (name + order + format)
- *     name: 00-plan.md
- *     order: ...
- *     format: ...
- *
- * Array items are parsed as single-key objects: [{Scope: "01-scope.md"}, ...]
+ * Supports:
+ *   - Label:path format: { Scope: "01-scope.md" }
+ *   - Item format: { name, order?, format? }
  */
-export const ReportFieldSchema = z.union([
-  z.string().min(1),
-  z.array(z.record(z.string(), z.string())).min(1),
-  ReportObjectSchema,
+export const OutputContractEntrySchema = z.union([
+  z.record(z.string(), z.string()),  // {Scope: "01-scope.md"} format
+  OutputContractItemSchema,           // {name, order?, format?} format
 ]);
+
+/**
+ * Output contracts field schema for movement-level definition.
+ *
+ * YAML format:
+ *   output_contracts:
+ *     report:                           # report array (required if output_contracts is specified)
+ *       - Scope: 01-scope.md            # label:path format
+ *       - Decisions: 02-decisions.md
+ *   output_contracts:
+ *     report:
+ *       - name: 00-plan.md              # name + order + format format
+ *         order: ...
+ *         format: plan
+ */
+export const OutputContractsFieldSchema = z.object({
+  report: z.array(OutputContractEntrySchema).optional(),
+}).optional();
+
+/** Quality gates schema - AI directives for movement completion (string array) */
+export const QualityGatesSchema = z.array(z.string()).optional();
 
 /** Rule-based transition schema (new unified format) */
 export const PieceRuleSchema = z.object({
@@ -116,8 +128,14 @@ export const PieceRuleSchema = z.object({
 /** Sub-movement schema for parallel execution */
 export const ParallelSubMovementRawSchema = z.object({
   name: z.string().min(1),
-  agent: z.string().optional(),
-  agent_name: z.string().optional(),
+  /** Persona reference — key name from piece-level personas map, or file path */
+  persona: z.string().optional(),
+  /** Display name for the persona (shown in output) */
+  persona_name: z.string().optional(),
+  /** Policy reference(s) — key name(s) from piece-level policies map */
+  policy: z.union([z.string(), z.array(z.string())]).optional(),
+  /** Knowledge reference(s) — key name(s) from piece-level knowledge map */
+  knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
   model: z.string().optional(),
@@ -126,7 +144,10 @@ export const ParallelSubMovementRawSchema = z.object({
   instruction: z.string().optional(),
   instruction_template: z.string().optional(),
   rules: z.array(PieceRuleSchema).optional(),
-  report: ReportFieldSchema.optional(),
+  /** Output contracts for this movement (report definitions) */
+  output_contracts: OutputContractsFieldSchema,
+  /** Quality gates for this movement (AI directives) */
+  quality_gates: QualityGatesSchema,
   pass_previous_response: z.boolean().optional().default(true),
 });
 
@@ -134,12 +155,16 @@ export const ParallelSubMovementRawSchema = z.object({
 export const PieceMovementRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  /** Agent is required for normal movements, optional for parallel container movements */
-  agent: z.string().optional(),
   /** Session handling for this movement */
   session: z.enum(['continue', 'refresh']).optional(),
-  /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
-  agent_name: z.string().optional(),
+  /** Persona reference — key name from piece-level personas map, or file path */
+  persona: z.string().optional(),
+  /** Display name for the persona (shown in output) */
+  persona_name: z.string().optional(),
+  /** Policy reference(s) — key name(s) from piece-level policies map */
+  policy: z.union([z.string(), z.array(z.string())]).optional(),
+  /** Knowledge reference(s) — key name(s) from piece-level knowledge map */
+  knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
   model: z.string().optional(),
@@ -151,8 +176,10 @@ export const PieceMovementRawSchema = z.object({
   instruction_template: z.string().optional(),
   /** Rules for movement routing */
   rules: z.array(PieceRuleSchema).optional(),
-  /** Report file(s) for this movement */
-  report: ReportFieldSchema.optional(),
+  /** Output contracts for this movement (report definitions) */
+  output_contracts: OutputContractsFieldSchema,
+  /** Quality gates for this movement (AI directives) */
+  quality_gates: QualityGatesSchema,
   pass_previous_response: z.boolean().optional().default(true),
   /** Sub-movements to execute in parallel */
   parallel: z.array(ParallelSubMovementRawSchema).optional(),
@@ -168,8 +195,8 @@ export const LoopMonitorRuleSchema = z.object({
 
 /** Loop monitor judge schema */
 export const LoopMonitorJudgeSchema = z.object({
-  /** Agent path, inline prompt, or omitted (uses default) */
-  agent: z.string().optional(),
+  /** Persona reference — key name from piece-level personas map, or file path */
+  persona: z.string().optional(),
   /** Custom instruction template for the judge */
   instruction_template: z.string().optional(),
   /** Rules for the judge's decision */
@@ -190,6 +217,16 @@ export const LoopMonitorSchema = z.object({
 export const PieceConfigRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  /** Piece-level persona definitions — map of name to .md file path or inline content */
+  personas: z.record(z.string(), z.string()).optional(),
+  /** Piece-level policy definitions — map of name to .md file path or inline content */
+  policies: z.record(z.string(), z.string()).optional(),
+  /** Piece-level knowledge definitions — map of name to .md file path or inline content */
+  knowledge: z.record(z.string(), z.string()).optional(),
+  /** Piece-level instruction definitions — map of name to .md file path or inline content */
+  instructions: z.record(z.string(), z.string()).optional(),
+  /** Piece-level report format definitions — map of name to .md file path or inline content */
+  report_formats: z.record(z.string(), z.string()).optional(),
   movements: z.array(PieceMovementRawSchema).min(1),
   initial_movement: z.string().optional(),
   max_iterations: z.number().int().positive().optional().default(10),
@@ -252,9 +289,11 @@ export const GlobalConfigSchema = z.object({
   debug: DebugConfigSchema.optional(),
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktree_dir: z.string().optional(),
+  /** Auto-create PR after worktree execution (default: prompt in interactive mode) */
+  auto_pr: z.boolean().optional(),
   /** List of builtin piece/agent names to exclude from fallback loading */
   disabled_builtins: z.array(z.string()).optional().default([]),
-  /** Enable builtin pieces from resources/global/{lang}/pieces */
+  /** Enable builtin pieces from builtins/{lang}/pieces */
   enable_builtin_pieces: z.boolean().optional(),
   /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
   anthropic_api_key: z.string().optional(),
@@ -268,6 +307,10 @@ export const GlobalConfigSchema = z.object({
   bookmarks_file: z.string().optional(),
   /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
   piece_categories_file: z.string().optional(),
+  /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
+  branch_name_strategy: z.enum(['romaji', 'ai']).optional(),
+  /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
+  prevent_sleep: z.boolean().optional(),
 });
 
 /** Project config schema */

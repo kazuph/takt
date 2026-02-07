@@ -7,7 +7,7 @@ initial_movement: plan
 
 movements:
   - name: plan
-    agent: ../agents/test-coder.md
+    persona: ../agents/test-coder.md
     edit: true
     permission_mode: edit
     instruction_template: |
@@ -19,14 +19,14 @@ movements:
   - name: review
     parallel:
       - name: arch-review
-        agent: ../agents/test-reviewer-a.md
+        persona: ../agents/test-reviewer-a.md
         instruction_template: |
           Review the architecture.
         rules:
           - condition: approved
           - condition: needs_fix
       - name: security-review
-        agent: ../agents/test-reviewer-b.md
+        persona: ../agents/test-reviewer-b.md
         instruction_template: |
           Review security.
         rules:
@@ -39,7 +39,7 @@ movements:
         next: fix
 
   - name: fix
-    agent: ../agents/test-coder.md
+    persona: ../agents/test-coder.md
     edit: true
     permission_mode: edit
     instruction_template: |

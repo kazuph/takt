@@ -53,7 +53,8 @@ export class TaskSummarizer {
     taskName: string,
     options: SummarizeOptions,
   ): Promise<string> {
-    const useLLM = options.useLLM ?? true;
+    const globalConfig = loadGlobalConfig();
+    const useLLM = options.useLLM ?? (globalConfig.branchNameStrategy === 'ai');
     log.info('Summarizing task name', { taskName, useLLM });
 
     if (!useLLM) {
@@ -61,21 +62,19 @@ export class TaskSummarizer {
       log.info('Task name romanized', { original: taskName, slug });
       return slug || 'task';
     }
-
-    const globalConfig = loadGlobalConfig();
     const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
     const model = options.model ?? globalConfig.model;
 
     const provider = getProvider(providerType);
-    const callOptions: SummarizeOptions & { systemPrompt: string; allowedTools: [] } = {
-      cwd: options.cwd,
+    const agent = provider.setup({
+      name: 'summarizer',
       systemPrompt: loadTemplate('score_slug_system_prompt', 'en'),
+    });
+    const response = await agent.call(taskName, {
+      cwd: options.cwd,
+      model,
       allowedTools: [],
-    };
-    if (model) {
-      callOptions.model = model;
-    }
-    const response = await provider.call('summarizer', taskName, callOptions);
+    });
 
     const slug = sanitizeSlug(response.content);
     log.info('Task name summarized', { original: taskName, slug });

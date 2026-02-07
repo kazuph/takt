@@ -5,7 +5,7 @@
 export { executePiece, type PieceExecutionResult, type PieceExecutionOptions } from './execute/pieceExecution.js';
 export { executeTask, runAllTasks, type TaskExecutionOptions } from './execute/taskExecution.js';
 export { executeAndCompleteTask, resolveTaskExecution } from './execute/taskExecution.js';
-export { withAgentSession } from './execute/session.js';
+export { withPersonaSession } from './execute/session.js';
 export type { PipelineExecutionOptions } from './execute/types.js';
 export {
   selectAndExecuteTask,

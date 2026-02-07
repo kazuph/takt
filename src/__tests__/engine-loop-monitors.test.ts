@@ -128,19 +128,19 @@ describe('PieceEngine Integration: Loop Monitors', () => {
 
       mockRunAgentSequence([
         // implement
-        makeResponse({ agent: 'implement', content: 'Implementation done' }),
+        makeResponse({ persona: 'implement', content: 'Implementation done' }),
         // ai_review → issues found
-        makeResponse({ agent: 'ai_review', content: 'Issues found: X' }),
+        makeResponse({ persona: 'ai_review', content: 'Issues found: X' }),
         // ai_fix → fixed → ai_review
-        makeResponse({ agent: 'ai_fix', content: 'Fixed X' }),
+        makeResponse({ persona: 'ai_fix', content: 'Fixed X' }),
         // ai_review → issues found again
-        makeResponse({ agent: 'ai_review', content: 'Issues found: Y' }),
+        makeResponse({ persona: 'ai_review', content: 'Issues found: Y' }),
         // ai_fix → fixed → cycle threshold reached (2 cycles complete)
-        makeResponse({ agent: 'ai_fix', content: 'Fixed Y' }),
+        makeResponse({ persona: 'ai_fix', content: 'Fixed Y' }),
         // Judge runs (synthetic movement)
-        makeResponse({ agent: 'supervisor', content: 'Unproductive loop detected' }),
+        makeResponse({ persona: 'supervisor', content: 'Unproductive loop detected' }),
         // reviewers (after judge redirects here)
-        makeResponse({ agent: 'reviewers', content: 'All approved' }),
+        makeResponse({ persona: 'reviewers', content: 'All approved' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -173,19 +173,19 @@ describe('PieceEngine Integration: Loop Monitors', () => {
 
       mockRunAgentSequence([
         // implement
-        makeResponse({ agent: 'implement', content: 'Implementation done' }),
+        makeResponse({ persona: 'implement', content: 'Implementation done' }),
         // Cycle 1: ai_review → ai_fix
-        makeResponse({ agent: 'ai_review', content: 'Issues found: A' }),
-        makeResponse({ agent: 'ai_fix', content: 'Fixed A' }),
+        makeResponse({ persona: 'ai_review', content: 'Issues found: A' }),
+        makeResponse({ persona: 'ai_fix', content: 'Fixed A' }),
         // Cycle 2: ai_review → ai_fix (threshold reached)
-        makeResponse({ agent: 'ai_review', content: 'Issues found: B' }),
-        makeResponse({ agent: 'ai_fix', content: 'Fixed B' }),
+        makeResponse({ persona: 'ai_review', content: 'Issues found: B' }),
+        makeResponse({ persona: 'ai_fix', content: 'Fixed B' }),
         // Judge says healthy → continue to ai_review
-        makeResponse({ agent: 'supervisor', content: 'Loop is healthy, making progress' }),
+        makeResponse({ persona: 'supervisor', content: 'Loop is healthy, making progress' }),
         // ai_review → no issues
-        makeResponse({ agent: 'ai_review', content: 'No issues remaining' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues remaining' }),
         // reviewers → COMPLETE
-        makeResponse({ agent: 'reviewers', content: 'All approved' }),
+        makeResponse({ persona: 'reviewers', content: 'All approved' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -219,11 +219,11 @@ describe('PieceEngine Integration: Loop Monitors', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'implement', content: 'Implementation done' }),
-        makeResponse({ agent: 'ai_review', content: 'Issues found' }),
-        makeResponse({ agent: 'ai_fix', content: 'Fixed' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
-        makeResponse({ agent: 'reviewers', content: 'All approved' }),
+        makeResponse({ persona: 'implement', content: 'Implementation done' }),
+        makeResponse({ persona: 'ai_review', content: 'Issues found' }),
+        makeResponse({ persona: 'ai_fix', content: 'Fixed' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'reviewers', content: 'All approved' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -296,9 +296,9 @@ describe('PieceEngine Integration: Loop Monitors', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'implement', content: 'Done' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
-        makeResponse({ agent: 'reviewers', content: 'All approved' }),
+        makeResponse({ persona: 'implement', content: 'Done' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'reviewers', content: 'All approved' }),
       ]);
 
       mockDetectMatchedRuleSequence([

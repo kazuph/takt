@@ -17,8 +17,8 @@ export interface MockCallOptions {
 
 /** A single entry in a mock scenario */
 export interface ScenarioEntry {
-  /** Agent name to match (optional — if omitted, consumed by call order) */
-  agent?: string;
+  /** Persona name to match (optional — if omitted, consumed by call order) */
+  persona?: string;
   /** Response status */
   status: 'done' | 'blocked' | 'approved' | 'rejected' | 'improve';
   /** Response content body */

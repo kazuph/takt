@@ -34,5 +34,5 @@ export {
   loadCustomAgents,
   listCustomAgents,
   loadAgentPrompt,
-  loadAgentPromptFromPath,
+  loadPersonaPromptFromPath,
 } from './agentLoader.js';

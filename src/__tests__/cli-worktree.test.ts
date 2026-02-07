@@ -52,7 +52,7 @@ vi.mock('../infra/config/index.js', () => ({
 }));
 
 vi.mock('../infra/config/paths.js', () => ({
-  clearAgentSessions: vi.fn(),
+  clearPersonaSessions: vi.fn(),
   getCurrentPiece: vi.fn(() => 'default'),
   isVerboseMode: vi.fn(() => false),
 }));

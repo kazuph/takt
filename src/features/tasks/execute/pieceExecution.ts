@@ -11,8 +11,8 @@ import { callAiJudge, detectRuleIndex, interruptAllQueries } from '../../../infr
 export type { PieceExecutionResult, PieceExecutionOptions };
 
 import {
-  loadAgentSessions,
-  updateAgentSession,
+  loadPersonaSessions,
+  updatePersonaSession,
   loadWorktreeSessions,
   updateWorktreeSession,
   loadGlobalConfig,
@@ -46,7 +46,7 @@ import {
   type NdjsonInteractiveStart,
   type NdjsonInteractiveEnd,
 } from '../../../infra/fs/index.js';
-import { createLogger, notifySuccess, notifyError } from '../../../shared/utils/index.js';
+import { createLogger, notifySuccess, notifyError, preventSleep } from '../../../shared/utils/index.js';
 import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
 import { getLabel } from '../../../shared/i18n/index.js';
@@ -141,19 +141,25 @@ export async function executePiece(
 
   // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
-  const currentProvider = loadGlobalConfig().provider ?? 'claude';
+  const globalConfig = loadGlobalConfig();
+  const currentProvider = globalConfig.provider ?? 'claude';
+
+  // Prevent macOS idle sleep if configured
+  if (globalConfig.preventSleep) {
+    preventSleep();
+  }
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
-    : loadAgentSessions(projectCwd, currentProvider);
+    : loadPersonaSessions(projectCwd, currentProvider);
 
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
   const sessionUpdateHandler = isWorktree
-    ? (agentName: string, agentSessionId: string): void => {
-        updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId, currentProvider);
+    ? (personaName: string, personaSessionId: string): void => {
+        updateWorktreeSession(projectCwd, cwd, personaName, personaSessionId, currentProvider);
       }
-    : (agentName: string, agentSessionId: string): void => {
-        updateAgentSession(projectCwd, agentName, agentSessionId, currentProvider);
+    : (persona: string, personaSessionId: string): void => {
+        updatePersonaSession(projectCwd, persona, personaSessionId, currentProvider);
       };
 
   const iterationLimitHandler = async (
@@ -228,6 +234,8 @@ export async function executePiece(
     interactive: interactiveUserInput,
     detectRuleIndex,
     callAiJudge,
+    startMovement: options.startMovement,
+    retryNote: options.retryNote,
   });
 
   let abortReason: string | undefined;
@@ -263,22 +271,31 @@ export async function executePiece(
   });
 
   engine.on('movement:start', (step, iteration, instruction) => {
-    log.debug('Movement starting', { step: step.name, agent: step.agentDisplayName, iteration });
-    info(`[${iteration}/${pieceConfig.maxIterations}] ${step.name} (${step.agentDisplayName})`);
+    log.debug('Movement starting', { step: step.name, persona: step.personaDisplayName, iteration });
+    info(`[${iteration}/${pieceConfig.maxIterations}] ${step.name} (${step.personaDisplayName})`);
 
     // Log prompt content for debugging
     if (instruction) {
       log.debug('Step instruction', instruction);
     }
 
+    // Find movement index for progress display
+    const movementIndex = pieceConfig.movements.findIndex((m) => m.name === step.name);
+    const totalMovements = pieceConfig.movements.length;
+
     // Use quiet mode from CLI (already resolved CLI flag + config in preAction)
-    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode());
+    displayRef.current = new StreamDisplay(step.personaDisplayName, isQuietMode(), {
+      iteration,
+      maxIterations: pieceConfig.maxIterations,
+      movementIndex: movementIndex >= 0 ? movementIndex : 0,
+      totalMovements,
+    });
 
     // Write step_start record to NDJSON log
     const record: NdjsonStepStart = {
       type: 'step_start',
       step: step.name,
-      agent: step.agentDisplayName,
+      persona: step.personaDisplayName,
       iteration,
       timestamp: new Date().toISOString(),
       ...(instruction ? { instruction } : {}),
@@ -331,7 +348,7 @@ export async function executePiece(
     const record: NdjsonStepComplete = {
       type: 'step_complete',
       step: step.name,
-      agent: response.agent,
+      persona: response.persona,
       status: response.status,
       content: response.content,
       instruction,

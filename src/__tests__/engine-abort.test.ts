@@ -167,7 +167,7 @@ describe('PieceEngine: Abort (SIGINT)', () => {
       vi.mocked(runAgent).mockImplementation(async () => {
         // Simulate abort during execution (but the movement itself completes)
         engine.abort();
-        return makeResponse({ agent: 'step1', content: 'Step 1 done' });
+        return makeResponse({ persona: 'step1', content: 'Step 1 done' });
       });
 
       mockDetectMatchedRuleSequence([

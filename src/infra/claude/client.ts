@@ -109,7 +109,7 @@ export class ClaudeClient {
     }
 
     return {
-      agent: agentType,
+      persona: agentType,
       status,
       content: result.content,
       timestamp: new Date(),
@@ -137,7 +137,7 @@ export class ClaudeClient {
     }
 
     return {
-      agent: agentName,
+      persona: agentName,
       status,
       content: result.content,
       timestamp: new Date(),
@@ -184,7 +184,7 @@ export class ClaudeClient {
     }
 
     return {
-      agent: `skill:${skillName}`,
+      persona: `skill:${skillName}`,
       status: result.success ? 'done' : 'blocked',
       content: result.content,
       timestamp: new Date(),

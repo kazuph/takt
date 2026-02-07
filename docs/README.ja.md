@@ -2,7 +2,7 @@
 
 **T**ask **A**gent **K**oordination **T**ool - AIエージェントの協調手順・人の介入ポイント・記録をYAMLで定義する
 
-TAKTは複数のAIエージェント（Claude Code、Codex）をYAMLで定義されたワークフローに従って実行します。各ステップで誰が実行し、何を許可し、失敗時にどうするかはピースファイルに宣言され、エージェント任せにしません。
+TAKTは複数のAIエージェント（Claude Code、Codex）をYAMLで定義されたワークフローに従って実行します。各ステップで誰が実行し、何を見て、何を許可し、失敗時にどうするかはピースファイルに宣言され、エージェント任せにしません。
 
 TAKTはTAKT自身で開発されています（ドッグフーディング）。
 
@@ -19,6 +19,21 @@ TAKTはオーケストラをイメージした音楽メタファで用語を統�
 - AIエージェントは強力だが非決定的 — TAKTはエージェントの判断を可視化し、再現可能にする
 - マルチエージェントの協調には構造が必要 — ピースが誰が何をどの順序でどの権限で行うかを定義する
 - CI/CD連携にはガードレールが必要 — パイプラインモードが非対話でエージェントを実行し、完全な監査ログを残す
+
+## TAKTが制御・管理するもの
+
+TAKTはエージェントの実行を**制御**し、プロンプトの構成要素を**管理**します。
+
+| | 対象 | 説明 |
+|---|------|------|
+| 制御 | **ルーティング** | 状態遷移ルール（誰がいつ動くか） |
+| 制御 | **ツール・権限** | 読み取り専用・編集可・フルアクセス（何を許可するか） |
+| 制御 | **記録** | セッションログ・レポート（何を残すか） |
+| 管理 | **ペルソナ** | エージェントの役割・専門性（誰として振る舞うか） |
+| 管理 | **ポリシー** | コーディング規約・品質基準・禁止事項（何を守るか） |
+| 管理 | **ナレッジ** | ドメイン知識・アーキテクチャ情報（何を参照するか） |
+
+ペルソナ・ポリシー・ナレッジは独立したファイルとして管理され、ワークフロー間で自由に組み合わせられます（[Faceted Prompting](./faceted-prompting.ja.md)）。ポリシーを1ファイル変更すれば、それを使うすべてのワークフローに反映されます。
 
 ## TAKTとは何でないか
 
@@ -292,9 +307,21 @@ name: default
 max_iterations: 10
 initial_movement: plan
 
+# セクションマップ — キー: ファイルパス（このYAMLからの相対パス）
+personas:
+  planner: ../personas/planner.md
+  coder: ../personas/coder.md
+  reviewer: ../personas/architecture-reviewer.md
+
+policies:
+  coding: ../policies/coding.md
+
+knowledge:
+  architecture: ../knowledge/architecture.md
+
 movements:
   - name: plan
-    agent: ../agents/default/planner.md
+    persona: planner
     model: opus
     edit: false
     rules:
@@ -304,7 +331,9 @@ movements:
       リクエストを分析し、実装計画を作成してください。
 
   - name: implement
-    agent: ../agents/default/coder.md
+    persona: coder
+    policy: coding
+    knowledge: architecture
     edit: true
     permission_mode: edit
     rules:
@@ -316,7 +345,8 @@ movements:
       計画に基づいて実装してください。
 
   - name: review
-    agent: ../agents/default/architecture-reviewer.md
+    persona: reviewer
+    knowledge: architecture
     edit: false
     rules:
       - condition: 承認
@@ -327,13 +357,13 @@ movements:
       アーキテクチャとコード品質の観点で実装をレビューしてください。
 ```
 
-### エージェントレスムーブメント
+### ペルソナレスムーブメント
 
-`agent` フィールドは省略可能です。省略した場合、ムーブメントはシステムプロンプトなしで `instruction_template` のみを使って実行されます。これはエージェントの動作カスタマイズが不要なシンプルなタスクに便利です。
+`persona` フィールドは省略可能です。省略した場合、ムーブメントはシステムプロンプトなしで `instruction_template` のみを使って実行されます。これはペルソナのカスタマイズが不要なシンプルなタスクに便利です。
 
 ```yaml
   - name: summarize
-    # agent未指定 — instruction_templateのみを使用
+    # persona未指定 — instruction_templateのみを使用
     edit: false
     rules:
       - condition: 要約完了
@@ -342,11 +372,11 @@ movements:
       レポートを読んで簡潔な要約を提供してください。
 ```
 
-また、`agent` の値としてインラインシステムプロンプトを記述することもできます（指定されたファイルが存在しない場合）:
+また、`persona` の値としてインラインシステムプロンプトを記述することもできます（指定されたファイルが存在しない場合）:
 
 ```yaml
   - name: review
-    agent: "あなたはコードレビュアーです。可読性と保守性に焦点を当ててください。"
+    persona: "あなたはコードレビュアーです。可読性と保守性に焦点を当ててください。"
     edit: false
     instruction_template: |
       コード品質をレビューしてください。
@@ -360,14 +390,14 @@ movements:
   - name: reviewers
     parallel:
       - name: arch-review
-        agent: ../agents/default/architecture-reviewer.md
+        persona: reviewer
         rules:
           - condition: approved
           - condition: needs_fix
         instruction_template: |
           アーキテクチャとコード品質をレビューしてください。
       - name: security-review
-        agent: ../agents/default/security-reviewer.md
+        persona: security-reviewer
         rules:
           - condition: approved
           - condition: needs_fix
@@ -413,10 +443,10 @@ TAKTには複数のビルトインピースが同梱されています:
 
 `takt switch` でピースを切り替えられます。
 
-## ビルトインエージェント
+## ビルトインペルソナ
 
-| エージェント | 説明 |
-|------------|------|
+| ペルソナ | 説明 |
+|---------|------|
 | **planner** | タスク分析、仕様調査、実装計画 |
 | **architect-planner** | タスク分析と設計計画: コード調査、不明点の解決、実装計画の作成 |
 | **coder** | 機能の実装、バグ修正 |
@@ -427,12 +457,12 @@ TAKTには複数のビルトインピースが同梱されています:
 | **conductor** | Phase 3 判定専用: レポートやレスポンスを読み取り、ステータスタグを出力 |
 | **supervisor** | 最終検証、バリデーション、承認 |
 
-## カスタムエージェント
+## カスタムペルソナ
 
-Markdown ファイルでエージェントプロンプトを作成:
+Markdown ファイルでペルソナプロンプトを作成:
 
 ```markdown
-# ~/.takt/agents/my-agents/reviewer.md
+# ~/.takt/personas/my-reviewer.md
 
 あなたはセキュリティに特化したコードレビュアーです。
 
@@ -459,10 +489,10 @@ Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`def
 ```
 ~/.takt/                    # グローバル設定ディレクトリ
 ├── config.yaml             # グローバル設定（プロバイダー、モデル、ピース等）
-├── pieces/              # ユーザーピース定義（ビルトインを上書き）
+├── pieces/                 # ユーザーピース定義（ビルトインを上書き）
 │   └── custom.yaml
-└── agents/                 # ユーザーエージェントプロンプトファイル（.md）
-    └── my-agent.md
+└── personas/               # ユーザーペルソナプロンプトファイル（.md）
+    └── my-persona.md
 
 .takt/                      # プロジェクトレベルの設定
 ├── config.yaml             # プロジェクト設定（現在のピース等）
@@ -476,7 +506,7 @@ Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`def
     └── {sessionId}.jsonl   # ピース実行ごとの NDJSON セッションログ
 ```
 
-ビルトインリソースはnpmパッケージ（`dist/resources/`）に埋め込まれています。`~/.takt/` のユーザーファイルが優先されます。
+ビルトインリソースはnpmパッケージ（`builtins/`）に埋め込まれています。`~/.takt/` のユーザーファイルが優先されます。
 
 ### グローバル設定
 
@@ -611,9 +641,13 @@ description: カスタムピース
 max_iterations: 5
 initial_movement: analyze
 
+personas:
+  analyzer: ~/.takt/personas/analyzer.md
+  coder: ../personas/coder.md
+
 movements:
   - name: analyze
-    agent: ~/.takt/agents/my-agents/analyzer.md
+    persona: analyzer
     edit: false
     rules:
       - condition: 分析完了
@@ -622,7 +656,7 @@ movements:
       このリクエストを徹底的に分析してください。
 
   - name: implement
-    agent: ~/.takt/agents/default/coder.md
+    persona: coder
     edit: true
     permission_mode: edit
     pass_previous_response: true
@@ -635,19 +669,15 @@ movements:
 
 > **Note**: `{task}`、`{previous_response}`、`{user_inputs}` は自動的にインストラクションに注入されます。テンプレート内での位置を制御したい場合のみ、明示的なプレースホルダーが必要です。
 
-### エージェントをパスで指定する
+### ペルソナをパスで指定する
 
-ピース定義ではファイルパスを使ってエージェントを指定します:
+セクションマップでキーとファイルパスを対応付け、ムーブメントからキーで参照します:
 
 ```yaml
-# ピースファイルからの相対パス
-agent: ../agents/default/coder.md
-
-# ホームディレクトリ
-agent: ~/.takt/agents/default/coder.md
-
-# 絶対パス
-agent: /path/to/custom/agent.md
+# セクションマップ（ピースファイルからの相対パス）
+personas:
+  coder: ../personas/coder.md
+  reviewer: ~/.takt/personas/my-reviewer.md
 ```
 
 ### ピース変数
@@ -669,11 +699,11 @@ agent: /path/to/custom/agent.md
 
 各ピースのムーブメントに必要な要素:
 
-**1. エージェント** - システムプロンプトを含むMarkdownファイル:
+**1. ペルソナ** - セクションマップのキーで参照（system promptとして使用）:
 
 ```yaml
-agent: ../agents/default/coder.md    # エージェントプロンプトファイルのパス
-agent_name: coder                    # 表示名（オプション）
+persona: coder                       # personas セクションマップのキー
+persona_name: coder                  # 表示名（オプション）
 ```
 
 **2. ルール** - ムーブメントから次のムーブメントへのルーティングを定義。インストラクションビルダーがステータス出力ルールを自動注入するため、エージェントはどのタグを出力すべきか把握できます:
@@ -698,7 +728,8 @@ rules:
 | `provider` | - | このムーブメントのプロバイダーを上書き（`claude`または`codex`） |
 | `model` | - | このムーブメントのモデルを上書き |
 | `permission_mode` | - | パーミッションモード: `readonly`、`edit`、`full`（プロバイダー非依存） |
-| `report` | - | 自動生成レポートのファイル設定（name, format） |
+| `output_contracts` | - | レポートファイルの出力契約定義 |
+| `quality_gates` | - | ムーブメント完了要件のAIディレクティブ |
 
 ## API使用例
 
@@ -783,6 +814,7 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 ## ドキュメント
 
+- [Faceted Prompting](./faceted-prompting.ja.md) - AIプロンプトへの関心の分離（Persona, Policy, Instruction, Knowledge, Output Contract）
 - [Piece Guide](./pieces.md) - ピースの作成とカスタマイズ
 - [Agent Guide](./agents.md) - カスタムエージェントの設定
 - [Changelog](../CHANGELOG.md) - バージョン履歴

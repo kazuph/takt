@@ -5,12 +5,23 @@
 import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../claude/index.js';
 import type { AgentResponse, PermissionMode } from '../../core/models/index.js';
 
-/** Common options for all providers */
+/** Agent setup configuration — determines HOW the provider invokes the agent */
+export interface AgentSetup {
+  /** Display name for this agent */
+  name: string;
+  /** System prompt for the agent (persona content, inline prompt, etc.) */
+  systemPrompt?: string;
+  /** Delegate to a Claude Code agent by name (Claude provider only) */
+  claudeAgent?: string;
+  /** Delegate to a Claude Code skill by name (Claude provider only) */
+  claudeSkill?: string;
+}
+
+/** Runtime options passed at call time */
 export interface ProviderCallOptions {
   cwd: string;
   sessionId?: string;
   model?: string;
-  systemPrompt?: string;
   allowedTools?: string[];
   /** Maximum number of agentic turns */
   maxTurns?: number;
@@ -26,13 +37,14 @@ export interface ProviderCallOptions {
   openaiApiKey?: string;
 }
 
-/** Provider interface - all providers must implement this */
-export interface Provider {
-  /** Call the provider with a prompt (using systemPrompt from options if provided) */
-  call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse>;
+/** A configured agent ready to be called */
+export interface ProviderAgent {
+  call(prompt: string, options: ProviderCallOptions): Promise<AgentResponse>;
+}
 
-  /** Call the provider with explicit system prompt */
-  callCustom(agentName: string, prompt: string, systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse>;
+/** Provider interface — creates configured agents from setup */
+export interface Provider {
+  setup(config: AgentSetup): ProviderAgent;
 }
 
 /** Provider type */

@@ -9,8 +9,8 @@ import type { PieceMovement } from '../core/models/index.js';
 function createMovementWithRules(rules: { condition: string; next: string }[]): PieceMovement {
   return {
     name: 'test-step',
-    agent: 'test-agent',
-    agentDisplayName: 'Test Agent',
+    persona: 'test-agent',
+    personaDisplayName: 'Test Agent',
     instructionTemplate: '{task}',
     passPreviousResponse: false,
     rules: rules.map((r) => ({
@@ -44,8 +44,8 @@ describe('determineNextMovementByRules', () => {
   it('should return null when movement has no rules', () => {
     const step: PieceMovement = {
       name: 'test-step',
-      agent: 'test-agent',
-      agentDisplayName: 'Test Agent',
+      persona: 'test-agent',
+      personaDisplayName: 'Test Agent',
       instructionTemplate: '{task}',
       passPreviousResponse: false,
     };
@@ -65,8 +65,8 @@ describe('determineNextMovementByRules', () => {
     // Parallel sub-movement rules may omit `next` (optional field)
     const step: PieceMovement = {
       name: 'sub-step',
-      agent: 'test-agent',
-      agentDisplayName: 'Test Agent',
+      persona: 'test-agent',
+      personaDisplayName: 'Test Agent',
       instructionTemplate: '{task}',
       passPreviousResponse: false,
       rules: [

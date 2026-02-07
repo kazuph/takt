@@ -4,27 +4,37 @@
 
 import { callMock, callMockCustom, type MockCallOptions } from '../mock/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
-import type { Provider, ProviderCallOptions } from './types.js';
+import type { AgentSetup, Provider, ProviderAgent, ProviderCallOptions } from './types.js';
 
-/** Mock provider - wraps existing Mock client */
+function toMockOptions(options: ProviderCallOptions): MockCallOptions {
+  return {
+    cwd: options.cwd,
+    sessionId: options.sessionId,
+    onStream: options.onStream,
+  };
+}
+
+/** Mock provider — deterministic responses for testing */
 export class MockProvider implements Provider {
-  async call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    const callOptions: MockCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      onStream: options.onStream,
+  setup(config: AgentSetup): ProviderAgent {
+    if (config.claudeAgent) {
+      throw new Error('Claude Code agent calls are not supported by the Mock provider');
+    }
+    if (config.claudeSkill) {
+      throw new Error('Claude Code skill calls are not supported by the Mock provider');
+    }
+
+    const { name, systemPrompt } = config;
+    if (systemPrompt) {
+      return {
+        call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+          callMockCustom(name, prompt, systemPrompt, toMockOptions(options)),
+      };
+    }
+
+    return {
+      call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
+        callMock(name, prompt, toMockOptions(options)),
     };
-
-    return callMock(agentName, prompt, callOptions);
-  }
-
-  async callCustom(agentName: string, prompt: string, _systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
-    const callOptions: MockCallOptions = {
-      cwd: options.cwd,
-      sessionId: options.sessionId,
-      onStream: options.onStream,
-    };
-
-    return callMockCustom(agentName, prompt, _systemPrompt, callOptions);
   }
 }

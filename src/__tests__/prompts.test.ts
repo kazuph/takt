@@ -17,12 +17,22 @@ describe('loadTemplate', () => {
 
   it('loads an English interactive template', () => {
     const result = loadTemplate('score_interactive_system_prompt', 'en');
-    expect(result).toContain('You are a task planning assistant');
+    expect(result).toContain('Interactive Mode Assistant');
+  });
+
+  it('loads an English interactive policy template', () => {
+    const result = loadTemplate('score_interactive_policy', 'en');
+    expect(result).toContain('Interactive Mode Policy');
   });
 
   it('loads a Japanese template', () => {
     const result = loadTemplate('score_interactive_system_prompt', 'ja');
-    expect(result).toContain('あなたはTAKT');
+    expect(result).toContain('対話モードアシスタント');
+  });
+
+  it('loads a Japanese interactive policy template', () => {
+    const result = loadTemplate('score_interactive_policy', 'ja');
+    expect(result).toContain('対話モードポリシー');
   });
 
   it('loads score_slug_system_prompt with explicit lang', () => {
@@ -117,6 +127,7 @@ describe('renderTemplate', () => {
 describe('template file existence', () => {
   const allTemplates = [
     'score_interactive_system_prompt',
+    'score_interactive_policy',
     'score_summary_system_prompt',
     'score_slug_system_prompt',
     'perform_phase1_message',
@@ -154,12 +165,26 @@ describe('caching', () => {
 });
 
 describe('template content integrity', () => {
-  it('score_interactive_system_prompt contains core instructions', () => {
+  it('score_interactive_system_prompt contains persona definition', () => {
     const en = loadTemplate('score_interactive_system_prompt', 'en');
-    expect(en).toContain('task planning assistant');
+    expect(en).toContain('Interactive Mode Assistant');
+    expect(en).toContain('Role Boundaries');
 
     const ja = loadTemplate('score_interactive_system_prompt', 'ja');
-    expect(ja).toContain('あなたはTAKT');
+    expect(ja).toContain('対話モードアシスタント');
+    expect(ja).toContain('役割の境界');
+  });
+
+  it('score_interactive_policy contains behavioral guidelines', () => {
+    const en = loadTemplate('score_interactive_policy', 'en');
+    expect(en).toContain('Interactive Mode Policy');
+    expect(en).toContain('Principles');
+    expect(en).toContain('Strict Requirements');
+
+    const ja = loadTemplate('score_interactive_policy', 'ja');
+    expect(ja).toContain('対話モードポリシー');
+    expect(ja).toContain('原則');
+    expect(ja).toContain('厳守事項');
   });
 
   it('score_slug_system_prompt contains format specification', () => {

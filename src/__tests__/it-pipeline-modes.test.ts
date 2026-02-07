@@ -105,8 +105,8 @@ vi.mock('../infra/config/paths.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../infra/config/paths.js')>();
   return {
     ...original,
-    loadAgentSessions: vi.fn().mockReturnValue({}),
-    updateAgentSession: vi.fn(),
+    loadPersonaSessions: vi.fn().mockReturnValue({}),
+    updatePersonaSession: vi.fn(),
     loadWorktreeSessions: vi.fn().mockReturnValue({}),
     updateWorktreeSession: vi.fn(),
     getCurrentPiece: vi.fn().mockReturnValue('default'),
@@ -162,11 +162,11 @@ function createTestPieceDir(): { dir: string; piecePath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-pm-'));
   mkdirSync(join(dir, '.takt', 'reports', 'test-report-dir'), { recursive: true });
 
-  const agentsDir = join(dir, 'agents');
-  mkdirSync(agentsDir, { recursive: true });
-  writeFileSync(join(agentsDir, 'planner.md'), 'You are a planner.');
-  writeFileSync(join(agentsDir, 'coder.md'), 'You are a coder.');
-  writeFileSync(join(agentsDir, 'reviewer.md'), 'You are a reviewer.');
+  const personasDir = join(dir, 'personas');
+  mkdirSync(personasDir, { recursive: true });
+  writeFileSync(join(personasDir, 'planner.md'), 'You are a planner.');
+  writeFileSync(join(personasDir, 'coder.md'), 'You are a coder.');
+  writeFileSync(join(personasDir, 'reviewer.md'), 'You are a reviewer.');
 
   const pieceYaml = `
 name: it-pipeline
@@ -176,7 +176,7 @@ initial_movement: plan
 
 movements:
   - name: plan
-    agent: ./agents/planner.md
+    persona: ./personas/planner.md
     rules:
       - condition: Requirements are clear
         next: implement
@@ -185,7 +185,7 @@ movements:
     instruction: "{task}"
 
   - name: implement
-    agent: ./agents/coder.md
+    persona: ./personas/coder.md
     rules:
       - condition: Implementation complete
         next: review
@@ -194,7 +194,7 @@ movements:
     instruction: "{task}"
 
   - name: review
-    agent: ./agents/reviewer.md
+    persona: ./personas/reviewer.md
     rules:
       - condition: All checks passed
         next: COMPLETE
@@ -211,9 +211,9 @@ movements:
 
 function happyScenario(): void {
   setMockScenario([
-    { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
-    { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-    { agent: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
+    { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nRequirements are clear.' },
+    { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
+    { persona: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
   ]);
 }
 
@@ -250,7 +250,7 @@ describe('Pipeline Modes IT: --task + --piece path', () => {
 
   it('should return EXIT_PIECE_FAILED (3) on ABORT', async () => {
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
     ]);
 
     const exitCode = await executePipeline({
@@ -282,9 +282,9 @@ describe('Pipeline Modes IT: --task + --piece name (builtin)', () => {
 
   it('should load and execute builtin minimal piece by name', async () => {
     setMockScenario([
-      { agent: 'coder', status: 'done', content: 'Implementation complete' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
-      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
+      { persona: 'coder', status: 'done', content: 'Implementation complete' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { persona: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const exitCode = await executePipeline({
@@ -530,14 +530,14 @@ describe('Pipeline Modes IT: review → fix loop', () => {
 
   it('should handle review → implement → review loop', async () => {
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
       // First review: issues found → back to implement
-      { agent: 'reviewer', status: 'done', content: '[REVIEW:2]\n\nIssues found.' },
+      { persona: 'reviewer', status: 'done', content: '[REVIEW:2]\n\nIssues found.' },
       // Fix
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nFixed.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nFixed.' },
       // Second review: passed
-      { agent: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
+      { persona: 'reviewer', status: 'done', content: '[REVIEW:1]\n\nAll checks passed.' },
     ]);
 
     const exitCode = await executePipeline({

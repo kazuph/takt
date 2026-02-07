@@ -65,7 +65,7 @@ describe('PieceConfigRawSchema', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           allowed_tools: ['Read', 'Grep'],
           instruction: '{task}',
           rules: [
@@ -88,7 +88,7 @@ describe('PieceConfigRawSchema', () => {
       movements: [
         {
           name: 'implement',
-          agent: 'coder',
+          persona: 'coder',
           allowed_tools: ['Read', 'Edit', 'Write', 'Bash'],
           permission_mode: 'edit',
           instruction: '{task}',
@@ -109,7 +109,7 @@ describe('PieceConfigRawSchema', () => {
       movements: [
         {
           name: 'plan',
-          agent: 'planner',
+          persona: 'planner',
           instruction: '{task}',
         },
       ],
@@ -125,7 +125,7 @@ describe('PieceConfigRawSchema', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           permission_mode: 'superAdmin',
           instruction: '{task}',
         },

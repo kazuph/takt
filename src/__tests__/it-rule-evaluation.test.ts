@@ -50,8 +50,8 @@ function makeMovement(
 ): PieceMovement {
   return {
     name,
-    agent: 'test-agent',
-    agentDisplayName: name,
+    persona: 'test-agent',
+    personaDisplayName: name,
     instructionTemplate: '{task}',
     passPreviousResponse: true,
     rules,
@@ -68,7 +68,7 @@ function makeState(movementOutputs?: Map<string, AgentResponse>): PieceState {
     movementOutputs: movementOutputs ?? new Map(),
     lastOutput: undefined,
     movementIterations: new Map(),
-    agentSessions: new Map(),
+    personaSessions: new Map(),
     userInputs: [],
   };
 }
@@ -173,11 +173,11 @@ describe('Rule Evaluation IT: Aggregate conditions (all/any)', () => {
 
     const outputs = new Map<string, AgentResponse>();
     outputs.set('arch-review', {
-      agent: 'arch', status: 'done', content: 'approved',
+      persona: 'arch', status: 'done', content: 'approved',
       timestamp: new Date(), matchedRuleIndex: 0,
     });
     outputs.set('security-review', {
-      agent: 'security', status: 'done', content: 'approved',
+      persona: 'security', status: 'done', content: 'approved',
       timestamp: new Date(), matchedRuleIndex: 0,
     });
 
@@ -211,11 +211,11 @@ describe('Rule Evaluation IT: Aggregate conditions (all/any)', () => {
 
     const outputs = new Map<string, AgentResponse>();
     outputs.set('arch-review', {
-      agent: 'arch', status: 'done', content: 'approved',
+      persona: 'arch', status: 'done', content: 'approved',
       timestamp: new Date(), matchedRuleIndex: 0,
     });
     outputs.set('security-review', {
-      agent: 'security', status: 'done', content: 'needs_fix',
+      persona: 'security', status: 'done', content: 'needs_fix',
       timestamp: new Date(), matchedRuleIndex: 1,
     });
 
@@ -244,11 +244,11 @@ describe('Rule Evaluation IT: Aggregate conditions (all/any)', () => {
 
     const outputs = new Map<string, AgentResponse>();
     outputs.set('review-a', {
-      agent: 'a', status: 'done', content: 'approved',
+      persona: 'a', status: 'done', content: 'approved',
       timestamp: new Date(), matchedRuleIndex: 0,
     });
     outputs.set('review-b', {
-      agent: 'b', status: 'done', content: 'needs_fix',
+      persona: 'b', status: 'done', content: 'needs_fix',
       timestamp: new Date(), matchedRuleIndex: 1,
     });
 
@@ -365,7 +365,7 @@ describe('Rule Evaluation IT: RuleMatchMethod tracking', () => {
 
     const outputs = new Map<string, AgentResponse>();
     outputs.set('sub', {
-      agent: 'sub', status: 'done', content: 'ok',
+      persona: 'sub', status: 'done', content: 'ok',
       timestamp: new Date(), matchedRuleIndex: 0,
     });
 
@@ -401,8 +401,8 @@ describe('Rule Evaluation IT: movements without rules', () => {
   it('should return undefined for movement with no rules', async () => {
     const step: PieceMovement = {
       name: 'step',
-      agent: 'agent',
-      agentDisplayName: 'step',
+      persona: 'agent',
+      personaDisplayName: 'step',
       instructionTemplate: '{task}',
       passPreviousResponse: true,
     };

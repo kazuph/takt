@@ -31,17 +31,17 @@ export class ScenarioQueue {
   /**
    * Consume the next matching entry for the given agent.
    */
-  consume(agentName: string): ScenarioEntry | undefined {
-    // Try agent-specific match first
-    const agentIndex = this.entries.findIndex(
-      (e) => e.agent !== undefined && e.agent === agentName,
+  consume(personaName: string): ScenarioEntry | undefined {
+    // Try persona-specific match first
+    const personaIndex = this.entries.findIndex(
+      (e) => e.persona !== undefined && e.persona === personaName,
     );
-    if (agentIndex >= 0) {
-      return this.entries.splice(agentIndex, 1)[0];
+    if (personaIndex >= 0) {
+      return this.entries.splice(personaIndex, 1)[0];
     }
 
     // Fall back to first unspecified entry
-    const anyIndex = this.entries.findIndex((e) => e.agent === undefined);
+    const anyIndex = this.entries.findIndex((e) => e.persona === undefined);
     if (anyIndex >= 0) {
       return this.entries.splice(anyIndex, 1)[0];
     }
@@ -138,13 +138,13 @@ function validateEntry(entry: unknown, index: number): ScenarioEntry {
     );
   }
 
-  // agent is optional
-  if (obj.agent !== undefined && typeof obj.agent !== 'string') {
-    throw new Error(`Scenario entry [${index}] "agent" must be a string if provided`);
+  // persona is optional
+  if (obj.persona !== undefined && typeof obj.persona !== 'string') {
+    throw new Error(`Scenario entry [${index}] "persona" must be a string if provided`);
   }
 
   return {
-    agent: obj.agent as string | undefined,
+    persona: obj.persona as string | undefined,
     status: status as ScenarioEntry['status'],
     content: obj.content as string,
   };

@@ -97,9 +97,9 @@ describe('Piece Patterns IT: minimal piece', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'coder', status: 'done', content: 'Implementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues.' },
-      { agent: 'supervisor', status: 'done', content: 'All checks passed.' },
+      { persona: 'coder', status: 'done', content: 'Implementation complete.' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues.' },
+      { persona: 'supervisor', status: 'done', content: 'All checks passed.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Test task');
@@ -113,7 +113,7 @@ describe('Piece Patterns IT: minimal piece', () => {
     const config = loadPiece('minimal', testDir);
 
     setMockScenario([
-      { agent: 'coder', status: 'done', content: 'Cannot proceed, insufficient info.' },
+      { persona: 'coder', status: 'done', content: 'Cannot proceed, insufficient info.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Vague task');
@@ -143,15 +143,15 @@ describe('Piece Patterns IT: default piece (parallel reviewers)', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
-      { agent: 'architect', status: 'done', content: 'Design complete' },
-      { agent: 'coder', status: 'done', content: 'Implementation complete' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { persona: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
+      { persona: 'architect-planner', status: 'done', content: 'Design complete' },
+      { persona: 'coder', status: 'done', content: 'Implementation complete' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Parallel reviewers: both approved
-      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
-      { agent: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
       // Supervisor
-      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
+      { persona: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Test task');
@@ -164,22 +164,22 @@ describe('Piece Patterns IT: default piece (parallel reviewers)', () => {
     const config = loadPiece('default', testDir);
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
-      { agent: 'architect', status: 'done', content: 'Design complete' },
-      { agent: 'coder', status: 'done', content: 'Implementation complete' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { persona: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
+      { persona: 'architect-planner', status: 'done', content: 'Design complete' },
+      { persona: 'coder', status: 'done', content: 'Implementation complete' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Parallel: arch approved, qa needs_fix
-      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
-      { agent: 'qa-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'needs_fix' },
       // Fix step
-      { agent: 'coder', status: 'done', content: 'Fix complete' },
+      { persona: 'coder', status: 'done', content: 'Fix complete' },
       // AI review after fix
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Re-review: both approved
-      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
-      { agent: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
       // Supervisor
-      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
+      { persona: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Task needing QA fix');
@@ -207,9 +207,9 @@ describe('Piece Patterns IT: research piece', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'research/planner', status: 'done', content: '[PLAN:1]\n\nPlanning is complete.' },
-      { agent: 'research/digger', status: 'done', content: '[DIG:1]\n\nResearch is complete.' },
-      { agent: 'research/supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAdequate.' },
+      { persona: 'research-planner', status: 'done', content: '[PLAN:1]\n\nPlanning is complete.' },
+      { persona: 'research-digger', status: 'done', content: '[DIG:1]\n\nResearch is complete.' },
+      { persona: 'research-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAdequate.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Research topic X');
@@ -223,13 +223,13 @@ describe('Piece Patterns IT: research piece', () => {
     const config = loadPiece('research', testDir);
 
     setMockScenario([
-      { agent: 'research/planner', status: 'done', content: '[PLAN:1]\n\nPlanning is complete.' },
-      { agent: 'research/digger', status: 'done', content: '[DIG:1]\n\nResearch is complete.' },
-      { agent: 'research/supervisor', status: 'done', content: '[SUPERVISE:2]\n\nInsufficient.' },
+      { persona: 'research-planner', status: 'done', content: '[PLAN:1]\n\nPlanning is complete.' },
+      { persona: 'research-digger', status: 'done', content: '[DIG:1]\n\nResearch is complete.' },
+      { persona: 'research-supervisor', status: 'done', content: '[SUPERVISE:2]\n\nInsufficient.' },
       // Second pass
-      { agent: 'research/planner', status: 'done', content: '[PLAN:1]\n\nRevised plan.' },
-      { agent: 'research/digger', status: 'done', content: '[DIG:1]\n\nMore research.' },
-      { agent: 'research/supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAdequate now.' },
+      { persona: 'research-planner', status: 'done', content: '[PLAN:1]\n\nRevised plan.' },
+      { persona: 'research-digger', status: 'done', content: '[DIG:1]\n\nMore research.' },
+      { persona: 'research-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAdequate now.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Research topic X');
@@ -258,9 +258,9 @@ describe('Piece Patterns IT: magi piece', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'magi/melchior', status: 'done', content: '[MELCHIOR:1]\n\nJudgment completed.' },
-      { agent: 'magi/balthasar', status: 'done', content: '[BALTHASAR:1]\n\nJudgment completed.' },
-      { agent: 'magi/casper', status: 'done', content: '[CASPER:1]\n\nFinal judgment completed.' },
+      { persona: 'melchior', status: 'done', content: '[MELCHIOR:1]\n\nJudgment completed.' },
+      { persona: 'balthasar', status: 'done', content: '[BALTHASAR:1]\n\nJudgment completed.' },
+      { persona: 'casper', status: 'done', content: '[CASPER:1]\n\nFinal judgment completed.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Deliberation topic');
@@ -289,13 +289,13 @@ describe('Piece Patterns IT: review-only piece', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nReview scope is clear.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nReview scope is clear.' },
       // Parallel reviewers: all approved
-      { agent: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
-      { agent: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI-REVIEW:1]\n\napproved' },
+      { persona: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
+      { persona: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: '[AI-REVIEW:1]\n\napproved' },
       // Supervisor: approved (local review, no PR)
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:2]\n\napproved' },
+      { persona: 'supervisor', status: 'done', content: '[SUPERVISE:2]\n\napproved' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Review the codebase');
@@ -337,16 +337,16 @@ describe('Piece Patterns IT: expert piece (4 parallel reviewers)', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo issues.' },
+      { persona: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo issues.' },
       // 4 parallel reviewers
-      { agent: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
-      { agent: 'expert/frontend-reviewer', status: 'done', content: '[FRONTEND-REVIEW:1]\n\napproved' },
-      { agent: 'expert/security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
-      { agent: 'expert/qa-reviewer', status: 'done', content: '[QA-REVIEW:1]\n\napproved' },
+      { persona: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
+      { persona: 'frontend-reviewer', status: 'done', content: '[FRONTEND-REVIEW:1]\n\napproved' },
+      { persona: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
+      { persona: 'qa-reviewer', status: 'done', content: '[QA-REVIEW:1]\n\napproved' },
       // Supervisor
-      { agent: 'expert/supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations pass.' },
+      { persona: 'expert-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations pass.' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Expert review task');

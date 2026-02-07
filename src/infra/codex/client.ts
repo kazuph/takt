@@ -152,7 +152,7 @@ export class CodexClient {
         const message = failureMessage || 'Codex execution failed';
         emitResult(options.onStream, false, message, threadId);
         return {
-          agent: agentType,
+          persona: agentType,
           status: 'blocked',
           content: message,
           timestamp: new Date(),
@@ -164,7 +164,7 @@ export class CodexClient {
       emitResult(options.onStream, true, trimmed, threadId);
 
       return {
-        agent: agentType,
+        persona: agentType,
         status: 'done',
         content: trimmed,
         timestamp: new Date(),
@@ -175,7 +175,7 @@ export class CodexClient {
       emitResult(options.onStream, false, message, threadId);
 
       return {
-        agent: agentType,
+        persona: agentType,
         status: 'blocked',
         content: message,
         timestamp: new Date(),

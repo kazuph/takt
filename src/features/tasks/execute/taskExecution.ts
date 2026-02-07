@@ -16,6 +16,7 @@ import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { executePiece } from './pieceExecution.js';
 import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import type { TaskExecutionOptions, ExecuteTaskOptions } from './types.js';
+import { createPullRequest, buildPrBody, pushBranch } from '../../../infra/github/index.js';
 
 export type { TaskExecutionOptions, ExecuteTaskOptions };
 
@@ -25,7 +26,7 @@ const log = createLogger('task');
  * Execute a single task with piece.
  */
 export async function executeTask(options: ExecuteTaskOptions): Promise<boolean> {
-  const { task, cwd, pieceIdentifier, projectCwd, agentOverrides, interactiveUserInput, interactiveMetadata } = options;
+  const { task, cwd, pieceIdentifier, projectCwd, agentOverrides, interactiveUserInput, interactiveMetadata, startMovement, retryNote } = options;
   const pieceConfig = loadPieceByIdentifier(pieceIdentifier, projectCwd);
 
   if (!pieceConfig) {
@@ -52,6 +53,8 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<boolean>
     model: agentOverrides?.model,
     interactiveUserInput,
     interactiveMetadata,
+    startMovement,
+    retryNote,
   });
   return result.success;
 }
@@ -75,7 +78,7 @@ export async function executeAndCompleteTask(
   const executionLog: string[] = [];
 
   try {
-    const { execCwd, execPiece, isWorktree } = await resolveTaskExecution(task, cwd, pieceName);
+    const { execCwd, execPiece, isWorktree, branch, startMovement, retryNote, autoPr } = await resolveTaskExecution(task, cwd, pieceName);
 
     // cwd is always the project root; pass it as projectCwd so reports/sessions go there
     const taskSuccess = await executeTask({
@@ -84,6 +87,8 @@ export async function executeAndCompleteTask(
       pieceIdentifier: execPiece,
       projectCwd: cwd,
       agentOverrides: options,
+      startMovement,
+      retryNote,
     });
     const completedAt = new Date().toISOString();
 
@@ -93,6 +98,29 @@ export async function executeAndCompleteTask(
         info(`Auto-committed & pushed: ${commitResult.commitHash}`);
       } else if (!commitResult.success) {
         error(`Auto-commit failed: ${commitResult.message}`);
+      }
+
+      // Create PR if autoPr is enabled and commit succeeded
+      if (commitResult.success && commitResult.commitHash && branch && autoPr) {
+        info('Creating pull request...');
+        // Push branch from project cwd to origin
+        try {
+          pushBranch(cwd, branch);
+        } catch (pushError) {
+          // Branch may already be pushed, continue to PR creation
+          log.info('Branch push from project cwd failed (may already exist)', { error: pushError });
+        }
+        const prBody = buildPrBody(undefined, `Task "${task.name}" completed successfully.`);
+        const prResult = createPullRequest(cwd, {
+          branch,
+          title: task.name.length > 100 ? `${task.name.slice(0, 97)}...` : task.name,
+          body: prBody,
+        });
+        if (prResult.success) {
+          success(`PR created: ${prResult.url}`);
+        } else {
+          error(`PR creation failed: ${prResult.error}`);
+        }
       }
     }
 
@@ -194,7 +222,7 @@ export async function resolveTaskExecution(
   task: TaskInfo,
   defaultCwd: string,
   defaultPiece: string
-): Promise<{ execCwd: string; execPiece: string; isWorktree: boolean; branch?: string }> {
+): Promise<{ execCwd: string; execPiece: string; isWorktree: boolean; branch?: string; startMovement?: string; retryNote?: string; autoPr?: boolean }> {
   const data = task.data;
 
   // No structured data: use defaults
@@ -212,6 +240,7 @@ export async function resolveTaskExecution(
     info('Generating branch name...');
     const taskSlug = await summarizeTaskName(task.content, { cwd: defaultCwd });
 
+    info('Creating clone...');
     const result = createSharedClone(defaultCwd, {
       worktree: data.worktree,
       branch: data.branch,
@@ -227,5 +256,20 @@ export async function resolveTaskExecution(
   // Handle piece override
   const execPiece = data.piece || defaultPiece;
 
-  return { execCwd, execPiece, isWorktree, branch };
+  // Handle start_movement override
+  const startMovement = data.start_movement;
+
+  // Handle retry_note
+  const retryNote = data.retry_note;
+
+  // Handle auto_pr (task YAML > global config)
+  let autoPr: boolean | undefined;
+  if (data.auto_pr !== undefined) {
+    autoPr = data.auto_pr;
+  } else {
+    const globalConfig = loadGlobalConfig();
+    autoPr = globalConfig.autoPr;
+  }
+
+  return { execCwd, execPiece, isWorktree, branch, startMovement, retryNote, autoPr };
 }

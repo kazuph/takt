@@ -58,7 +58,7 @@ describe('PieceEngine agent overrides', () => {
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: movement.agent, content: 'done' }),
+      makeResponse({ persona: movement.persona, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 
@@ -87,7 +87,7 @@ describe('PieceEngine agent overrides', () => {
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: movement.agent, content: 'done' }),
+      makeResponse({ persona: movement.persona, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 
@@ -118,7 +118,7 @@ describe('PieceEngine agent overrides', () => {
     };
 
     mockRunAgentSequence([
-      makeResponse({ agent: movement.agent, content: 'done' }),
+      makeResponse({ persona: movement.persona, content: 'done' }),
     ]);
     mockDetectMatchedRuleSequence([{ index: 0, method: 'phase1_tag' }]);
 

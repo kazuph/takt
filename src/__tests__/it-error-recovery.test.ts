@@ -62,9 +62,9 @@ function makeRule(condition: string, next: string): PieceRule {
 function makeMovement(name: string, agentPath: string, rules: PieceRule[]): PieceMovement {
   return {
     name,
-    agent: `./agents/${name}.md`,
-    agentDisplayName: name,
-    agentPath,
+    persona: `./personas/${name}.md`,
+    personaDisplayName: name,
+    personaPath: agentPath,
     instructionTemplate: '{task}',
     passPreviousResponse: true,
     rules,
@@ -75,14 +75,14 @@ function createTestEnv(): { dir: string; agentPaths: Record<string, string> } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-err-'));
   mkdirSync(join(dir, '.takt', 'reports', 'test-report-dir'), { recursive: true });
 
-  const agentsDir = join(dir, 'agents');
-  mkdirSync(agentsDir, { recursive: true });
+  const personasDir = join(dir, 'personas');
+  mkdirSync(personasDir, { recursive: true });
 
-  // Agent file names match movement names used in makeMovement()
+  // Persona file names match movement names used in makeMovement()
   const agents = ['plan', 'implement', 'review', 'supervisor'];
   const agentPaths: Record<string, string> = {};
   for (const agent of agents) {
-    const path = join(agentsDir, `${agent}.md`);
+    const path = join(personasDir, `${agent}.md`);
     writeFileSync(path, `You are a ${agent} agent.`);
     agentPaths[agent] = path;
   }
@@ -139,7 +139,7 @@ describe('Error Recovery IT: agent blocked response', () => {
 
   it('should handle blocked agent response gracefully', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'blocked', content: 'Error: Agent is blocked.' },
+      { persona: 'plan', status: 'blocked', content: 'Error: Agent is blocked.' },
     ]);
 
     const config = buildPiece(agentPaths, 10);
@@ -156,7 +156,7 @@ describe('Error Recovery IT: agent blocked response', () => {
 
   it('should handle empty content from agent', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '' },
+      { persona: 'plan', status: 'done', content: '' },
     ]);
 
     const config = buildPiece(agentPaths, 10);
@@ -191,9 +191,9 @@ describe('Error Recovery IT: max iterations reached', () => {
   it('should abort when max iterations reached (tight limit)', async () => {
     // Only 2 iterations allowed, but piece needs 3 movements
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'review', status: 'done', content: '[REVIEW:1]\n\nPassed.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:1]\n\nPassed.' },
     ]);
 
     const config = buildPiece(agentPaths, 2);
@@ -248,7 +248,7 @@ describe('Error Recovery IT: scenario queue exhaustion', () => {
   it('should handle scenario queue exhaustion mid-piece', async () => {
     // Only 1 entry, but piece needs 3 movements
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
     ]);
 
     const config = buildPiece(agentPaths, 10);
@@ -306,7 +306,7 @@ describe('Error Recovery IT: movement events on error paths', () => {
 
   it('should emit movement:start and movement:complete for each executed movement before abort', async () => {
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
     ]);
 
     const config = buildPiece(agentPaths, 10);
@@ -351,9 +351,9 @@ describe('Error Recovery IT: programmatic abort', () => {
   it('should support engine.abort() to cancel running piece', async () => {
     // Provide enough scenarios for 3 steps
     setMockScenario([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'review', status: 'done', content: '[REVIEW:1]\n\nPassed.' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\n\nClear.' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
+      { persona: 'review', status: 'done', content: '[REVIEW:1]\n\nPassed.' },
     ]);
 
     const config = buildPiece(agentPaths, 10);

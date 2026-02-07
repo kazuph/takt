@@ -142,8 +142,8 @@ export interface IterationLimitRequest {
   currentMovement: string;
 }
 
-/** Callback for session updates (when agent session IDs change) */
-export type SessionUpdateCallback = (agentName: string, sessionId: string) => void;
+/** Callback for session updates (when persona session IDs change) */
+export type SessionUpdateCallback = (persona: string, sessionId: string) => void;
 
 /**
  * Callback for iteration limit reached.
@@ -183,6 +183,10 @@ export interface PieceEngineOptions {
   detectRuleIndex?: RuleIndexDetector;
   /** AI judge caller (required for rules evaluation) */
   callAiJudge?: AiJudgeCaller;
+  /** Override initial movement (default: piece config's initialMovement) */
+  startMovement?: string;
+  /** Retry note explaining why task is being retried */
+  retryNote?: string;
 }
 
 /** Loop detection result */

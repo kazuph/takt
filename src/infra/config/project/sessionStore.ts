@@ -1,7 +1,7 @@
 /**
  * Session storage for takt
  *
- * Manages agent sessions and input history persistence.
+ * Manages persona sessions and input history persistence.
  */
 
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, readdirSync, rmSync } from 'node:fs';
@@ -82,29 +82,29 @@ export function addToInputHistory(projectDir: string, input: string): void {
   saveInputHistory(projectDir, history);
 }
 
-// ============ Agent Sessions ============
+// ============ Persona Sessions ============
 
-import type { AgentSessionData } from '../types.js';
+import type { PersonaSessionData } from '../types.js';
 
-export type { AgentSessionData };
+export type { PersonaSessionData };
 
-/** Get path for storing agent sessions */
-export function getAgentSessionsPath(projectDir: string): string {
-  return join(getProjectConfigDir(projectDir), 'agent_sessions.json');
+/** Get path for storing persona sessions */
+export function getPersonaSessionsPath(projectDir: string): string {
+  return join(getProjectConfigDir(projectDir), 'persona_sessions.json');
 }
 
-/** Load saved agent sessions. Returns empty if provider has changed. */
-export function loadAgentSessions(projectDir: string, currentProvider?: string): Record<string, string> {
-  const path = getAgentSessionsPath(projectDir);
+/** Load saved persona sessions. Returns empty if provider has changed. */
+export function loadPersonaSessions(projectDir: string, currentProvider?: string): Record<string, string> {
+  const path = getPersonaSessionsPath(projectDir);
   if (existsSync(path)) {
     try {
       const content = readFileSync(path, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
+      const data = JSON.parse(content) as PersonaSessionData;
       // If provider has changed or is unknown (legacy data), sessions are incompatible — discard them
       if (currentProvider && data.provider !== currentProvider) {
         return {};
       }
-      return data.agentSessions || {};
+      return data.personaSessions || {};
     } catch {
       return {};
     }
@@ -112,16 +112,16 @@ export function loadAgentSessions(projectDir: string, currentProvider?: string):
   return {};
 }
 
-/** Save agent sessions (atomic write) */
-export function saveAgentSessions(
+/** Save persona sessions (atomic write) */
+export function savePersonaSessions(
   projectDir: string,
   sessions: Record<string, string>,
   provider?: string
 ): void {
-  const path = getAgentSessionsPath(projectDir);
+  const path = getPersonaSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
-  const data: AgentSessionData = {
-    agentSessions: sessions,
+  const data: PersonaSessionData = {
+    personaSessions: sessions,
     updatedAt: new Date().toISOString(),
     provider,
   };
@@ -129,16 +129,16 @@ export function saveAgentSessions(
 }
 
 /**
- * Update a single agent session atomically.
+ * Update a single persona session atomically.
  * Uses read-modify-write with atomic file operations.
  */
-export function updateAgentSession(
+export function updatePersonaSession(
   projectDir: string,
-  agentName: string,
+  persona: string,
   sessionId: string,
   provider?: string
 ): void {
-  const path = getAgentSessionsPath(projectDir);
+  const path = getPersonaSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
 
   let sessions: Record<string, string> = {};
@@ -146,35 +146,35 @@ export function updateAgentSession(
   if (existsSync(path)) {
     try {
       const content = readFileSync(path, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
+      const data = JSON.parse(content) as PersonaSessionData;
       existingProvider = data.provider;
       // If provider changed, discard old sessions
       if (provider && existingProvider && existingProvider !== provider) {
         sessions = {};
       } else {
-        sessions = data.agentSessions || {};
+        sessions = data.personaSessions || {};
       }
     } catch {
       sessions = {};
     }
   }
 
-  sessions[agentName] = sessionId;
+  sessions[persona] = sessionId;
 
-  const data: AgentSessionData = {
-    agentSessions: sessions,
+  const data: PersonaSessionData = {
+    personaSessions: sessions,
     updatedAt: new Date().toISOString(),
     provider: provider ?? existingProvider,
   };
   writeFileAtomic(path, JSON.stringify(data, null, 2));
 }
 
-/** Clear all saved agent sessions */
-export function clearAgentSessions(projectDir: string): void {
-  const path = getAgentSessionsPath(projectDir);
+/** Clear all saved persona sessions */
+export function clearPersonaSessions(projectDir: string): void {
+  const path = getPersonaSessionsPath(projectDir);
   ensureDir(getProjectConfigDir(projectDir));
-  const data: AgentSessionData = {
-    agentSessions: {},
+  const data: PersonaSessionData = {
+    personaSessions: {},
     updatedAt: new Date().toISOString(),
   };
   writeFileAtomic(path, JSON.stringify(data, null, 2));
@@ -203,7 +203,7 @@ export function getWorktreeSessionPath(projectDir: string, worktreePath: string)
   return join(dir, `${encoded}.json`);
 }
 
-/** Load saved agent sessions for a worktree. Returns empty if provider has changed. */
+/** Load saved persona sessions for a worktree. Returns empty if provider has changed. */
 export function loadWorktreeSessions(
   projectDir: string,
   worktreePath: string,
@@ -213,11 +213,11 @@ export function loadWorktreeSessions(
   if (existsSync(sessionPath)) {
     try {
       const content = readFileSync(sessionPath, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
+      const data = JSON.parse(content) as PersonaSessionData;
       if (currentProvider && data.provider !== currentProvider) {
         return {};
       }
-      return data.agentSessions || {};
+      return data.personaSessions || {};
     } catch {
       return {};
     }
@@ -225,11 +225,11 @@ export function loadWorktreeSessions(
   return {};
 }
 
-/** Update a single agent session for a worktree (atomic) */
+/** Update a single persona session for a worktree (atomic) */
 export function updateWorktreeSession(
   projectDir: string,
   worktreePath: string,
-  agentName: string,
+  personaName: string,
   sessionId: string,
   provider?: string
 ): void {
@@ -243,22 +243,22 @@ export function updateWorktreeSession(
   if (existsSync(sessionPath)) {
     try {
       const content = readFileSync(sessionPath, 'utf-8');
-      const data = JSON.parse(content) as AgentSessionData;
+      const data = JSON.parse(content) as PersonaSessionData;
       existingProvider = data.provider;
       if (provider && existingProvider && existingProvider !== provider) {
         sessions = {};
       } else {
-        sessions = data.agentSessions || {};
+        sessions = data.personaSessions || {};
       }
     } catch {
       sessions = {};
     }
   }
 
-  sessions[agentName] = sessionId;
+  sessions[personaName] = sessionId;
 
-  const data: AgentSessionData = {
-    agentSessions: sessions,
+  const data: PersonaSessionData = {
+    personaSessions: sessions,
     updatedAt: new Date().toISOString(),
     provider: provider ?? existingProvider,
   };

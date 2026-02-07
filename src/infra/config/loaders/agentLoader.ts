@@ -1,30 +1,30 @@
 /**
- * Agent configuration loader
+ * Persona configuration loader
  *
- * Loads agents with user → builtin fallback:
- * 1. User agents: ~/.takt/agents/*.md
- * 2. Builtin agents: resources/global/{lang}/agents/*.md
+ * Loads persona prompts with user → builtin fallback:
+ * 1. User personas: ~/.takt/personas/*.md
+ * 2. Builtin personas: builtins/{lang}/personas/*.md
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import type { CustomAgentConfig } from '../../../core/models/index.js';
 import {
-  getGlobalAgentsDir,
+  getGlobalPersonasDir,
   getGlobalPiecesDir,
-  getBuiltinAgentsDir,
+  getBuiltinPersonasDir,
   getBuiltinPiecesDir,
   isPathSafe,
 } from '../paths.js';
 import { getLanguage } from '../global/globalConfig.js';
 
-/** Get all allowed base directories for agent prompt files */
-function getAllowedAgentBases(): string[] {
+/** Get all allowed base directories for persona prompt files */
+function getAllowedPromptBases(): string[] {
   const lang = getLanguage();
   return [
-    getGlobalAgentsDir(),
+    getGlobalPersonasDir(),
     getGlobalPiecesDir(),
-    getBuiltinAgentsDir(lang),
+    getBuiltinPersonasDir(lang),
     getBuiltinPiecesDir(lang),
   ];
 }
@@ -48,15 +48,12 @@ export function loadAgentsFromDir(dirPath: string): CustomAgentConfig[] {
   return agents;
 }
 
-/** Load all custom agents from global directory (~/.takt/agents/) */
+/** Load all custom agents from ~/.takt/personas/ */
 export function loadCustomAgents(): Map<string, CustomAgentConfig> {
   const agents = new Map<string, CustomAgentConfig>();
-
-  // Global agents from markdown files (~/.takt/agents/*.md)
-  for (const agent of loadAgentsFromDir(getGlobalAgentsDir())) {
+  for (const agent of loadAgentsFromDir(getGlobalPersonasDir())) {
     agents.set(agent.name, agent);
   }
-
   return agents;
 }
 
@@ -65,12 +62,7 @@ export function listCustomAgents(): string[] {
   return Array.from(loadCustomAgents().keys()).sort();
 }
 
-/**
- * Load agent prompt content.
- * Agents can be loaded from:
- * - ~/.takt/agents/*.md (global agents)
- * - ~/.takt/pieces/{piece}/*.md (piece-specific agents)
- */
+/** Load agent prompt content. */
 export function loadAgentPrompt(agent: CustomAgentConfig): string {
   if (agent.prompt) {
     return agent.prompt;
@@ -78,7 +70,7 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
 
   if (agent.promptFile) {
     const promptFile = agent.promptFile;
-    const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, promptFile));
+    const isValid = getAllowedPromptBases().some((base) => isPathSafe(base, promptFile));
     if (!isValid) {
       throw new Error(`Agent prompt file path is not allowed: ${agent.promptFile}`);
     }
@@ -93,19 +85,16 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
   throw new Error(`Agent ${agent.name} has no prompt defined`);
 }
 
-/**
- * Load agent prompt from a resolved path.
- * Used by piece engine when agentPath is already resolved.
- */
-export function loadAgentPromptFromPath(agentPath: string): string {
-  const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, agentPath));
+/** Load persona prompt from a resolved path. */
+export function loadPersonaPromptFromPath(personaPath: string): string {
+  const isValid = getAllowedPromptBases().some((base) => isPathSafe(base, personaPath));
   if (!isValid) {
-    throw new Error(`Agent prompt file path is not allowed: ${agentPath}`);
+    throw new Error(`Persona prompt file path is not allowed: ${personaPath}`);
   }
 
-  if (!existsSync(agentPath)) {
-    throw new Error(`Agent prompt file not found: ${agentPath}`);
+  if (!existsSync(personaPath)) {
+    throw new Error(`Persona prompt file not found: ${personaPath}`);
   }
 
-  return readFileSync(agentPath, 'utf-8');
+  return readFileSync(personaPath, 'utf-8');
 }

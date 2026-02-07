@@ -13,8 +13,8 @@ export interface RunAgentOptions {
   sessionId?: string;
   model?: string;
   provider?: 'claude' | 'codex' | 'mock';
-  /** Resolved path to agent prompt file */
-  agentPath?: string;
+  /** Resolved path to persona prompt file */
+  personaPath?: string;
   /** Allowed tools for this agent run */
   allowedTools?: string[];
   /** Maximum number of agentic turns */

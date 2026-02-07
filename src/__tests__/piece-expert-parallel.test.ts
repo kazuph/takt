@@ -166,6 +166,6 @@ describe('expert-cqrs piece parallel structure', () => {
   it('should use cqrs-es-reviewer agent for the first sub-movement', () => {
     const reviewers = piece!.movements.find((s) => s.name === 'reviewers');
     const cqrsReview = reviewers!.parallel!.find((s) => s.name === 'cqrs-es-review');
-    expect(cqrsReview!.agent).toContain('cqrs-es-reviewer');
+    expect(cqrsReview!.persona).toContain('cqrs-es-reviewer');
   });
 });

@@ -63,7 +63,7 @@ export interface SummarizeOptions {
   cwd: string;
   /** Model to use (optional, defaults to config or haiku) */
   model?: string;
-  /** Use LLM for summarization (default: true). If false, uses romanization. */
+  /** Use LLM for summarization. Defaults to config.branchNameStrategy === 'ai'. If false, uses romanization. */
   useLLM?: boolean;
 }
 

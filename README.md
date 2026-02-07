@@ -4,7 +4,7 @@
 
 **T**ask **A**gent **K**oordination **T**ool - Define how AI agents coordinate, where humans intervene, and what gets recorded — in YAML
 
-TAKT runs multiple AI agents (Claude Code, Codex) through YAML-defined workflows. Each step — who runs, what's allowed, what happens on failure — is declared in a piece file, not left to the agent.
+TAKT runs multiple AI agents (Claude Code, Codex) through YAML-defined workflows. Each step — who runs, what they see, what's allowed, what happens on failure — is declared in a piece file, not left to the agent.
 
 TAKT is built with TAKT itself (dogfooding).
 
@@ -23,6 +23,21 @@ You can read every term as standard workflow language (piece = workflow, movemen
 - AI agents are powerful but non-deterministic — TAKT makes their decisions visible and replayable
 - Multi-agent coordination needs structure — pieces define who does what, in what order, with what permissions
 - CI/CD integration needs guardrails — pipeline mode runs agents non-interactively with full audit logs
+
+## What TAKT Controls and Manages
+
+TAKT **controls** agent execution and **manages** prompt components.
+
+| | Concern | Description |
+|---|---------|-------------|
+| Control | **Routing** | State transition rules (who runs when) |
+| Control | **Tools & Permissions** | Readonly, edit, full access (what's allowed) |
+| Control | **Recording** | Session logs, reports (what gets captured) |
+| Manage | **Personas** | Agent roles and expertise (who they act as) |
+| Manage | **Policies** | Coding standards, quality criteria, prohibitions (what to uphold) |
+| Manage | **Knowledge** | Domain knowledge, architecture info (what to reference) |
+
+Personas, policies, and knowledge are managed as independent files and freely combined across workflows ([Faceted Prompting](./docs/faceted-prompting.md)). Change a policy in one file and every workflow using it gets the update.
 
 ## What TAKT is NOT
 
@@ -235,7 +250,7 @@ In pipeline mode, PRs are not created unless `--auto-pr` is specified.
 # Interactively switch pieces
 takt switch
 
-# Copy builtin pieces/agents to project .takt/ for customization
+# Copy builtin pieces/personas to project .takt/ for customization
 takt eject
 
 # Copy to ~/.takt/ (global) instead
@@ -244,7 +259,7 @@ takt eject --global
 # Clear agent conversation sessions
 takt clear
 
-# Deploy builtin pieces/agents as Claude Code Skill
+# Deploy builtin pieces/personas as Claude Code Skill
 takt export-cc
 
 # Preview assembled prompts for each movement and phase
@@ -296,9 +311,21 @@ name: default
 max_iterations: 10
 initial_movement: plan
 
+# Section maps — key: file path (relative to this YAML)
+personas:
+  planner: ../personas/planner.md
+  coder: ../personas/coder.md
+  reviewer: ../personas/architecture-reviewer.md
+
+policies:
+  coding: ../policies/coding.md
+
+knowledge:
+  architecture: ../knowledge/architecture.md
+
 movements:
   - name: plan
-    agent: ../agents/default/planner.md
+    persona: planner
     model: opus
     edit: false
     rules:
@@ -308,7 +335,9 @@ movements:
       Analyze the request and create an implementation plan.
 
   - name: implement
-    agent: ../agents/default/coder.md
+    persona: coder
+    policy: coding
+    knowledge: architecture
     edit: true
     permission_mode: edit
     rules:
@@ -320,7 +349,8 @@ movements:
       Implement based on the plan.
 
   - name: review
-    agent: ../agents/default/architecture-reviewer.md
+    persona: reviewer
+    knowledge: architecture
     edit: false
     rules:
       - condition: Approved
@@ -331,13 +361,13 @@ movements:
       Review the implementation from architecture and code quality perspectives.
 ```
 
-### Agentless Movements
+### Persona-less Movements
 
-The `agent` field is optional. When omitted, the movement executes using only the `instruction_template` without a system prompt. This is useful for simple tasks that don't require agent behavior customization.
+The `persona` field is optional. When omitted, the movement executes using only the `instruction_template` without a system prompt. This is useful for simple tasks that don't require persona customization.
 
 ```yaml
   - name: summarize
-    # No agent specified — uses instruction_template only
+    # No persona specified — uses instruction_template only
     edit: false
     rules:
       - condition: Summary complete
@@ -346,11 +376,11 @@ The `agent` field is optional. When omitted, the movement executes using only th
       Read the report and provide a concise summary.
 ```
 
-You can also write an inline system prompt as the `agent` value (if the specified file doesn't exist):
+You can also write an inline system prompt as the `persona` value (if the specified file doesn't exist):
 
 ```yaml
   - name: review
-    agent: "You are a code reviewer. Focus on readability and maintainability."
+    persona: "You are a code reviewer. Focus on readability and maintainability."
     edit: false
     instruction_template: |
       Review code quality.
@@ -364,14 +394,14 @@ Execute sub-movements in parallel within a movement and evaluate with aggregate 
   - name: reviewers
     parallel:
       - name: arch-review
-        agent: ../agents/default/architecture-reviewer.md
+        persona: reviewer
         rules:
           - condition: approved
           - condition: needs_fix
         instruction_template: |
           Review architecture and code quality.
       - name: security-review
-        agent: ../agents/default/security-reviewer.md
+        persona: security-reviewer
         rules:
           - condition: approved
           - condition: needs_fix
@@ -417,10 +447,10 @@ TAKT includes multiple builtin pieces:
 
 Use `takt switch` to switch pieces.
 
-## Builtin Agents
+## Builtin Personas
 
-| Agent | Description |
-|-------|-------------|
+| Persona | Description |
+|---------|-------------|
 | **planner** | Task analysis, spec investigation, implementation planning |
 | **architect-planner** | Task analysis and design planning: investigates code, resolves unknowns, creates implementation plans |
 | **coder** | Feature implementation, bug fixing |
@@ -431,12 +461,12 @@ Use `takt switch` to switch pieces.
 | **conductor** | Phase 3 judgment specialist: reads reports/responses and outputs status tags |
 | **supervisor** | Final validation, approval |
 
-## Custom Agents
+## Custom Personas
 
-Create agent prompts in Markdown files:
+Create persona prompts in Markdown files:
 
 ```markdown
-# ~/.takt/agents/my-agents/reviewer.md
+# ~/.takt/personas/my-reviewer.md
 
 You are a code reviewer specialized in security.
 
@@ -463,10 +493,10 @@ The model string is passed to the Codex SDK. If unspecified, defaults to `codex`
 ```
 ~/.takt/                    # Global configuration directory
 ├── config.yaml             # Global config (provider, model, piece, etc.)
-├── pieces/              # User piece definitions (override builtins)
+├── pieces/                 # User piece definitions (override builtins)
 │   └── custom.yaml
-└── agents/                 # User agent prompt files (.md)
-    └── my-agent.md
+└── personas/               # User persona prompt files (.md)
+    └── my-persona.md
 
 .takt/                      # Project-level configuration
 ├── config.yaml             # Project config (current piece, etc.)
@@ -480,7 +510,7 @@ The model string is passed to the Codex SDK. If unspecified, defaults to `codex`
     └── {sessionId}.jsonl   # NDJSON session log per piece execution
 ```
 
-Builtin resources are embedded in the npm package (`dist/resources/`). User files in `~/.takt/` take priority.
+Builtin resources are embedded in the npm package (`builtins/`). User files in `~/.takt/` take priority.
 
 ### Global Configuration
 
@@ -615,9 +645,13 @@ description: Custom piece
 max_iterations: 5
 initial_movement: analyze
 
+personas:
+  analyzer: ~/.takt/personas/analyzer.md
+  coder: ../personas/coder.md
+
 movements:
   - name: analyze
-    agent: ~/.takt/agents/my-agents/analyzer.md
+    persona: analyzer
     edit: false
     rules:
       - condition: Analysis complete
@@ -626,7 +660,7 @@ movements:
       Thoroughly analyze this request.
 
   - name: implement
-    agent: ~/.takt/agents/default/coder.md
+    persona: coder
     edit: true
     permission_mode: edit
     pass_previous_response: true
@@ -639,19 +673,15 @@ movements:
 
 > **Note**: `{task}`, `{previous_response}`, `{user_inputs}` are automatically injected into instructions. Explicit placeholders are only needed if you want to control their position in the template.
 
-### Specifying Agents by Path
+### Specifying Personas by Path
 
-In piece definitions, specify agents using file paths:
+Map keys to file paths in section maps, then reference keys from movements:
 
 ```yaml
-# Relative path from piece file
-agent: ../agents/default/coder.md
-
-# Home directory
-agent: ~/.takt/agents/default/coder.md
-
-# Absolute path
-agent: /path/to/custom/agent.md
+# Section maps (relative to piece file)
+personas:
+  coder: ../personas/coder.md
+  reviewer: ~/.takt/personas/my-reviewer.md
 ```
 
 ### Piece Variables
@@ -673,11 +703,11 @@ Variables available in `instruction_template`:
 
 Elements needed for each piece movement:
 
-**1. Agent** - Markdown file containing system prompt:
+**1. Persona** - Referenced by section map key (used as system prompt):
 
 ```yaml
-agent: ../agents/default/coder.md    # Path to agent prompt file
-agent_name: coder                    # Display name (optional)
+persona: coder                       # Key from personas section map
+persona_name: coder                  # Display name (optional)
 ```
 
 **2. Rules** - Define routing from movement to next movement. The instruction builder auto-injects status output rules, so agents know which tags to output:
@@ -702,7 +732,8 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure)
 | `provider` | - | Override provider for this movement (`claude` or `codex`) |
 | `model` | - | Override model for this movement |
 | `permission_mode` | - | Permission mode: `readonly`, `edit`, `full` (provider-independent) |
-| `report` | - | Auto-generated report file settings (name, format) |
+| `output_contracts` | - | Output contract definitions for report files |
+| `quality_gates` | - | AI directives for movement completion requirements |
 
 ## API Usage Example
 
@@ -787,6 +818,7 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 ## Documentation
 
+- [Faceted Prompting](./docs/faceted-prompting.md) - Separation of Concerns for AI prompts (Persona, Policy, Instruction, Knowledge, Output Contract)
 - [Piece Guide](./docs/pieces.md) - Creating and customizing pieces
 - [Agent Guide](./docs/agents.md) - Configuring custom agents
 - [Changelog](../CHANGELOG.md) - Version history

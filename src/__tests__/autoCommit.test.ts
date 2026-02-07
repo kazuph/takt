@@ -152,4 +152,5 @@ describe('autoCommitAndPush', () => {
     );
     expect((commitCall![1] as string[])[2]).toBe('takt: 認証機能を追加する');
   });
+
 });

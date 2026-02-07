@@ -4,7 +4,8 @@
   vars: workingDirectory, editRule, pieceName, pieceDescription, hasPieceDescription,
         pieceStructure, iteration, movementIteration, movement, hasReport, reportInfo,
         phaseNote, hasTaskSection, userRequest, hasPreviousResponse, previousResponse,
-        hasUserInputs, userInputs, instructions
+        hasUserInputs, userInputs, hasRetryNote, retryNote, hasPolicy, policyContent,
+        hasKnowledge, knowledgeContent, hasQualityGates, qualityGatesContent, instructions
   builder: InstructionBuilder
 -->
 ## 実行コンテキスト
@@ -12,8 +13,16 @@
 
 ## 実行ルール
 - **git commit を実行しないでください。** コミットはピース完了後にシステムが自動で行います。
+- **git add を実行しないでください。** ステージングもシステムが自動で行います。新規ファイルが未追跡（`??`）でも正常です。
 - **Bashコマンドで `cd` を使用しないでください。** 作業ディレクトリは既に正しく設定されています。ディレクトリを変更せずにコマンドを実行してください。
 {{#if editRule}}- {{editRule}}
+{{/if}}
+{{#if hasKnowledge}}
+
+## Knowledge
+以下のナレッジはこのムーブメントに適用されるドメイン固有の知識です。参考にしてください。
+
+{{knowledgeContent}}
 {{/if}}
 
 ## Piece Context
@@ -28,6 +37,11 @@
 {{#if hasReport}}{{reportInfo}}
 
 {{phaseNote}}{{/if}}
+{{#if hasRetryNote}}
+
+## 再投入メモ
+{{retryNote}}
+{{/if}}
 {{#if hasTaskSection}}
 
 ## User Request
@@ -46,3 +60,17 @@
 
 ## Instructions
 {{instructions}}
+{{#if hasQualityGates}}
+
+## Quality Gates
+このムーブメントを完了する前に、以下の要件を満たしてください:
+
+{{qualityGatesContent}}
+{{/if}}
+{{#if hasPolicy}}
+
+## Policy
+以下のポリシーはこのムーブメントに適用される行動規範です。必ず遵守してください。
+
+{{policyContent}}
+{{/if}}

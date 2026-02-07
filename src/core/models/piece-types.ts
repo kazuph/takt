@@ -32,39 +32,42 @@ export interface PieceRule {
   aggregateConditionText?: string | string[];
 }
 
-/** Report file configuration for a piece movement (label: path pair) */
-export interface ReportConfig {
+/** Output contract configuration (label: path pair format) */
+export interface OutputContractLabelPath {
   /** Display label (e.g., "Scope", "Decisions") */
   label: string;
   /** File path relative to report directory (e.g., "01-coder-scope.md") */
   path: string;
 }
 
-/** Report object configuration with order/format instructions */
-export interface ReportObjectConfig {
+/** Output contract item configuration with order/format instructions */
+export interface OutputContractItem {
   /** Report file name (e.g., "00-plan.md") */
   name: string;
   /** Instruction prepended before instruction_template (e.g., output destination) */
   order?: string;
-  /** Instruction appended after instruction_template (e.g., output format) */
+  /** Instruction appended after instruction_template (e.g., output format) - resolved from report_formats */
   format?: string;
 }
+
+/** Union type for output contract entries */
+export type OutputContractEntry = OutputContractLabelPath | OutputContractItem;
 
 /** Single movement in a piece */
 export interface PieceMovement {
   name: string;
   /** Brief description of this movement's role in the piece */
   description?: string;
-  /** Agent name, path, or inline prompt as specified in piece YAML. Undefined when movement runs without an agent. */
-  agent?: string;
+  /** Resolved persona spec (file path or inline prompt). Set from persona field in YAML. */
+  persona?: string;
   /** Session handling for this movement */
   session?: 'continue' | 'refresh';
-  /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
-  agentDisplayName: string;
+  /** Display name for the persona (shown in output). Falls back to persona basename if not specified */
+  personaDisplayName: string;
   /** Allowed tools for this movement (optional, passed to agent execution) */
   allowedTools?: string[];
-  /** Resolved absolute path to agent prompt file (set by loader) */
-  agentPath?: string;
+  /** Resolved absolute path to persona prompt file (set by loader) */
+  personaPath?: string;
   /** Provider override for this movement */
   provider?: 'claude' | 'codex' | 'mock';
   /** Model override for this movement */
@@ -76,11 +79,17 @@ export interface PieceMovement {
   instructionTemplate: string;
   /** Rules for movement routing */
   rules?: PieceRule[];
-  /** Report file configuration. Single string, array of label:path, or object with order/format. */
-  report?: string | ReportConfig[] | ReportObjectConfig;
+  /** Output contracts for this movement (report definitions) */
+  outputContracts?: OutputContractEntry[];
+  /** Quality gates for this movement (AI directives for completion requirements) */
+  qualityGates?: string[];
   passPreviousResponse: boolean;
   /** Sub-movements to execute in parallel. When set, this movement runs all sub-movements concurrently. */
   parallel?: PieceMovement[];
+  /** Resolved policy content strings (from piece-level policies map, resolved at parse time) */
+  policyContents?: string[];
+  /** Resolved knowledge content strings (from piece-level knowledge map, resolved at parse time) */
+  knowledgeContents?: string[];
 }
 
 /** Loop detection configuration */
@@ -101,10 +110,10 @@ export interface LoopMonitorRule {
 
 /** Judge configuration for loop monitor */
 export interface LoopMonitorJudge {
-  /** Agent path, inline prompt, or undefined (uses default) */
-  agent?: string;
-  /** Resolved absolute path to agent prompt file (set by loader) */
-  agentPath?: string;
+  /** Persona spec (file path or inline prompt), resolved from persona field */
+  persona?: string;
+  /** Resolved absolute path to persona prompt file (set by loader) */
+  personaPath?: string;
   /** Custom instruction template for the judge (uses default if omitted) */
   instructionTemplate?: string;
   /** Rules for the judge's decision */
@@ -125,6 +134,16 @@ export interface LoopMonitorConfig {
 export interface PieceConfig {
   name: string;
   description?: string;
+  /** Persona definitions — map of name to file path or inline content (raw, not content-resolved) */
+  personas?: Record<string, string>;
+  /** Resolved policy definitions — map of name to file content (resolved at parse time) */
+  policies?: Record<string, string>;
+  /** Resolved knowledge definitions — map of name to file content (resolved at parse time) */
+  knowledge?: Record<string, string>;
+  /** Resolved instruction definitions — map of name to file content (resolved at parse time) */
+  instructions?: Record<string, string>;
+  /** Resolved report format definitions — map of name to file content (resolved at parse time) */
+  reportFormats?: Record<string, string>;
   movements: PieceMovement[];
   initialMovement: string;
   maxIterations: number;
@@ -149,7 +168,7 @@ export interface PieceState {
   /** Most recent movement output (used for Previous Response injection) */
   lastOutput?: AgentResponse;
   userInputs: string[];
-  agentSessions: Map<string, string>;
+  personaSessions: Map<string, string>;
   /** Per-movement iteration counters (how many times each movement has been executed) */
   movementIterations: Map<string, number>;
   status: 'running' | 'completed' | 'aborted';

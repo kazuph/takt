@@ -14,7 +14,7 @@ describe('ParallelSubMovementRawSchema', () => {
   it('should validate a valid parallel sub-movement', () => {
     const raw = {
       name: 'arch-review',
-      agent: '~/.takt/agents/default/reviewer.md',
+      persona: '~/.takt/agents/default/reviewer.md',
       instruction_template: 'Review architecture',
     };
 
@@ -22,7 +22,7 @@ describe('ParallelSubMovementRawSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept a sub-movement without agent (instruction_template only)', () => {
+  it('should accept a sub-movement without persona (instruction_template only)', () => {
     const raw = {
       name: 'no-agent-step',
       instruction_template: 'Do something',
@@ -35,8 +35,8 @@ describe('ParallelSubMovementRawSchema', () => {
   it('should accept optional fields', () => {
     const raw = {
       name: 'full-sub-step',
-      agent: '~/.takt/agents/default/coder.md',
-      agent_name: 'Coder',
+      persona: '~/.takt/agents/default/coder.md',
+      persona_name: 'Coder',
       allowed_tools: ['Read', 'Grep'],
       model: 'haiku',
       edit: false,
@@ -48,7 +48,7 @@ describe('ParallelSubMovementRawSchema', () => {
     const result = ParallelSubMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.agent_name).toBe('Coder');
+      expect(result.data.persona_name).toBe('Coder');
       expect(result.data.allowed_tools).toEqual(['Read', 'Grep']);
       expect(result.data.edit).toBe(false);
     }
@@ -57,7 +57,7 @@ describe('ParallelSubMovementRawSchema', () => {
   it('should accept rules on sub-movements', () => {
     const raw = {
       name: 'reviewed',
-      agent: '~/.takt/agents/default/reviewer.md',
+      persona: '~/.takt/agents/default/reviewer.md',
       instruction_template: 'Review',
       rules: [
         { condition: 'No issues', next: 'COMPLETE' },
@@ -78,8 +78,8 @@ describe('PieceMovementRawSchema with parallel', () => {
     const raw = {
       name: 'parallel-review',
       parallel: [
-        { name: 'arch-review', agent: 'reviewer.md', instruction_template: 'Review arch' },
-        { name: 'sec-review', agent: 'security.md', instruction_template: 'Review security' },
+        { name: 'arch-review', persona: 'reviewer.md', instruction_template: 'Review arch' },
+        { name: 'sec-review', persona: 'security.md', instruction_template: 'Review security' },
       ],
       rules: [
         { condition: 'All pass', next: 'COMPLETE' },
@@ -100,10 +100,10 @@ describe('PieceMovementRawSchema with parallel', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept a movement with agent (no parallel)', () => {
+  it('should accept a movement with persona (no parallel)', () => {
     const raw = {
       name: 'normal-step',
-      agent: 'coder.md',
+      persona: 'coder.md',
       instruction_template: 'Code something',
     };
 
@@ -129,14 +129,14 @@ describe('PieceConfigRawSchema with parallel movements', () => {
       movements: [
         {
           name: 'plan',
-          agent: 'planner.md',
+          persona: 'planner.md',
           rules: [{ condition: 'Plan complete', next: 'review' }],
         },
         {
           name: 'review',
           parallel: [
-            { name: 'arch-review', agent: 'arch-reviewer.md', instruction_template: 'Review architecture' },
-            { name: 'sec-review', agent: 'sec-reviewer.md', instruction_template: 'Review security' },
+            { name: 'arch-review', persona: 'arch-reviewer.md', instruction_template: 'Review architecture' },
+            { name: 'sec-review', persona: 'sec-reviewer.md', instruction_template: 'Review security' },
           ],
           rules: [
             { condition: 'All approved', next: 'COMPLETE' },
@@ -160,13 +160,13 @@ describe('PieceConfigRawSchema with parallel movements', () => {
     const raw = {
       name: 'mixed-piece',
       movements: [
-        { name: 'plan', agent: 'planner.md', rules: [{ condition: 'Done', next: 'implement' }] },
-        { name: 'implement', agent: 'coder.md', rules: [{ condition: 'Done', next: 'review' }] },
+        { name: 'plan', persona: 'planner.md', rules: [{ condition: 'Done', next: 'implement' }] },
+        { name: 'implement', persona: 'coder.md', rules: [{ condition: 'Done', next: 'review' }] },
         {
           name: 'review',
           parallel: [
-            { name: 'arch', agent: 'arch.md' },
-            { name: 'sec', agent: 'sec.md' },
+            { name: 'arch', persona: 'arch.md' },
+            { name: 'sec', persona: 'sec.md' },
           ],
           rules: [{ condition: 'All pass', next: 'COMPLETE' }],
         },
@@ -177,7 +177,7 @@ describe('PieceConfigRawSchema with parallel movements', () => {
     const result = PieceConfigRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.movements[0].agent).toBe('planner.md');
+      expect(result.data.movements[0].persona).toBe('planner.md');
       expect(result.data.movements[2].parallel).toHaveLength(2);
     }
   });
@@ -187,7 +187,7 @@ describe('ai() condition in PieceRuleSchema', () => {
   it('should accept ai() condition as a string', () => {
     const raw = {
       name: 'test-step',
-      agent: 'agent.md',
+      persona: 'agent.md',
       rules: [
         { condition: 'ai("All reviews approved")', next: 'COMPLETE' },
         { condition: 'ai("Issues detected")', next: 'fix' },
@@ -205,7 +205,7 @@ describe('ai() condition in PieceRuleSchema', () => {
   it('should accept mixed regular and ai() conditions', () => {
     const raw = {
       name: 'mixed-rules',
-      agent: 'agent.md',
+      persona: 'agent.md',
       rules: [
         { condition: 'Regular condition', next: 'step-a' },
         { condition: 'ai("AI evaluated condition")', next: 'step-b' },
@@ -304,7 +304,7 @@ describe('all()/any() condition in PieceMovementRawSchema', () => {
     const raw = {
       name: 'parallel-review',
       parallel: [
-        { name: 'arch-review', agent: 'reviewer.md', instruction_template: 'Review' },
+        { name: 'arch-review', persona: 'reviewer.md', instruction_template: 'Review' },
       ],
       rules: [
         { condition: 'all("approved")', next: 'COMPLETE' },
@@ -324,7 +324,7 @@ describe('all()/any() condition in PieceMovementRawSchema', () => {
     const raw = {
       name: 'mixed-rules',
       parallel: [
-        { name: 'sub', agent: 'agent.md' },
+        { name: 'sub', persona: 'agent.md' },
       ],
       rules: [
         { condition: 'all("approved")', next: 'COMPLETE' },

@@ -24,7 +24,7 @@ import { generateReportDir } from '../shared/utils/index.js';
 
 export function makeResponse(overrides: Partial<AgentResponse> = {}): AgentResponse {
   return {
-    agent: 'test-agent',
+    persona: 'test-agent',
     status: 'done',
     content: 'test response',
     timestamp: new Date(),
@@ -40,8 +40,8 @@ export function makeRule(condition: string, next: string, extra: Partial<PieceRu
 export function makeMovement(name: string, overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name,
-    agent: `../agents/${name}.md`,
-    agentDisplayName: name,
+    persona: `../personas/${name}.md`,
+    personaDisplayName: name,
     instructionTemplate: `Run ${name}`,
     passPreviousResponse: true,
     ...overrides,

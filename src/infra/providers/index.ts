@@ -10,7 +10,7 @@ import { CodexProvider } from './codex.js';
 import { MockProvider } from './mock.js';
 import type { Provider, ProviderType } from './types.js';
 
-export type { ProviderCallOptions, Provider, ProviderType } from './types.js';
+export type { AgentSetup, ProviderCallOptions, ProviderAgent, Provider, ProviderType } from './types.js';
 
 /**
  * Registry for agent providers.

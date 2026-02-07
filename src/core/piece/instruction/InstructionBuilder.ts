@@ -5,17 +5,17 @@
  * Assembles template variables and renders a single complete template.
  */
 
-import type { PieceMovement, Language, ReportConfig, ReportObjectConfig } from '../../models/types.js';
+import type { PieceMovement, Language, OutputContractItem, OutputContractEntry } from '../../models/types.js';
 import type { InstructionContext } from './instruction-context.js';
 import { buildEditRule } from './instruction-context.js';
 import { escapeTemplateChars, replaceTemplatePlaceholders } from './escape.js';
 import { loadTemplate } from '../../../shared/prompts/index.js';
 
 /**
- * Check if a report config is the object form (ReportObjectConfig).
+ * Check if an output contract entry is the item form (OutputContractItem).
  */
-export function isReportObjectConfig(report: string | ReportConfig[] | ReportObjectConfig): report is ReportObjectConfig {
-  return typeof report === 'object' && !Array.isArray(report) && 'name' in report;
+export function isOutputContractItem(entry: OutputContractEntry): entry is OutputContractItem {
+  return 'name' in entry;
 }
 
 /**
@@ -45,12 +45,12 @@ export class InstructionBuilder {
     // Piece structure (loop expansion done in code)
     const pieceStructure = this.buildPieceStructure(language);
 
-    // Report info
-    const hasReport = !!(this.step.report && this.context.reportDir);
+    // Report info (from output contracts)
+    const hasReport = !!(this.step.outputContracts && this.step.outputContracts.length > 0 && this.context.reportDir);
     let reportInfo = '';
     let phaseNote = '';
-    if (hasReport && this.step.report && this.context.reportDir) {
-      reportInfo = renderReportContext(this.step.report, this.context.reportDir);
+    if (hasReport && this.step.outputContracts && this.context.reportDir) {
+      reportInfo = renderReportContext(this.step.outputContracts, this.context.reportDir);
       phaseNote = language === 'ja'
         ? '**注意:** これはPhase 1（本来の作業）です。作業完了後、Phase 2で自動的にレポートを生成します。'
         : '**Note:** This is Phase 1 (main work). After you complete your work, Phase 2 will automatically generate the report based on your findings.';
@@ -94,6 +94,26 @@ export class InstructionBuilder {
     const pieceDescription = this.context.pieceDescription ?? '';
     const hasPieceDescription = !!pieceDescription;
 
+    // Retry note
+    const hasRetryNote = !!this.context.retryNote;
+    const retryNote = hasRetryNote ? escapeTemplateChars(this.context.retryNote!) : '';
+
+    // Policy injection (top + bottom reminder per "Lost in the Middle" research)
+    const policyContents = this.context.policyContents ?? this.step.policyContents;
+    const hasPolicy = !!(policyContents && policyContents.length > 0);
+    const policyContent = hasPolicy ? policyContents!.join('\n\n---\n\n') : '';
+
+    // Knowledge injection (domain-specific knowledge, no reminder needed)
+    const knowledgeContents = this.context.knowledgeContents ?? this.step.knowledgeContents;
+    const hasKnowledge = !!(knowledgeContents && knowledgeContents.length > 0);
+    const knowledgeContent = hasKnowledge ? knowledgeContents!.join('\n\n---\n\n') : '';
+
+    // Quality gates injection (AI directives for movement completion)
+    const hasQualityGates = !!(this.step.qualityGates && this.step.qualityGates.length > 0);
+    const qualityGatesContent = hasQualityGates
+      ? this.step.qualityGates!.map(gate => `- ${gate}`).join('\n')
+      : '';
+
     return loadTemplate('perform_phase1_message', language, {
       workingDirectory: this.context.cwd,
       editRule,
@@ -113,6 +133,14 @@ export class InstructionBuilder {
       previousResponse,
       hasUserInputs,
       userInputs,
+      hasRetryNote,
+      retryNote,
+      hasPolicy,
+      policyContent,
+      hasKnowledge,
+      knowledgeContent,
+      hasQualityGates,
+      qualityGatesContent,
       instructions,
     });
   }
@@ -145,7 +173,7 @@ export class InstructionBuilder {
  * Used by InstructionBuilder and ReportInstructionBuilder.
  */
 export function renderReportContext(
-  report: string | ReportConfig[] | ReportObjectConfig,
+  outputContracts: OutputContractEntry[],
   reportDir: string,
 ): string {
   const reportDirectory = 'Report Directory';
@@ -156,14 +184,18 @@ export function renderReportContext(
     `- ${reportDirectory}: ${reportDir}/`,
   ];
 
-  if (typeof report === 'string') {
-    lines.push(`- ${reportFile}: ${reportDir}/${report}`);
-  } else if (isReportObjectConfig(report)) {
-    lines.push(`- ${reportFile}: ${reportDir}/${report.name}`);
+  if (outputContracts.length === 1) {
+    const entry = outputContracts[0]!;
+    const fileName = isOutputContractItem(entry) ? entry.name : entry.path;
+    lines.push(`- ${reportFile}: ${reportDir}/${fileName}`);
   } else {
     lines.push(`- ${reportFiles}:`);
-    for (const file of report) {
-      lines.push(`  - ${file.label}: ${reportDir}/${file.path}`);
+    for (const entry of outputContracts) {
+      if (isOutputContractItem(entry)) {
+        lines.push(`  - ${entry.name}: ${reportDir}/${entry.name}`);
+      } else {
+        lines.push(`  - ${entry.label}: ${reportDir}/${entry.path}`);
+      }
     }
   }
 
@@ -171,17 +203,17 @@ export function renderReportContext(
 }
 
 /**
- * Generate report output instructions from movement's report config.
- * Returns empty string if movement has no report or no reportDir.
+ * Generate report output instructions from movement's output contracts.
+ * Returns empty string if movement has no output contracts or no reportDir.
  */
 export function renderReportOutputInstruction(
   step: PieceMovement,
   context: InstructionContext,
   language: Language,
 ): string {
-  if (!step.report || !context.reportDir) return '';
+  if (!step.outputContracts || step.outputContracts.length === 0 || !context.reportDir) return '';
 
-  const isMulti = Array.isArray(step.report);
+  const isMulti = step.outputContracts.length > 1;
 
   let heading: string;
   let createRule: string;

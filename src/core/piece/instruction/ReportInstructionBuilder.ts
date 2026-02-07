@@ -8,7 +8,7 @@
 import type { PieceMovement, Language } from '../../models/types.js';
 import type { InstructionContext } from './instruction-context.js';
 import { replaceTemplatePlaceholders } from './escape.js';
-import { isReportObjectConfig, renderReportContext, renderReportOutputInstruction } from './InstructionBuilder.js';
+import { isOutputContractItem, renderReportContext, renderReportOutputInstruction } from './InstructionBuilder.js';
 import { loadTemplate } from '../../../shared/prompts/index.js';
 
 /**
@@ -39,8 +39,8 @@ export class ReportInstructionBuilder {
   ) {}
 
   build(): string {
-    if (!this.step.report) {
-      throw new Error(`ReportInstructionBuilder called for movement "${this.step.name}" which has no report config`);
+    if (!this.step.outputContracts || this.step.outputContracts.length === 0) {
+      throw new Error(`ReportInstructionBuilder called for movement "${this.step.name}" which has no output contracts`);
     }
 
     const language = this.context.language ?? 'en';
@@ -50,7 +50,7 @@ export class ReportInstructionBuilder {
     if (this.context.targetFile) {
       reportContext = `- Report Directory: ${this.context.reportDir}/\n- Report File: ${this.context.reportDir}/${this.context.targetFile}`;
     } else {
-      reportContext = renderReportContext(this.step.report, this.context.reportDir);
+      reportContext = renderReportContext(this.step.outputContracts, this.context.reportDir);
     }
 
     // Build report output instruction
@@ -68,8 +68,10 @@ export class ReportInstructionBuilder {
       language,
     };
 
-    if (isReportObjectConfig(this.step.report) && this.step.report.order) {
-      reportOutput = replaceTemplatePlaceholders(this.step.report.order.trimEnd(), this.step, instrContext);
+    // Check for order instruction in first output contract item
+    const firstContract = this.step.outputContracts[0];
+    if (firstContract && isOutputContractItem(firstContract) && firstContract.order) {
+      reportOutput = replaceTemplatePlaceholders(firstContract.order.trimEnd(), this.step, instrContext);
       hasReportOutput = true;
     } else if (!this.context.targetFile) {
       const output = renderReportOutputInstruction(this.step, instrContext, language);
@@ -79,12 +81,12 @@ export class ReportInstructionBuilder {
       }
     }
 
-    // Build report format
-    let reportFormat = '';
-    let hasReportFormat = false;
-    if (isReportObjectConfig(this.step.report) && this.step.report.format) {
-      reportFormat = replaceTemplatePlaceholders(this.step.report.format.trimEnd(), this.step, instrContext);
-      hasReportFormat = true;
+    // Build output contract (from first item's format)
+    let outputContract = '';
+    let hasOutputContract = false;
+    if (firstContract && isOutputContractItem(firstContract) && firstContract.format) {
+      outputContract = replaceTemplatePlaceholders(firstContract.format.trimEnd(), this.step, instrContext);
+      hasOutputContract = true;
     }
 
     return loadTemplate('perform_phase2_message', language, {
@@ -92,8 +94,8 @@ export class ReportInstructionBuilder {
       reportContext,
       hasReportOutput,
       reportOutput,
-      hasReportFormat,
-      reportFormat,
+      hasOutputContract,
+      outputContract,
     });
   }
 }

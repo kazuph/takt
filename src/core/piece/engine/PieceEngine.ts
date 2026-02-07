@@ -7,7 +7,7 @@
  */
 
 import { EventEmitter } from 'node:events';
-import { mkdirSync, existsSync, symlinkSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   PieceConfig,
@@ -92,7 +92,7 @@ export class PieceEngine extends EventEmitter {
       options,
       () => this.cwd,
       () => this.projectCwd,
-      (agent) => this.state.agentSessions.get(agent),
+      (persona) => this.state.personaSessions.get(persona),
       () => this.reportDir,
       () => this.options.language,
       () => this.config.movements.map(s => ({ name: s.name, description: s.description })),
@@ -110,6 +110,7 @@ export class PieceEngine extends EventEmitter {
       getPieceMovements: () => this.config.movements.map(s => ({ name: s.name, description: s.description })),
       getPieceName: () => this.getPieceName(),
       getPieceDescription: () => this.getPieceDescription(),
+      getRetryNote: () => this.options.retryNote,
       detectRuleIndex: this.detectRuleIndex,
       callAiJudge: this.callAiJudge,
       onPhaseStart: (step, phase, phaseName, instruction) => {
@@ -145,23 +146,11 @@ export class PieceEngine extends EventEmitter {
     });
   }
 
-  /** Ensure report directory exists (always in project root, not clone) */
+  /** Ensure report directory exists (in cwd, which is clone dir in worktree mode) */
   private ensureReportDirExists(): void {
-    const reportDirPath = join(this.projectCwd, this.reportDir);
+    const reportDirPath = join(this.cwd, this.reportDir);
     if (!existsSync(reportDirPath)) {
       mkdirSync(reportDirPath, { recursive: true });
-    }
-
-    // Worktree mode: create symlink so agents can access reports via relative path
-    if (this.cwd !== this.projectCwd) {
-      const cwdReportsDir = join(this.cwd, '.takt', 'reports');
-      if (!existsSync(cwdReportsDir)) {
-        mkdirSync(join(this.cwd, '.takt'), { recursive: true });
-        symlinkSync(
-          join(this.projectCwd, '.takt', 'reports'),
-          cwdReportsDir,
-        );
-      }
     }
   }
 
@@ -170,6 +159,14 @@ export class PieceEngine extends EventEmitter {
     const initialMovement = this.config.movements.find((s) => s.name === this.config.initialMovement);
     if (!initialMovement) {
       throw new Error(ERROR_MESSAGES.UNKNOWN_MOVEMENT(this.config.initialMovement));
+    }
+
+    // Validate startMovement option if specified
+    if (this.options.startMovement) {
+      const startMovement = this.config.movements.find((s) => s.name === this.options.startMovement);
+      if (!startMovement) {
+        throw new Error(ERROR_MESSAGES.UNKNOWN_MOVEMENT(this.options.startMovement));
+      }
     }
 
     const movementNames = new Set(this.config.movements.map((s) => s.name));
@@ -265,15 +262,15 @@ export class PieceEngine extends EventEmitter {
     return movement;
   }
 
-  /** Update agent session and notify via callback if session changed */
-  private updateAgentSession(agent: string, sessionId: string | undefined): void {
+  /** Update persona session and notify via callback if session changed */
+  private updatePersonaSession(persona: string, sessionId: string | undefined): void {
     if (!sessionId) return;
 
-    const previousSessionId = this.state.agentSessions.get(agent);
-    this.state.agentSessions.set(agent, sessionId);
+    const previousSessionId = this.state.personaSessions.get(persona);
+    this.state.personaSessions.set(persona, sessionId);
 
     if (this.options.onSessionUpdate && sessionId !== previousSessionId) {
-      this.options.onSessionUpdate(agent, sessionId);
+      this.options.onSessionUpdate(persona, sessionId);
     }
   }
 
@@ -286,7 +283,7 @@ export class PieceEngine extends EventEmitter {
 
   /** Run a single movement (delegates to ParallelRunner if movement has parallel sub-movements) */
   private async runMovement(step: PieceMovement, prebuiltInstruction?: string): Promise<{ response: AgentResponse; instruction: string }> {
-    const updateSession = this.updateAgentSession.bind(this);
+    const updateSession = this.updatePersonaSession.bind(this);
     let result: { response: AgentResponse; instruction: string };
 
     if (step.parallel && step.parallel.length > 0) {
@@ -385,9 +382,9 @@ export class PieceEngine extends EventEmitter {
     // Build a synthetic PieceMovement for the judge
     const judgeMovement: PieceMovement = {
       name: `_loop_judge_${monitor.cycle.join('_')}`,
-      agent: monitor.judge.agent,
-      agentPath: monitor.judge.agentPath,
-      agentDisplayName: 'loop-judge',
+      persona: monitor.judge.persona,
+      personaPath: monitor.judge.personaPath,
+      personaDisplayName: 'loop-judge',
       edit: false,
       instructionTemplate: processedTemplate,
       rules: monitor.judge.rules.map((r) => ({
@@ -417,7 +414,7 @@ export class PieceEngine extends EventEmitter {
       this.state,
       this.task,
       this.config.maxIterations,
-      this.updateAgentSession.bind(this),
+      this.updatePersonaSession.bind(this),
       prebuiltInstruction,
     );
     this.emitCollectedReports();
@@ -608,7 +605,7 @@ export class PieceEngine extends EventEmitter {
       this.state.status = 'aborted';
       return {
         response: {
-          agent: movement.agent ?? movement.name,
+          persona: movement.persona ?? movement.name,
           status: 'blocked',
           content: ERROR_MESSAGES.LOOP_DETECTED(movement.name, loopCheck.count),
           timestamp: new Date(),

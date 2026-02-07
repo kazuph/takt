@@ -77,8 +77,8 @@ vi.mock('../infra/claude/index.js', () => ({
 }));
 
 vi.mock('../infra/config/index.js', () => ({
-  loadAgentSessions: vi.fn().mockReturnValue({}),
-  updateAgentSession: vi.fn(),
+  loadPersonaSessions: vi.fn().mockReturnValue({}),
+  updatePersonaSession: vi.fn(),
   loadWorktreeSessions: vi.fn().mockReturnValue({}),
   updateWorktreeSession: vi.fn(),
   loadGlobalConfig: vi.fn().mockReturnValue({ provider: 'claude' }),
@@ -187,8 +187,8 @@ describe('executePiece: SIGINT handler integration', () => {
       movements: [
         {
           name: 'step1',
-          agent: '../agents/coder.md',
-          agentDisplayName: 'coder',
+          persona: '../agents/coder.md',
+          personaDisplayName: 'coder',
           instructionTemplate: 'Do something',
           passPreviousResponse: true,
           rules: [

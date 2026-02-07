@@ -1,6 +1,6 @@
 [
   {
-    "agent": "summarizer",
+    "persona": "summarizer",
     "status": "done",
     "content": "add-task"
   }

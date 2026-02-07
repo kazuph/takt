@@ -6,7 +6,7 @@ import type { Status, RuleMatchMethod } from './status.js';
 
 /** Response from an agent execution */
 export interface AgentResponse {
-  agent: string;
+  persona: string;
   status: Status;
   content: string;
   timestamp: Date;

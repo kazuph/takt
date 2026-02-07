@@ -20,7 +20,7 @@ max_iterations: 1
 
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "{task}"
 `;
 
@@ -177,7 +177,7 @@ max_iterations: 1
 
 movements:
   - name: step1
-    agent: coder
+    persona: coder
     instruction: "{task}"
 `;
     writeFileSync(join(projectPiecesDir, 'default.yaml'), overridePiece);

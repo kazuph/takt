@@ -79,14 +79,14 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
     const piecePath = join(repo.path, '.takt', 'pieces', 'default.yaml');
     expect(existsSync(piecePath)).toBe(true);
 
-    // Agents should be in project .takt/agents/
-    const agentsDir = join(repo.path, '.takt', 'agents', 'default');
-    expect(existsSync(agentsDir)).toBe(true);
-    expect(existsSync(join(agentsDir, 'coder.md'))).toBe(true);
-    expect(existsSync(join(agentsDir, 'planner.md'))).toBe(true);
+    // Personas should be in project .takt/personas/
+    const personasDir = join(repo.path, '.takt', 'personas');
+    expect(existsSync(personasDir)).toBe(true);
+    expect(existsSync(join(personasDir, 'coder.md'))).toBe(true);
+    expect(existsSync(join(personasDir, 'planner.md'))).toBe(true);
   });
 
-  it('should preserve relative agent paths in ejected piece (no rewriting)', () => {
+  it('should preserve relative persona paths in ejected piece (no rewriting)', () => {
     runTakt({
       args: ['eject', 'default'],
       cwd: repo.path,
@@ -96,10 +96,10 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
     const piecePath = join(repo.path, '.takt', 'pieces', 'default.yaml');
     const content = readFileSync(piecePath, 'utf-8');
 
-    // Relative paths should be preserved as ../agents/
-    expect(content).toContain('agent: ../agents/default/');
+    // Relative paths should be preserved as ../personas/
+    expect(content).toContain('../personas/');
     // Should NOT contain rewritten absolute paths
-    expect(content).not.toContain('agent: ~/.takt/agents/');
+    expect(content).not.toContain('~/.takt/personas/');
   });
 
   it('should eject piece to global ~/.takt/ with --global flag', () => {
@@ -115,10 +115,10 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
     const piecePath = join(isolatedEnv.taktDir, 'pieces', 'default.yaml');
     expect(existsSync(piecePath)).toBe(true);
 
-    // Agents should be in global agents dir
-    const agentsDir = join(isolatedEnv.taktDir, 'agents', 'default');
-    expect(existsSync(agentsDir)).toBe(true);
-    expect(existsSync(join(agentsDir, 'coder.md'))).toBe(true);
+    // Personas should be in global personas dir
+    const personasDir = join(isolatedEnv.taktDir, 'personas');
+    expect(existsSync(personasDir)).toBe(true);
+    expect(existsSync(join(personasDir, 'coder.md'))).toBe(true);
 
     // Should NOT be in project dir
     const projectPiecePath = join(repo.path, '.takt', 'pieces', 'default.yaml');
@@ -155,7 +155,7 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
     expect(result.stdout).toContain('not found');
   });
 
-  it('should correctly eject agents for pieces with unique agents', () => {
+  it('should correctly eject personas for pieces with unique personas', () => {
     const result = runTakt({
       args: ['eject', 'magi'],
       cwd: repo.path,
@@ -164,14 +164,11 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
 
     expect(result.exitCode).toBe(0);
 
-    // MAGI piece should have its own agents
-    const magiDir = join(repo.path, '.takt', 'agents', 'magi');
-    expect(existsSync(join(magiDir, 'melchior.md'))).toBe(true);
-    expect(existsSync(join(magiDir, 'balthasar.md'))).toBe(true);
-    expect(existsSync(join(magiDir, 'casper.md'))).toBe(true);
-
-    // Should NOT have default agents mixed in
-    expect(existsSync(join(repo.path, '.takt', 'agents', 'default'))).toBe(false);
+    // MAGI piece should have its personas ejected
+    const personasDir = join(repo.path, '.takt', 'personas');
+    expect(existsSync(join(personasDir, 'melchior.md'))).toBe(true);
+    expect(existsSync(join(personasDir, 'balthasar.md'))).toBe(true);
+    expect(existsSync(join(personasDir, 'casper.md'))).toBe(true);
   });
 
   it('should preserve relative paths for global eject too', () => {
@@ -184,7 +181,7 @@ describe('E2E: Eject builtin pieces (takt eject)', () => {
     const piecePath = join(isolatedEnv.taktDir, 'pieces', 'magi.yaml');
     const content = readFileSync(piecePath, 'utf-8');
 
-    expect(content).toContain('agent: ../agents/magi/');
-    expect(content).not.toContain('agent: ~/.takt/agents/');
+    expect(content).toContain('../personas/');
+    expect(content).not.toContain('~/.takt/personas/');
   });
 });

@@ -12,6 +12,21 @@ import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/i
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
 import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
 
+/** Claude-specific model aliases that are not valid for other providers */
+const CLAUDE_MODEL_ALIASES = new Set(['opus', 'sonnet', 'haiku']);
+
+/** Validate that provider and model are compatible */
+function validateProviderModelCompatibility(provider: string | undefined, model: string | undefined): void {
+  if (!provider || !model) return;
+
+  if (provider === 'codex' && CLAUDE_MODEL_ALIASES.has(model)) {
+    throw new Error(
+      `Configuration error: model '${model}' is a Claude model alias but provider is '${provider}'. ` +
+      `Either change the provider to 'claude' or specify a Codex-compatible model.`
+    );
+  }
+}
+
 /** Create default global configuration (fresh instance each call) */
 function createDefaultGlobalConfig(): GlobalConfig {
   return {
@@ -75,6 +90,7 @@ export class GlobalConfigManager {
         logFile: parsed.debug.log_file,
       } : undefined,
       worktreeDir: parsed.worktree_dir,
+      autoPr: parsed.auto_pr,
       disabledBuiltins: parsed.disabled_builtins,
       enableBuiltinPieces: parsed.enable_builtin_pieces,
       anthropicApiKey: parsed.anthropic_api_key,
@@ -87,7 +103,10 @@ export class GlobalConfigManager {
       minimalOutput: parsed.minimal_output,
       bookmarksFile: parsed.bookmarks_file,
       pieceCategoriesFile: parsed.piece_categories_file,
+      branchNameStrategy: parsed.branch_name_strategy,
+      preventSleep: parsed.prevent_sleep,
     };
+    validateProviderModelCompatibility(config.provider, config.model);
     this.cachedConfig = config;
     return config;
   }
@@ -112,6 +131,9 @@ export class GlobalConfigManager {
     }
     if (config.worktreeDir) {
       raw.worktree_dir = config.worktreeDir;
+    }
+    if (config.autoPr !== undefined) {
+      raw.auto_pr = config.autoPr;
     }
     if (config.disabledBuiltins && config.disabledBuiltins.length > 0) {
       raw.disabled_builtins = config.disabledBuiltins;
@@ -142,6 +164,12 @@ export class GlobalConfigManager {
     }
     if (config.pieceCategoriesFile) {
       raw.piece_categories_file = config.pieceCategoriesFile;
+    }
+    if (config.branchNameStrategy) {
+      raw.branch_name_strategy = config.branchNameStrategy;
+    }
+    if (config.preventSleep !== undefined) {
+      raw.prevent_sleep = config.preventSleep;
     }
     writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
     this.invalidateCache();

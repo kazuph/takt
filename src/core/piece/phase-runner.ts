@@ -28,12 +28,12 @@ export interface PhaseRunnerContext {
   interactive?: boolean;
   /** Last response from Phase 1 */
   lastResponse?: string;
-  /** Get agent session ID */
-  getSessionId: (agent: string) => string | undefined;
+  /** Get persona session ID */
+  getSessionId: (persona: string) => string | undefined;
   /** Build resume options for a movement */
   buildResumeOptions: (step: PieceMovement, sessionId: string, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>) => RunAgentOptions;
-  /** Update agent session after a phase run */
-  updateAgentSession: (agent: string, sessionId: string | undefined) => void;
+  /** Update persona session after a phase run */
+  updatePersonaSession: (persona: string, sessionId: string | undefined) => void;
   /** Callback for phase lifecycle logging */
   onPhaseStart?: (step: PieceMovement, phase: 1 | 2 | 3, phaseName: PhaseName, instruction: string) => void;
   /** Callback for phase completion logging */
@@ -75,15 +75,15 @@ export async function runReportPhase(
   movementIteration: number,
   ctx: PhaseRunnerContext,
 ): Promise<void> {
-  const sessionKey = step.agent ?? step.name;
+  const sessionKey = step.persona ?? step.name;
   let currentSessionId = ctx.getSessionId(sessionKey);
   if (!currentSessionId) {
-    throw new Error(`Report phase requires a session to resume, but no sessionId found for agent "${sessionKey}" in movement "${step.name}"`);
+    throw new Error(`Report phase requires a session to resume, but no sessionId found for persona "${sessionKey}" in movement "${step.name}"`);
   }
 
   log.debug('Running report phase', { movement: step.name, sessionId: currentSessionId });
 
-  const reportFiles = getReportFiles(step.report);
+  const reportFiles = getReportFiles(step.outputContracts);
   if (reportFiles.length === 0) {
     log.debug('No report files configured, skipping report phase');
     return;
@@ -113,7 +113,7 @@ export async function runReportPhase(
 
     let reportResponse;
     try {
-      reportResponse = await runAgent(step.agent, reportInstruction, reportOptions);
+      reportResponse = await runAgent(step.persona, reportInstruction, reportOptions);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
@@ -135,7 +135,7 @@ export async function runReportPhase(
 
     if (reportResponse.sessionId) {
       currentSessionId = reportResponse.sessionId;
-      ctx.updateAgentSession(sessionKey, currentSessionId);
+      ctx.updatePersonaSession(sessionKey, currentSessionId);
     }
 
     ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
@@ -159,7 +159,7 @@ export async function runStatusJudgmentPhase(
 
   // フォールバック戦略を順次試行（AutoSelectStrategy含む）
   const strategies = JudgmentStrategyFactory.createStrategies();
-  const sessionKey = step.agent ?? step.name;
+  const sessionKey = step.persona ?? step.name;
   const judgmentContext: JudgmentContext = {
     step,
     cwd: ctx.cwd,

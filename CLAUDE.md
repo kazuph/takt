@@ -183,7 +183,7 @@ Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method 
 ### Data Flow
 
 1. User provides task (text or `#N` issue reference) or slash command → CLI
-2. CLI loads piece with **correct priority** (v0.3.8+): user `~/.takt/pieces/` → project `.takt/pieces/` → builtin `resources/global/{lang}/pieces/`
+2. CLI loads piece with **correct priority** (v0.3.8+): user `~/.takt/pieces/` → project `.takt/pieces/` → builtin `builtins/{lang}/pieces/`
 3. PieceEngine starts at `initial_step`
 4. Each step: `buildInstruction()` → Phase 1 (main) → Phase 2 (report) → Phase 3 (status) → `detectMatchedRule()` → `determineNextStep()`
 5. Rule evaluation determines next step name (v0.3.8+: uses **last match** when multiple `[STEP:N]` tags appear)
@@ -194,8 +194,9 @@ Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method 
 ```
 ~/.takt/                  # Global user config (created on first run)
   config.yaml             # Trusted dirs, default piece, log level, language
-  pieces/              # User piece YAML files (override builtins)
-  agents/                 # User agent prompt files (.md)
+  pieces/                 # User piece YAML files (override builtins)
+  personas/               # User persona prompt files (.md)
+  agents/                 # Legacy persona prompts (backward compat)
 
 .takt/                    # Project-level config
   agents.yaml             # Custom agent definitions
@@ -203,13 +204,14 @@ Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method 
   reports/                # Execution reports (auto-generated)
   logs/                   # Session logs in NDJSON format (gitignored)
 
-resources/                # Bundled defaults (builtin, read from dist/ at runtime)
-  global/
-    en/                   # English agents and pieces
-    ja/                   # Japanese agents and pieces
+builtins/                 # Bundled defaults (builtin, read from dist/ at runtime)
+  en/                     # English personas, policies, instructions, and pieces
+  ja/                     # Japanese personas, policies, instructions, and pieces
+  project/                # Project-level template files
+  skill/                  # Claude Code skill files
 ```
 
-Builtin resources are embedded in the npm package (`dist/resources/`). User files in `~/.takt/` take priority. Use `/eject` to copy builtins to `~/.takt/` for customization.
+Builtin resources are embedded in the npm package (`builtins/`). User files in `~/.takt/` take priority. Use `/eject` to copy builtins to `~/.takt/` for customization.
 
 ## Piece YAML Schema
 
@@ -222,8 +224,8 @@ initial_step: plan        # First step to execute
 steps:
   # Normal step
   - name: step-name
-    agent: ../agents/default/coder.md   # Path to agent prompt
-    agent_name: coder                   # Display name (optional)
+    persona: ../personas/coder.md       # Path to persona prompt
+    persona_name: coder                 # Display name (optional)
     provider: codex                     # claude|codex (optional)
     model: opus                         # Model name (optional)
     edit: true                          # Whether step can edit files
@@ -234,7 +236,7 @@ steps:
     pass_previous_response: true        # Default: true
     report:
       name: 01-plan.md                 # Report file name
-      format: |                         # Report format template
+      format: |                         # Output contract template
         # Plan Report
         ...
     rules:
@@ -249,14 +251,14 @@ steps:
   - name: reviewers
     parallel:
       - name: arch-review
-        agent: ../agents/default/architecture-reviewer.md
+        persona: ../personas/architecture-reviewer.md
         rules:
           - condition: approved       # next is optional for sub-steps
           - condition: needs_fix
         instruction_template: |
           Review architecture...
       - name: security-review
-        agent: ../agents/default/security-reviewer.md
+        persona: ../personas/security-reviewer.md
         rules:
           - condition: approved
           - condition: needs_fix
@@ -298,7 +300,7 @@ Key points about parallel steps:
 ### Piece Categories
 
 Pieces can be organized into categories for better UI presentation. Categories are configured in:
-- `resources/global/{lang}/default-categories.yaml` - Default builtin categories
+- `builtins/{lang}/piece-categories.yaml` - Default builtin categories
 - `~/.takt/config.yaml` - User-defined categories (via `piece_categories` field)
 
 Category configuration supports:
@@ -369,9 +371,9 @@ Files: `.takt/logs/{sessionId}.jsonl`, with `latest.json` pointer. Legacy `.json
 
 **Instruction auto-injection over explicit placeholders.** The instruction builder auto-injects `{task}`, `{previous_response}`, `{user_inputs}`, and status rules. Templates should contain only step-specific instructions, not boilerplate.
 
-**Agent prompts contain only domain knowledge.** Agent prompt files (`resources/global/{lang}/agents/**/*.md`) must contain only domain expertise and behavioral principles — never piece-specific procedures. Piece-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the piece YAML's `instruction_template`. This keeps agents reusable across different pieces.
+**Persona prompts contain only domain knowledge.** Persona prompt files (`builtins/{lang}/personas/*.md`) must contain only domain expertise and behavioral principles — never piece-specific procedures. Piece-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the piece YAML's `instruction_template`. This keeps personas reusable across different pieces.
 
-What belongs in agent prompts:
+What belongs in persona prompts:
 - Role definition ("You are a ... specialist")
 - Domain expertise, review criteria, judgment standards
 - Do / Don't behavioral rules
@@ -404,7 +406,7 @@ Key constraints:
 - **Ephemeral lifecycle**: Clone is created → task runs → auto-commit + push → clone is deleted. Branches are the single source of truth.
 - **Session isolation**: Claude Code sessions are stored per-cwd in `~/.claude/projects/{encoded-path}/`. Sessions from the main project cannot be resumed in a clone. The engine skips session resume when `cwd !== projectCwd`.
 - **No node_modules**: Clones only contain tracked files. `node_modules/` is absent.
-- **Dual cwd**: `cwd` = clone path (where agents run), `projectCwd` = project root (where `.takt/` lives). Reports, logs, and session data always write to `projectCwd`.
+- **Dual cwd**: `cwd` = clone path (where agents run), `projectCwd` = project root. Reports write to `cwd/.takt/reports/` (clone) to prevent agents from discovering the main repository. Logs and session data write to `projectCwd`.
 - **List**: Use `takt list` to list branches. Instruct action creates a temporary clone for the branch, executes, pushes, then removes the clone.
 
 ## Error Propagation
@@ -445,18 +447,18 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 
 ## Important Implementation Notes
 
-**Agent prompt resolution:**
-- Agent paths in piece YAML are resolved relative to the piece file's directory
-- `../agents/default/coder.md` resolves from piece file location
-- Built-in agents are loaded from `dist/resources/global/{lang}/agents/`
-- User agents are loaded from `~/.takt/agents/` or `.takt/agents.yaml`
-- If agent file doesn't exist, the agent string is used as inline system prompt
+**Persona prompt resolution:**
+- Persona paths in piece YAML are resolved relative to the piece file's directory
+- `../personas/coder.md` resolves from piece file location
+- Built-in personas are loaded from `builtins/{lang}/personas/`
+- User personas are loaded from `~/.takt/personas/` (legacy: `~/.takt/agents/`)
+- If persona file doesn't exist, the persona string is used as inline system prompt
 
 **Report directory structure:**
 - Report dirs are created at `.takt/reports/{timestamp}-{slug}/`
 - Report files specified in `step.report` are written relative to report dir
 - Report dir path is available as `{report_dir}` variable in instruction templates
-- When `cwd !== projectCwd` (worktree execution), reports still write to `projectCwd/.takt/reports/`
+- When `cwd !== projectCwd` (worktree execution), reports write to `cwd/.takt/reports/` (clone dir) to prevent agents from discovering the main repository path
 
 **Session continuity across phases:**
 - Agent sessions persist across Phase 1 → Phase 2 → Phase 3 for context continuity
@@ -466,8 +468,9 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 
 **Worktree execution gotchas:**
 - `git clone --shared` creates independent `.git` directory (not `git worktree`)
-- Clone cwd ≠ project cwd: agents work in clone, but reports/logs write to project
+- Clone cwd ≠ project cwd: agents work in clone, reports write to clone, logs write to project
 - Session resume is skipped when `cwd !== projectCwd` to avoid cross-directory contamination
+- Reports write to `cwd/.takt/reports/` (clone) to prevent agents from discovering the main repository path via instruction
 - Clones are ephemeral: created → task runs → auto-commit + push → deleted
 - Use `takt list` to manage task branches after clone deletion
 

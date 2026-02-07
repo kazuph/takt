@@ -27,10 +27,10 @@ describe('ScenarioQueue', () => {
     expect(queue.consume('any-agent')).toBeUndefined();
   });
 
-  it('should match agent-specific entries first', () => {
+  it('should match persona-specific entries first', () => {
     const queue = new ScenarioQueue([
       { status: 'done', content: 'generic' },
-      { agent: 'coder', status: 'done', content: 'coder response' },
+      { persona: 'coder', status: 'done', content: 'coder response' },
       { status: 'done', content: 'second generic' },
     ]);
 
@@ -42,9 +42,9 @@ describe('ScenarioQueue', () => {
     expect(queue.remaining).toBe(0);
   });
 
-  it('should fall back to unspecified entries when no agent match', () => {
+  it('should fall back to unspecified entries when no persona match', () => {
     const queue = new ScenarioQueue([
-      { agent: 'coder', status: 'done', content: 'coder only' },
+      { persona: 'coder', status: 'done', content: 'coder only' },
       { status: 'done', content: 'fallback' },
     ]);
 
@@ -88,12 +88,12 @@ describe('ScenarioQueue', () => {
     expect(entries).toHaveLength(2);
   });
 
-  it('should handle mixed agent and unspecified entries correctly', () => {
+  it('should handle mixed persona and unspecified entries correctly', () => {
     const queue = new ScenarioQueue([
-      { agent: 'plan', status: 'done', content: '[PLAN:1]\nPlan done' },
-      { agent: 'implement', status: 'done', content: '[IMPLEMENT:1]\nCode written' },
-      { agent: 'ai_review', status: 'done', content: '[AI_REVIEW:1]\nNo issues' },
-      { agent: 'supervise', status: 'done', content: '[SUPERVISE:1]\nAll good' },
+      { persona: 'plan', status: 'done', content: '[PLAN:1]\nPlan done' },
+      { persona: 'implement', status: 'done', content: '[IMPLEMENT:1]\nCode written' },
+      { persona: 'ai_review', status: 'done', content: '[AI_REVIEW:1]\nNo issues' },
+      { persona: 'supervise', status: 'done', content: '[SUPERVISE:1]\nAll good' },
     ]);
 
     expect(queue.consume('plan')?.content).toContain('[PLAN:1]');
@@ -117,7 +117,7 @@ describe('loadScenarioFile', () => {
 
   it('should load valid scenario JSON', () => {
     const scenario = [
-      { agent: 'plan', status: 'done', content: 'Plan done' },
+      { persona: 'plan', status: 'done', content: 'Plan done' },
       { status: 'blocked', content: 'Blocked' },
     ];
     const filePath = join(tempDir, 'scenario.json');
@@ -126,8 +126,8 @@ describe('loadScenarioFile', () => {
     const entries = loadScenarioFile(filePath);
 
     expect(entries).toHaveLength(2);
-    expect(entries[0]).toEqual({ agent: 'plan', status: 'done', content: 'Plan done' });
-    expect(entries[1]).toEqual({ agent: undefined, status: 'blocked', content: 'Blocked' });
+    expect(entries[0]).toEqual({ persona: 'plan', status: 'done', content: 'Plan done' });
+    expect(entries[1]).toEqual({ persona: undefined, status: 'blocked', content: 'Blocked' });
   });
 
   it('should default status to "done" if omitted', () => {
