@@ -44,6 +44,15 @@ describe('getBuiltinPiece', () => {
     expect(piece!.name).toBe('default');
   });
 
+  it('should resolve builtin instruction_template without projectCwd', () => {
+    const piece = getBuiltinPiece('default');
+    expect(piece).not.toBeNull();
+
+    const planMovement = piece!.movements.find((movement) => movement.name === 'plan');
+    expect(planMovement).toBeDefined();
+    expect(planMovement!.instructionTemplate).not.toBe('plan');
+  });
+
   it('should return null for non-existent piece names', () => {
     expect(getBuiltinPiece('nonexistent-piece')).toBeNull();
     expect(getBuiltinPiece('unknown')).toBeNull();
