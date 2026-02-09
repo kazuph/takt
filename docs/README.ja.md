@@ -92,13 +92,25 @@ takt
 takt hello
 ```
 
-**注意:** Issue 参照（`#6`）や `--task` / `--issue` オプションを指定すると、対話モードをスキップして直接タスク実行されます。それ以外の入力（スペースを含む文字列を含む）はすべて対話モードに入ります。
+**注意:** `--task` オプションを指定すると対話モードをスキップして直接タスク実行されます。Issue 参照（`#6`、`--issue`）は対話モードの初期入力として使用されます。
 
 **フロー:**
 1. ピース選択
-2. AI との会話でタスク内容を整理
-3. `/go` でタスク指示を確定（`/go 追加の指示` のように指示を追加することも可能）、または `/play <タスク>` で即座に実行
-4. 実行（worktree 作成、ピース実行、PR 作成）
+2. 対話モード選択（assistant / persona / quiet / passthrough）
+3. AI との会話でタスク内容を整理
+4. `/go` でタスク指示を確定（`/go 追加の指示` のように指示を追加することも可能）、または `/play <タスク>` で即座に実行
+5. 実行（worktree 作成、ピース実行、PR 作成）
+
+#### 対話モードの種類
+
+| モード | 説明 |
+|--------|------|
+| `assistant` | デフォルト。AI が質問を通じてタスク要件を明確にしてから指示を生成。 |
+| `persona` | 最初のムーブメントのペルソナとの会話（ペルソナのシステムプロンプトとツールを使用）。 |
+| `quiet` | 質問なしでタスク指示を生成（ベストエフォート）。 |
+| `passthrough` | ユーザー入力をそのままタスクテキストとして使用。AI 処理なし。 |
+
+ピースの `interactive_mode` フィールドでデフォルトモードを設定可能。
 
 #### 実行例
 
@@ -451,8 +463,10 @@ TAKTには複数のビルトインピースが同梱されています:
 | `passthrough` | 最小構成。タスクをそのまま coder に渡す薄いラッパー。レビューなし。 |
 | `compound-eye` | マルチモデルレビュー: Claude と Codex に同じ指示を同時送信し、両方の回答を統合。 |
 | `review-only` | 変更を加えない読み取り専用のコードレビューピース。 |
+| `structural-reform` | プロジェクト全体の構造改革: 段階的なファイル分割を伴う反復的なコードベース再構成。 |
+| `unit-test` | ユニットテスト重視ピース: テスト分析 → テスト実装 → レビュー → 修正。 |
 
-**Hybrid Codex バリアント** (`*-hybrid-codex`): 主要ピースごとに、coder エージェントを Codex で実行しレビュアーは Claude を使うハイブリッド構成が用意されています。対象: default, minimal, expert, expert-cqrs, passthrough, review-fix-minimal, coding。
+**ペルソナ別プロバイダー設定:** 設定ファイルの `persona_providers` で、特定のペルソナを異なるプロバイダーにルーティングできます（例: coder は Codex、レビュアーは Claude）。ピースを複製する必要はありません。
 
 `takt switch` でピースを切り替えられます。
 
@@ -475,6 +489,7 @@ TAKTには複数のビルトインピースが同梱されています:
 | **research-planner** | リサーチタスクの計画・スコープ定義 |
 | **research-digger** | 深掘り調査と情報収集 |
 | **research-supervisor** | リサーチ品質の検証と網羅性の評価 |
+| **test-planner** | テスト戦略分析と包括的なテスト計画 |
 | **pr-commenter** | レビュー結果を GitHub PR にコメントとして投稿 |
 
 ## カスタムペルソナ
@@ -543,7 +558,14 @@ branch_name_strategy: romaji  # ブランチ名生成: 'romaji'（高速）ま�
 prevent_sleep: false     # macOS の実行中スリープ防止（caffeinate）
 notification_sound: true # 通知音の有効/無効
 concurrency: 1           # takt run の並列タスク数（1-10、デフォルト: 1 = 逐次実行）
+task_poll_interval_ms: 500  # takt run 中の新タスク検出ポーリング間隔（100-5000、デフォルト: 500）
 interactive_preview_movements: 3  # 対話モードでのムーブメントプレビュー数（0-10、デフォルト: 3）
+
+# ペルソナ別プロバイダー設定（オプション）
+# ピースを複製せずに特定のペルソナを異なるプロバイダーにルーティング
+# persona_providers:
+#   coder: codex             # coder を Codex で実行
+#   ai-antipattern-reviewer: claude  # レビュアーは Claude のまま
 
 # API Key 設定（オプション）
 # 環境変数 TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY で上書き可能

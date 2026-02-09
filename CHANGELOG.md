@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-02-09
+
+### Added
+
+- **`structural-reform` builtin piece**: Full project review and structural reform — iterative codebase restructuring with staged file splits, powered by `loop_monitors`
+- **`unit-test` builtin piece**: Unit test focused piece — test analysis → test implementation → review → fix, with `loop_monitors` for cycle control
+- **`test-planner` persona**: Specialized persona for analyzing codebase and planning comprehensive test strategies
+- **Interactive mode variants**: Four selectable modes after piece selection — `assistant` (default: AI-guided requirement refinement), `persona` (conversation with first movement's persona), `quiet` (generate instructions without questions), `passthrough` (user input used as-is)
+- **`persona_providers` config**: Per-persona provider overrides (e.g., `{ coder: 'codex' }`) — route specific personas to different providers without creating hybrid pieces
+- **`task_poll_interval_ms` config**: Configurable polling interval for `takt run` to detect new tasks during execution (default: 500ms, range: 100–5000ms)
+- **`interactive_mode` piece field**: Piece-level default interactive mode override (e.g., set `passthrough` for pieces that don't benefit from AI planning)
+- **Task-level output prefixing**: Colored `[taskName]` prefix on all output lines during parallel `takt run` execution, preventing mid-line interleaving between concurrent tasks
+- **Review policy facet**: Shared review policy (`builtins/{lang}/policies/review.md`) for consistent review criteria across pieces
+
+### Changed
+
+- **BREAKING:** Removed all Hybrid Codex pieces (`*-hybrid-codex`) — replaced by `persona_providers` config which achieves the same result without duplicating piece files
+- Removed `tools/generate-hybrid-codex.mjs` (no longer needed with `persona_providers`)
+- Improved parallel execution output: movement-level prefix now includes task context and iteration info in concurrent runs
+- Codex client now detects stream hangs (10-minute idle timeout) and distinguishes timeout vs external abort in error messages
+- Parallel task execution (`takt run`) now polls for newly added tasks during execution instead of only checking between task completions
+- Parallel task execution no longer enforces per-task time limits (previously had a timeout)
+- Issue references now routed through interactive mode (as initial input) instead of skipping interactive mode entirely
+- Builtin `config.yaml` updated to document all GlobalConfig fields
+- Extracted `conversationLoop.ts` for shared conversation logic across interactive mode variants
+- Line editor improvements: additional key bindings and edge case fixes
+
+### Fixed
+
+- Codex processes hanging indefinitely when stream becomes idle — now aborted after 10 minutes of inactivity, releasing worker pool slots
+
+### Internal
+
+- New test coverage: engine-persona-providers, interactive-mode (532 lines), task-prefix-writer, workerPool expansion, pieceResolver expansion, lineEditor expansion, parallel-logger expansion, globalConfig-defaults expansion, pieceExecution-debug-prompts expansion, it-piece-loader expansion, runAllTasks-concurrency expansion, engine-parallel
+- Extracted `TaskPrefixWriter` for task-level parallel output management
+- Extracted `modeSelection.ts`, `passthroughMode.ts`, `personaMode.ts`, `quietMode.ts` from interactive module
+- `InteractiveMode` type model added (`src/core/models/interactive-mode.ts`)
+- `PieceEngine` validates `taskPrefix`/`taskColorIndex` pair consistency at construction
+- Implementation notes document added (`docs/implements/retry-and-session.ja.md`)
+
 ## [0.9.0] - 2026-02-08
 
 ### Added

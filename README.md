@@ -92,13 +92,25 @@ takt
 takt hello
 ```
 
-**Note:** Issue references (`#6`) and `--task` / `--issue` options skip interactive mode and execute the task directly. All other inputs (including text with spaces) enter interactive mode for requirement refinement.
+**Note:** `--task` option skips interactive mode and executes the task directly. Issue references (`#6`, `--issue`) are used as initial input in interactive mode.
 
 **Flow:**
 1. Select piece
-2. Refine task content through conversation with AI
-3. Finalize task instructions with `/go` (you can also add additional instructions like `/go additional instructions`), or use `/play <task>` to execute a task immediately
-4. Execute (create worktree, run piece, create PR)
+2. Select interactive mode (assistant / persona / quiet / passthrough)
+3. Refine task content through conversation with AI
+4. Finalize task instructions with `/go` (you can also add additional instructions like `/go additional instructions`), or use `/play <task>` to execute a task immediately
+5. Execute (create worktree, run piece, create PR)
+
+#### Interactive Mode Variants
+
+| Mode | Description |
+|------|-------------|
+| `assistant` | Default. AI asks clarifying questions before generating task instructions. |
+| `persona` | Conversation with the first movement's persona (uses its system prompt and tools). |
+| `quiet` | Generates task instructions without asking questions (best-effort). |
+| `passthrough` | Passes user input directly as task text without AI processing. |
+
+Pieces can set a default mode via the `interactive_mode` field in YAML.
 
 #### Execution Example
 
@@ -451,8 +463,10 @@ TAKT includes multiple builtin pieces:
 | `passthrough` | Thinnest wrapper. Pass task directly to coder as-is. No review. |
 | `compound-eye` | Multi-model review: sends the same instruction to Claude and Codex simultaneously, then synthesizes both responses. |
 | `review-only` | Read-only code review piece that makes no changes. |
+| `structural-reform` | Full project review and structural reform: iterative codebase restructuring with staged file splits. |
+| `unit-test` | Unit test focused piece: test analysis → test implementation → review → fix. |
 
-**Hybrid Codex variants** (`*-hybrid-codex`): Each major piece has a Codex variant where the coder agent runs on Codex while reviewers use Claude. Available for: default, minimal, expert, expert-cqrs, passthrough, review-fix-minimal, coding.
+**Per-persona provider overrides:** Use `persona_providers` in config to route specific personas to different providers (e.g., coder on Codex, reviewers on Claude) without duplicating pieces.
 
 Use `takt switch` to switch pieces.
 
@@ -475,6 +489,7 @@ Use `takt switch` to switch pieces.
 | **research-planner** | Research task planning and scope definition |
 | **research-digger** | Deep investigation and information gathering |
 | **research-supervisor** | Research quality validation and completeness assessment |
+| **test-planner** | Test strategy analysis and comprehensive test planning |
 | **pr-commenter** | Posts review findings as GitHub PR comments |
 
 ## Custom Personas
@@ -543,7 +558,14 @@ branch_name_strategy: romaji  # Branch name generation: 'romaji' (fast) or 'ai' 
 prevent_sleep: false     # Prevent macOS idle sleep during execution (caffeinate)
 notification_sound: true # Enable/disable notification sounds
 concurrency: 1           # Parallel task count for takt run (1-10, default: 1 = sequential)
+task_poll_interval_ms: 500  # Polling interval for new tasks during takt run (100-5000, default: 500)
 interactive_preview_movements: 3  # Movement previews in interactive mode (0-10, default: 3)
+
+# Per-persona provider overrides (optional)
+# Route specific personas to different providers without duplicating pieces
+# persona_providers:
+#   coder: codex             # Run coder on Codex
+#   ai-antipattern-reviewer: claude  # Keep reviewers on Claude
 
 # API Key configuration (optional)
 # Can be overridden by environment variables TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY
