@@ -97,6 +97,8 @@ export async function runWithWorkerPool(
 ): Promise<WorkerPoolResult> {
   const abortController = new AbortController();
   const { cleanup } = installSigIntHandler(() => abortController.abort());
+  const selfSigintOnce = process.env.TAKT_E2E_SELF_SIGINT_ONCE === '1';
+  let selfSigintInjected = false;
 
   let successCount = 0;
   let failCount = 0;
@@ -109,6 +111,10 @@ export async function runWithWorkerPool(
     while (queue.length > 0 || active.size > 0) {
       if (!abortController.signal.aborted) {
         fillSlots(queue, active, concurrency, taskRunner, cwd, pieceName, options, abortController, colorCounter);
+        if (selfSigintOnce && !selfSigintInjected && active.size > 0) {
+          selfSigintInjected = true;
+          process.emit('SIGINT');
+        }
       }
 
       if (active.size === 0) {
