@@ -86,6 +86,18 @@ Every issue raised must include the following.
      Extract into a shared function."
 ```
 
+## Finding ID Tracking (`finding_id`)
+
+To prevent circular rejections, track findings by ID.
+
+- Every issue raised in a REJECT must include a `finding_id`
+- If the same issue is raised again, reuse the same `finding_id`
+- For repeated issues, set status to `persists` and include concrete evidence (file/line) that it remains unresolved
+- New issues must use status `new`
+- Resolved issues must be listed with status `resolved`
+- Issues without `finding_id` are invalid (cannot be used as rejection grounds)
+- REJECT is allowed only when there is at least one `new` or `persists` issue
+
 ## Boy Scout Rule
 
 Leave it better than you found it.

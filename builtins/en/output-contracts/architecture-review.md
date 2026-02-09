@@ -14,10 +14,15 @@
 - [x] Dead code
 - [x] Call chain verification
 
+## Previous Open Findings
+| finding_id | Previous Status | Current Status (new/persists/resolved) | Evidence |
+|------------|-----------------|-----------------------------------------|----------|
+| ARCH-EXAMPLE-src-file-L42 | open | persists | `src/file.ts:42` |
+
 ## Issues (if REJECT)
-| # | Scope | Location | Issue | Fix Suggestion |
-|---|-------|----------|-------|----------------|
-| 1 | In-scope | `src/file.ts:42` | Issue description | Fix approach |
+| # | finding_id | Status (new/persists) | Scope | Location | Issue | Fix Suggestion |
+|---|------------|-----------------------|-------|----------|-------|----------------|
+| 1 | ARCH-EXAMPLE-src-file-L42 | new | In-scope | `src/file.ts:42` | Issue description | Fix approach |
 
 Scope: "In-scope" (fixable in this change) / "Out-of-scope" (existing issue, non-blocking)
 
