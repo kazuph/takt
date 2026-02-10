@@ -109,6 +109,7 @@ describe('PieceEngine Integration: Error Handling', () => {
       const reason = abortFn.mock.calls[0]![1] as string;
       expect(reason).toContain('API connection failed');
     });
+
   });
 
   // =====================================================

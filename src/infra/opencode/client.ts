@@ -6,6 +6,7 @@
  */
 
 import { createOpencode } from '@opencode-ai/sdk/v2';
+import { createServer } from 'node:net';
 import type { AgentResponse } from '../../core/models/index.js';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { mapToOpenCodePermissionReply, type OpenCodeCallOptions } from './types.js';
@@ -35,7 +36,31 @@ const OPENCODE_RETRYABLE_ERROR_PATTERNS = [
   'etimedout',
   'eai_again',
   'fetch failed',
+  'failed to start server on port',
 ];
+
+async function getFreePort(): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address();
+      if (!addr || typeof addr === 'string') {
+        server.close(() => reject(new Error('Failed to allocate free TCP port')));
+        return;
+      }
+      const port = addr.port;
+      server.close((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
 
 /**
  * Client for OpenCode SDK agent interactions.
@@ -129,7 +154,9 @@ export class OpenCodeClient {
           attempt,
         });
 
+        const port = await getFreePort();
         const { client, server } = await createOpencode({
+          port,
           signal: streamAbortController.signal,
           ...(options.opencodeApiKey
             ? { config: { provider: { opencode: { options: { apiKey: options.opencodeApiKey } } } } }
