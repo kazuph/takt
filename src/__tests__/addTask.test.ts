@@ -18,6 +18,7 @@ vi.mock('../shared/ui/index.js', () => ({
   info: vi.fn(),
   blankLine: vi.fn(),
   error: vi.fn(),
+  withProgress: vi.fn(async (_start, _done, operation) => operation()),
 }));
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({

@@ -31,3 +31,5 @@ export { Spinner } from './Spinner.js';
 export { StreamDisplay, type ProgressInfo } from './StreamDisplay.js';
 
 export { TaskPrefixWriter } from './TaskPrefixWriter.js';
+
+export { withProgress, type ProgressCompletionMessage } from './Progress.js';

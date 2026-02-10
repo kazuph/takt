@@ -7,7 +7,7 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { promptInput, confirm } from '../../../shared/prompt/index.js';
-import { success, info, error } from '../../../shared/ui/index.js';
+import { success, info, error, withProgress } from '../../../shared/ui/index.js';
 import { TaskRunner, type TaskFileData } from '../../../infra/task/index.js';
 import { determinePiece } from '../execute/selectAndExecute.js';
 import { createLogger, getErrorMessage, generateReportDir } from '../../../shared/utils/index.js';
@@ -177,13 +177,16 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
 
   if (isIssueReference(trimmedTask)) {
     // Issue reference: fetch issue and use directly as task content
-    info('Fetching GitHub Issue...');
     try {
-      taskContent = resolveIssueTask(trimmedTask);
       const numbers = parseIssueNumbers([trimmedTask]);
+      const primaryIssueNumber = numbers[0];
+      taskContent = await withProgress(
+        'Fetching GitHub Issue...',
+        primaryIssueNumber ? `GitHub Issue fetched: #${primaryIssueNumber}` : 'GitHub Issue fetched',
+        async () => resolveIssueTask(trimmedTask),
+      );
       if (numbers.length > 0) {
         issueNumber = numbers[0];
-        info(`GitHub Issue fetched: #${issueNumber}`);
       }
     } catch (e) {
       const msg = getErrorMessage(e);

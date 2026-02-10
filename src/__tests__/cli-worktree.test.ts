@@ -28,14 +28,23 @@ vi.mock('../infra/task/summarize.js', () => ({
   summarizeTaskName: vi.fn(),
 }));
 
-vi.mock('../shared/ui/index.js', () => ({
-  info: vi.fn(),
-  error: vi.fn(),
-  success: vi.fn(),
-  header: vi.fn(),
-  status: vi.fn(),
-  setLogLevel: vi.fn(),
-}));
+vi.mock('../shared/ui/index.js', () => {
+  const info = vi.fn();
+  return {
+    info,
+    error: vi.fn(),
+    success: vi.fn(),
+    header: vi.fn(),
+    status: vi.fn(),
+    setLogLevel: vi.fn(),
+    withProgress: vi.fn(async (start, done, operation) => {
+      info(start);
+      const result = await operation();
+      info(typeof done === 'function' ? done(result) : done);
+      return result;
+    }),
+  };
+});
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

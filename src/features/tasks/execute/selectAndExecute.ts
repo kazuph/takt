@@ -19,7 +19,7 @@ import {
 import { confirm } from '../../../shared/prompt/index.js';
 import { createSharedClone, autoCommitAndPush, summarizeTaskName, getCurrentBranch } from '../../../infra/task/index.js';
 import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
-import { info, error, success } from '../../../shared/ui/index.js';
+import { info, error, success, withProgress } from '../../../shared/ui/index.js';
 import { createLogger } from '../../../shared/utils/index.js';
 import { createPullRequest, buildPrBody, pushBranch } from '../../../infra/github/index.js';
 import { executeTask } from './taskExecution.js';
@@ -113,16 +113,20 @@ export async function confirmAndCreateWorktree(
 
   const baseBranch = getCurrentBranch(cwd);
 
-  info('Generating branch name...');
-  const taskSlug = await summarizeTaskName(task, { cwd });
-  info(`Branch name generated: ${taskSlug}`);
+  const taskSlug = await withProgress(
+    'Generating branch name...',
+    (slug) => `Branch name generated: ${slug}`,
+    () => summarizeTaskName(task, { cwd }),
+  );
 
-  info('Creating clone...');
-  const result = createSharedClone(cwd, {
-    worktree: true,
-    taskSlug,
-  });
-  info(`Clone created: ${result.path} (branch: ${result.branch})`);
+  const result = await withProgress(
+    'Creating clone...',
+    (cloneResult) => `Clone created: ${cloneResult.path} (branch: ${cloneResult.branch})`,
+    async () => createSharedClone(cwd, {
+      worktree: true,
+      taskSlug,
+    }),
+  );
 
   return { execCwd: result.path, isWorktree: true, branch: result.branch, baseBranch };
 }

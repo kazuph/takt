@@ -4,7 +4,7 @@
 
 import { loadGlobalConfig } from '../../../infra/config/index.js';
 import { type TaskInfo, createSharedClone, summarizeTaskName, getCurrentBranch } from '../../../infra/task/index.js';
-import { info } from '../../../shared/ui/index.js';
+import { info, withProgress } from '../../../shared/ui/index.js';
 import { getTaskSlugFromTaskDir } from '../../../shared/utils/taskPaths.js';
 
 export interface ResolvedTaskExecution {
@@ -60,23 +60,27 @@ export async function resolveTaskExecution(
   if (data.worktree) {
     throwIfAborted(abortSignal);
     baseBranch = getCurrentBranch(defaultCwd);
-    info('Generating branch name...');
-    const taskSlug = await summarizeTaskName(task.content, { cwd: defaultCwd });
-    info(`Branch name generated: ${taskSlug}`);
+    const taskSlug = await withProgress(
+      'Generating branch name...',
+      (slug) => `Branch name generated: ${slug}`,
+      () => summarizeTaskName(task.content, { cwd: defaultCwd }),
+    );
 
     throwIfAborted(abortSignal);
-    info('Creating clone...');
-    const result = createSharedClone(defaultCwd, {
-      worktree: data.worktree,
-      branch: data.branch,
-      taskSlug,
-      issueNumber: data.issue,
-    });
+    const result = await withProgress(
+      'Creating clone...',
+      (cloneResult) => `Clone created: ${cloneResult.path} (branch: ${cloneResult.branch})`,
+      async () => createSharedClone(defaultCwd, {
+        worktree: data.worktree,
+        branch: data.branch,
+        taskSlug,
+        issueNumber: data.issue,
+      }),
+    );
     throwIfAborted(abortSignal);
     execCwd = result.path;
     branch = result.branch;
     isWorktree = true;
-    info(`Clone created: ${result.path} (branch: ${result.branch})`);
   }
 
   const execPiece = data.piece || defaultPiece;
