@@ -14,6 +14,10 @@ vi.mock('../shared/ui/index.js', () => ({
   withProgress: vi.fn(async (_start, _done, operation) => operation()),
 }));
 
+vi.mock('../shared/prompt/index.js', () => ({
+  confirm: vi.fn(() => true),
+}));
+
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   createLogger: () => ({
@@ -88,6 +92,7 @@ import { checkGhCli, fetchIssue, formatIssueAsTask, parseIssueNumbers } from '..
 import { selectAndExecuteTask, determinePiece, createIssueAndSaveTask } from '../features/tasks/index.js';
 import { interactiveMode, selectRecentSession } from '../features/interactive/index.js';
 import { loadGlobalConfig } from '../infra/config/index.js';
+import { confirm } from '../shared/prompt/index.js';
 import { isDirectTask } from '../app/cli/helpers.js';
 import { executeDefaultAction } from '../app/cli/routing.js';
 import type { GitHubIssue } from '../infra/github/types.js';
@@ -102,6 +107,7 @@ const mockCreateIssueAndSaveTask = vi.mocked(createIssueAndSaveTask);
 const mockInteractiveMode = vi.mocked(interactiveMode);
 const mockSelectRecentSession = vi.mocked(selectRecentSession);
 const mockLoadGlobalConfig = vi.mocked(loadGlobalConfig);
+const mockConfirm = vi.mocked(confirm);
 const mockIsDirectTask = vi.mocked(isDirectTask);
 
 function createMockIssue(number: number): GitHubIssue {
@@ -123,6 +129,7 @@ beforeEach(() => {
   // Default setup
   mockDeterminePiece.mockResolvedValue('default');
   mockInteractiveMode.mockResolvedValue({ action: 'execute', task: 'summarized task' });
+  mockConfirm.mockResolvedValue(true);
   mockIsDirectTask.mockReturnValue(false);
   mockParseIssueNumbers.mockReturnValue([]);
 });
@@ -273,9 +280,10 @@ describe('Issue resolution in routing', () => {
   });
 
   describe('create_issue action', () => {
-    it('should delegate to createIssueAndSaveTask with cwd, task, and pieceId', async () => {
+    it('should delegate to createIssueAndSaveTask with cwd, task, and pieceId when confirmed', async () => {
       // Given
       mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task: 'New feature request' });
+      mockConfirm.mockResolvedValue(true);
 
       // When
       await executeDefaultAction();
@@ -288,9 +296,22 @@ describe('Issue resolution in routing', () => {
       );
     });
 
+    it('should skip createIssueAndSaveTask when not confirmed', async () => {
+      // Given
+      mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task: 'New feature request' });
+      mockConfirm.mockResolvedValue(false);
+
+      // When
+      await executeDefaultAction();
+
+      // Then: task should not be added when user declines
+      expect(mockCreateIssueAndSaveTask).not.toHaveBeenCalled();
+    });
+
     it('should not call selectAndExecuteTask when create_issue action is chosen', async () => {
       // Given
       mockInteractiveMode.mockResolvedValue({ action: 'create_issue', task: 'New feature request' });
+      mockConfirm.mockResolvedValue(true);
 
       // When
       await executeDefaultAction();

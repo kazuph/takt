@@ -6,6 +6,7 @@
  */
 
 import { info, error, withProgress } from '../../shared/ui/index.js';
+import { confirm } from '../../shared/prompt/index.js';
 import { getErrorMessage } from '../../shared/utils/index.js';
 import { getLabel } from '../../shared/i18n/index.js';
 import { fetchIssue, formatIssueAsTask, checkGhCli, parseIssueNumbers, type GitHubIssue } from '../../infra/github/index.js';
@@ -204,7 +205,9 @@ export async function executeDefaultAction(task?: string): Promise<void> {
       break;
 
     case 'create_issue':
-      await createIssueAndSaveTask(resolvedCwd, result.task, pieceId);
+      if (await confirm('Add this issue to tasks?', true)) {
+        await createIssueAndSaveTask(resolvedCwd, result.task, pieceId);
+      }
       break;
 
     case 'save_task':
