@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.12.1] - 2026-02-11
+
+### Fixed
+
+- セッションが見つからない場合に無言で新規セッションに進む問題を修正 — セッション未検出時に info メッセージを表示するように改善
+
+### Internal
+
+- OpenCode プロバイダーの report フェーズを deny に設定（Phase 2 での不要な書き込みを防止）
+- プロジェクト初期化時の `tasks/` ディレクトリコピーをスキップ（TASK-FORMAT が不要になったため）
+- ストリーム診断ユーティリティ (`streamDiagnostics.ts`) を追加
+
 ## [0.12.0] - 2026-02-11
 
 ### Added
