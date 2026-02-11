@@ -2,6 +2,9 @@
  * Tests for resolveTaskExecution
  */
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
@@ -522,7 +525,13 @@ describe('resolveTaskExecution', () => {
     expect(mockCreateSharedClone).not.toHaveBeenCalled();
   });
 
-  it('should return reportDirName from taskDir basename', async () => {
+  it('should stage task_dir spec into run context and return reportDirName', async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'takt-taskdir-normal-'));
+    const projectDir = path.join(tmpRoot, 'project');
+    fs.mkdirSync(path.join(projectDir, '.takt', 'tasks', '20260201-015714-foptng'), { recursive: true });
+    const sourceOrder = path.join(projectDir, '.takt', 'tasks', '20260201-015714-foptng', 'order.md');
+    fs.writeFileSync(sourceOrder, '# normal task spec\n', 'utf-8');
+
     const task: TaskInfo = {
       name: 'task-with-dir',
       content: 'Task content',
@@ -533,9 +542,15 @@ describe('resolveTaskExecution', () => {
       },
     };
 
-    const result = await resolveTaskExecution(task, '/project', 'default');
+    const result = await resolveTaskExecution(task, projectDir, 'default');
 
     expect(result.reportDirName).toBe('20260201-015714-foptng');
+    expect(result.execCwd).toBe(projectDir);
+    const stagedOrder = path.join(projectDir, '.takt', 'runs', '20260201-015714-foptng', 'context', 'task', 'order.md');
+    expect(fs.existsSync(stagedOrder)).toBe(true);
+    expect(fs.readFileSync(stagedOrder, 'utf-8')).toContain('normal task spec');
+    expect(result.taskPrompt).toContain('Primary spec: `.takt/runs/20260201-015714-foptng/context/task/order.md`.');
+    expect(result.taskPrompt).not.toContain(projectDir);
   });
 
   it('should throw when taskDir format is invalid', async () => {
@@ -568,5 +583,42 @@ describe('resolveTaskExecution', () => {
     await expect(resolveTaskExecution(task, '/project', 'default')).rejects.toThrow(
       'Invalid task_dir format: .takt/tasks/..',
     );
+  });
+
+  it('should stage task_dir spec into worktree run context and return run-scoped task prompt', async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'takt-taskdir-'));
+    const projectDir = path.join(tmpRoot, 'project');
+    const cloneDir = path.join(tmpRoot, 'clone');
+    fs.mkdirSync(path.join(projectDir, '.takt', 'tasks', '20260201-015714-foptng'), { recursive: true });
+    fs.mkdirSync(cloneDir, { recursive: true });
+    const sourceOrder = path.join(projectDir, '.takt', 'tasks', '20260201-015714-foptng', 'order.md');
+    fs.writeFileSync(sourceOrder, '# webhook task\n', 'utf-8');
+
+    const task: TaskInfo = {
+      name: 'task-with-taskdir-worktree',
+      content: 'Task content',
+      taskDir: '.takt/tasks/20260201-015714-foptng',
+      filePath: '/tasks/task.yaml',
+      data: {
+        task: 'Task content',
+        worktree: true,
+      },
+    };
+
+    mockSummarizeTaskName.mockResolvedValue('webhook-task');
+    mockCreateSharedClone.mockReturnValue({
+      path: cloneDir,
+      branch: 'takt/webhook-task',
+    });
+
+    const result = await resolveTaskExecution(task, projectDir, 'default');
+
+    const stagedOrder = path.join(cloneDir, '.takt', 'runs', '20260201-015714-foptng', 'context', 'task', 'order.md');
+    expect(fs.existsSync(stagedOrder)).toBe(true);
+    expect(fs.readFileSync(stagedOrder, 'utf-8')).toContain('webhook task');
+
+    expect(result.taskPrompt).toContain('Implement using only the files in `.takt/runs/20260201-015714-foptng/context/task`.');
+    expect(result.taskPrompt).toContain('Primary spec: `.takt/runs/20260201-015714-foptng/context/task/order.md`.');
+    expect(result.taskPrompt).not.toContain(projectDir);
   });
 });

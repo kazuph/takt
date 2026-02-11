@@ -130,11 +130,23 @@ export async function executeAndCompleteTask(
   }
 
   try {
-    const { execCwd, execPiece, isWorktree, reportDirName, branch, baseBranch, startMovement, retryNote, autoPr, issueNumber } = await resolveTaskExecution(task, cwd, pieceName, taskAbortSignal);
+    const {
+      execCwd,
+      execPiece,
+      isWorktree,
+      taskPrompt,
+      reportDirName,
+      branch,
+      baseBranch,
+      startMovement,
+      retryNote,
+      autoPr,
+      issueNumber,
+    } = await resolveTaskExecution(task, cwd, pieceName, taskAbortSignal);
 
     // cwd is always the project root; pass it as projectCwd so reports/sessions go there
     const taskRunResult = await executeTaskWithResult({
-      task: task.content,
+      task: taskPrompt ?? task.content,
       cwd: execCwd,
       pieceIdentifier: execPiece,
       projectCwd: cwd,

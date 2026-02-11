@@ -14,9 +14,7 @@ function pauseStdinSafely(): void {
     if (process.stdin.readable && !process.stdin.destroyed) {
       process.stdin.pause();
     }
-  } catch {
-    // Ignore stdin state errors during prompt cleanup.
-  }
+  } catch {}
 }
 
 /**
