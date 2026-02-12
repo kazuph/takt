@@ -3,28 +3,12 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { createIsolatedEnv, type IsolatedEnv } from '../helpers/isolated-env';
 import { runTakt } from '../helpers/takt-runner';
+import { createLocalRepo, type LocalRepo } from '../helpers/test-repo';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-function createLocalRepo(): { path: string; cleanup: () => void } {
-  const repoPath = mkdtempSync(join(tmpdir(), 'takt-e2e-pipeline-local-'));
-  execFileSync('git', ['init'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, stdio: 'pipe' });
-  writeFileSync(join(repoPath, 'README.md'), '# test\n');
-  execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['commit', '-m', 'init'], { cwd: repoPath, stdio: 'pipe' });
-  return {
-    path: repoPath,
-    cleanup: () => {
-      try { rmSync(repoPath, { recursive: true, force: true }); } catch { /* best-effort */ }
-    },
-  };
-}
 
 function createNonGitDir(): { path: string; cleanup: () => void } {
   const dirPath = mkdtempSync(join(tmpdir(), 'takt-e2e-pipeline-nongit-'));
@@ -40,7 +24,7 @@ function createNonGitDir(): { path: string; cleanup: () => void } {
 // E2E更新時は docs/testing/e2e.md も更新すること
 describe('E2E: Pipeline --skip-git on local/non-git directories (mock)', () => {
   let isolatedEnv: IsolatedEnv;
-  let repo: { path: string; cleanup: () => void };
+  let repo: LocalRepo;
 
   beforeEach(() => {
     isolatedEnv = createIsolatedEnv();

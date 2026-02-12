@@ -1,31 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { createIsolatedEnv, updateIsolatedConfig, type IsolatedEnv } from '../helpers/isolated-env';
 import { runTakt } from '../helpers/takt-runner';
+import { createLocalRepo, type LocalRepo } from '../helpers/test-repo';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-function createLocalRepo(): { path: string; cleanup: () => void } {
-  const repoPath = mkdtempSync(join(tmpdir(), 'takt-e2e-task-status-'));
-  execFileSync('git', ['init'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, stdio: 'pipe' });
-  writeFileSync(join(repoPath, 'README.md'), '# test\n');
-  execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'pipe' });
-  execFileSync('git', ['commit', '-m', 'init'], { cwd: repoPath, stdio: 'pipe' });
-  return {
-    path: repoPath,
-    cleanup: () => {
-      try { rmSync(repoPath, { recursive: true, force: true }); } catch { /* best-effort */ }
-    },
-  };
-}
 
 function writeSinglePendingTask(repoPath: string, piecePath: string): void {
   const now = new Date().toISOString();
@@ -49,7 +32,7 @@ function writeSinglePendingTask(repoPath: string, piecePath: string): void {
 // E2E更新時は docs/testing/e2e.md も更新すること
 describe('E2E: Task status persistence in tasks.yaml (mock)', () => {
   let isolatedEnv: IsolatedEnv;
-  let repo: { path: string; cleanup: () => void };
+  let repo: LocalRepo;
 
   beforeEach(() => {
     isolatedEnv = createIsolatedEnv();
