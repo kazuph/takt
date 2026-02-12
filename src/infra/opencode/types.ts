@@ -170,4 +170,6 @@ export interface OpenCodeCallOptions {
   onAskUserQuestion?: AskUserQuestionHandler;
   /** OpenCode API key */
   opencodeApiKey?: string;
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }

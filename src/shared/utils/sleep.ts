@@ -8,10 +8,10 @@ const log = createLogger('sleep');
 let caffeinateStarted = false;
 
 /**
- * takt実行中のmacOSアイドルスリープおよびディスプレイスリープを防止する。
+ * takt実行中のmacOSスリープを防止する。
  * -d: ディスプレイスリープ防止（App Nap によるプロセス凍結を回避）
  * -i: アイドルスリープ防止
- * 蓋を閉じた場合のスリープは防げない（-s はAC電源が必要なため）。
+ * -s: システムスリープ防止（AC電源接続時のみ有効、蓋閉じでも動作継続）
  */
 export function preventSleep(): void {
   if (caffeinateStarted) {
@@ -28,7 +28,7 @@ export function preventSleep(): void {
     return;
   }
 
-  const child = spawn(caffeinatePath, ['-di', '-w', String(process.pid)], {
+  const child = spawn(caffeinatePath, ['-dis', '-w', String(process.pid)], {
     stdio: 'ignore',
     detached: true,
   });

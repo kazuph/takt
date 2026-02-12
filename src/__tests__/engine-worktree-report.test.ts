@@ -24,7 +24,7 @@ vi.mock('../core/piece/evaluation/index.js', () => ({
 vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
-  runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
+  runStatusJudgmentPhase: vi.fn().mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' }),
 }));
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
@@ -35,7 +35,7 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 // --- Imports (after mocks) ---
 
 import { PieceEngine } from '../core/piece/index.js';
-import { runReportPhase } from '../core/piece/index.js';
+import { runReportPhase } from '../core/piece/phase-runner.js';
 import {
   makeResponse,
   makeMovement,

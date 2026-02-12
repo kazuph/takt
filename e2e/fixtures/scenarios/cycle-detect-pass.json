@@ -1,0 +1,9 @@
+[
+  {"persona": "agents/test-reviewer-a", "status": "done", "content": "[REVIEW:2]\n\nNeeds fix."},
+  {"persona": "conductor", "status": "done", "content": "[REVIEW:2]"},
+  {"persona": "conductor", "status": "done", "content": "[REVIEW:2]"},
+  {"persona": "agents/test-coder", "status": "done", "content": "[FIX:1]\n\nFixed."},
+  {"persona": "agents/test-reviewer-a", "status": "done", "content": "[REVIEW:1]\n\nApproved."},
+  {"persona": "conductor", "status": "done", "content": "[REVIEW:1]"},
+  {"persona": "conductor", "status": "done", "content": "[REVIEW:1]"}
+]

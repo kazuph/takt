@@ -6,39 +6,12 @@
  */
 
 import type { AiJudgeCaller, AiJudgeCondition } from '../core/piece/types.js';
-import { loadTemplate } from '../shared/prompts/index.js';
 import { createLogger } from '../shared/utils/index.js';
-import { runAgent } from './runner.js';
+import { evaluateCondition } from '../core/piece/agent-usecases.js';
 
 const log = createLogger('ai-judge');
 
-/**
- * Detect judge rule index from [JUDGE:N] tag pattern.
- * Returns 0-based rule index, or -1 if no match.
- */
-export function detectJudgeIndex(content: string): number {
-  const regex = /\[JUDGE:(\d+)\]/i;
-  const match = content.match(regex);
-  if (match?.[1]) {
-    const index = Number.parseInt(match[1], 10) - 1;
-    return index >= 0 ? index : -1;
-  }
-  return -1;
-}
-
-/**
- * Build the prompt for the AI judge that evaluates agent output against ai() conditions.
- */
-export function buildJudgePrompt(
-  agentOutput: string,
-  aiConditions: AiJudgeCondition[],
-): string {
-  const conditionList = aiConditions
-    .map((c) => `| ${c.index + 1} | ${c.text} |`)
-    .join('\n');
-
-  return loadTemplate('perform_judge_message', 'en', { agentOutput, conditionList });
-}
+export { detectJudgeIndex, buildJudgePrompt } from './judge-utils.js';
 
 /**
  * Call AI judge to evaluate agent output against ai() conditions.
@@ -50,18 +23,9 @@ export const callAiJudge: AiJudgeCaller = async (
   conditions: AiJudgeCondition[],
   options: { cwd: string },
 ): Promise<number> => {
-  const prompt = buildJudgePrompt(agentOutput, conditions);
-
-  const response = await runAgent(undefined, prompt, {
-    cwd: options.cwd,
-    maxTurns: 1,
-    permissionMode: 'readonly',
-  });
-
-  if (response.status !== 'done') {
-    log.error('AI judge call failed', { error: response.error });
-    return -1;
+  const result = await evaluateCondition(agentOutput, conditions, options);
+  if (result < 0) {
+    log.error('AI judge call failed to match a condition');
   }
-
-  return detectJudgeIndex(response.content);
+  return result;
 };

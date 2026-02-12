@@ -4,9 +4,9 @@
  * Uses @openai/codex-sdk for native TypeScript integration.
  */
 
-import { Codex } from '@openai/codex-sdk';
+import { Codex, type TurnOptions } from '@openai/codex-sdk';
 import type { AgentResponse } from '../../core/models/index.js';
-import { createLogger, getErrorMessage, createStreamDiagnostics, type StreamDiagnostics } from '../../shared/utils/index.js';
+import { createLogger, getErrorMessage, createStreamDiagnostics, parseStructuredOutput, type StreamDiagnostics } from '../../shared/utils/index.js';
 import { mapToCodexSandboxMode, type CodexCallOptions } from './types.js';
 import {
   type CodexEvent,
@@ -150,9 +150,11 @@ export class CodexClient {
         const diag = createStreamDiagnostics('codex-sdk', { agentType, model: options.model, attempt });
         diagRef = diag;
 
-        const { events } = await thread.runStreamed(fullPrompt, {
+        const turnOptions: TurnOptions = {
           signal: streamAbortController.signal,
-        });
+          ...(options.outputSchema ? { outputSchema: options.outputSchema } : {}),
+        };
+        const { events } = await thread.runStreamed(fullPrompt, turnOptions);
         resetIdleTimeout();
         diag.onConnected();
 
@@ -270,6 +272,7 @@ export class CodexClient {
         }
 
         const trimmed = content.trim();
+        const structuredOutput = parseStructuredOutput(trimmed, !!options.outputSchema);
         emitResult(options.onStream, true, trimmed, currentThreadId);
 
         return {
@@ -278,6 +281,7 @@ export class CodexClient {
           content: trimmed,
           timestamp: new Date(),
           sessionId: currentThreadId,
+          structuredOutput,
         };
       } catch (error) {
         const message = getErrorMessage(error);

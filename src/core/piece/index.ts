@@ -60,8 +60,19 @@ export { buildEditRule, type InstructionContext } from './instruction/instructio
 export { generateStatusRulesComponents, type StatusRulesComponents } from './instruction/status-rules.js';
 
 // Rule evaluation
-export { RuleEvaluator, type RuleMatch, type RuleEvaluatorContext, detectMatchedRule, evaluateAggregateConditions } from './evaluation/index.js';
+export { RuleEvaluator, type RuleMatch, type RuleEvaluatorContext, evaluateAggregateConditions } from './evaluation/index.js';
 export { AggregateEvaluator } from './evaluation/AggregateEvaluator.js';
 
 // Phase runner
-export { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase, type ReportPhaseBlockedResult } from './phase-runner.js';
+export { needsStatusJudgmentPhase, type ReportPhaseBlockedResult } from './phase-runner.js';
+
+// Agent usecases
+export {
+  executeAgent,
+  generateReport,
+  executePart,
+  judgeStatus,
+  evaluateCondition,
+  decomposeTask,
+  type JudgeStatusResult,
+} from './agent-usecases.js';

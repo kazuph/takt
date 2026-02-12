@@ -31,4 +31,6 @@ export interface CodexCallOptions {
   onStream?: StreamCallback;
   /** OpenAI API key (bypasses CLI auth) */
   openaiApiKey?: string;
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }

@@ -8,7 +8,7 @@
 import { createOpencode } from '@opencode-ai/sdk/v2';
 import { createServer } from 'node:net';
 import type { AgentResponse } from '../../core/models/index.js';
-import { createLogger, getErrorMessage, createStreamDiagnostics, type StreamDiagnostics } from '../../shared/utils/index.js';
+import { createLogger, getErrorMessage, createStreamDiagnostics, parseStructuredOutput, type StreamDiagnostics } from '../../shared/utils/index.js';
 import { parseProviderModel } from '../../shared/utils/providerModel.js';
 import {
   buildOpenCodePermissionConfig,
@@ -236,15 +236,33 @@ export class OpenCodeClient {
     });
   }
 
+  /** Build a prompt suffix that instructs the agent to return JSON matching the schema */
+  private buildStructuredOutputSuffix(schema: Record<string, unknown>): string {
+    return [
+      '',
+      '---',
+      'IMPORTANT: You MUST respond with ONLY a valid JSON object matching this schema. No other text, no markdown code blocks, no explanation.',
+      '```',
+      JSON.stringify(schema, null, 2),
+      '```',
+    ].join('\n');
+  }
+
   /** Call OpenCode with an agent prompt */
   async call(
     agentType: string,
     prompt: string,
     options: OpenCodeCallOptions,
   ): Promise<AgentResponse> {
-    const fullPrompt = options.systemPrompt
+    const basePrompt = options.systemPrompt
       ? `${options.systemPrompt}\n\n${prompt}`
       : prompt;
+
+    // OpenCode SDK does not natively support structured output via outputFormat.
+    // Inject JSON output instructions into the prompt to make the agent return JSON.
+    const fullPrompt = options.outputSchema
+      ? `${basePrompt}${this.buildStructuredOutputSuffix(options.outputSchema)}`
+      : basePrompt;
 
     for (let attempt = 1; attempt <= OPENCODE_RETRY_MAX_ATTEMPTS; attempt++) {
       let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -329,16 +347,25 @@ export class OpenCodeClient {
         diag.onConnected();
 
         const tools = mapToOpenCodeTools(options.allowedTools);
-        await client.session.promptAsync(
-          {
-            sessionID: sessionId,
-            directory: options.cwd,
-            model: parsedModel,
-            ...(tools ? { tools } : {}),
-            parts: [{ type: 'text' as const, text: fullPrompt }],
-          },
-          { signal: streamAbortController.signal },
-        );
+        const promptPayload: Record<string, unknown> = {
+          sessionID: sessionId,
+          directory: options.cwd,
+          model: parsedModel,
+          ...(tools ? { tools } : {}),
+          parts: [{ type: 'text' as const, text: fullPrompt }],
+        };
+        if (options.outputSchema) {
+          promptPayload.outputFormat = {
+            type: 'json_schema',
+            schema: options.outputSchema,
+          };
+        }
+
+        // OpenCode SDK types do not yet expose outputFormat even though runtime accepts it.
+        const promptPayloadForSdk = promptPayload as unknown as Parameters<typeof client.session.promptAsync>[0];
+        await client.session.promptAsync(promptPayloadForSdk, {
+          signal: streamAbortController.signal,
+        });
 
         emitInit(options.onStream, options.model, sessionId);
 
@@ -571,6 +598,7 @@ export class OpenCodeClient {
         }
 
         const trimmed = content.trim();
+        const structuredOutput = parseStructuredOutput(trimmed, !!options.outputSchema);
         emitResult(options.onStream, true, trimmed, sessionId);
 
         return {
@@ -579,6 +607,7 @@ export class OpenCodeClient {
           content: trimmed,
           timestamp: new Date(),
           sessionId,
+          structuredOutput,
         };
       } catch (error) {
         const message = getErrorMessage(error);

@@ -10,7 +10,7 @@ import type {
   PieceState,
   AgentResponse,
 } from '../../models/types.js';
-import { runAgent } from '../../../agents/runner.js';
+import { executeAgent } from '../agent-usecases.js';
 import { ParallelLogger } from './parallel-logger.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
@@ -101,7 +101,7 @@ export class ParallelRunner {
           : baseOptions;
 
         this.deps.onPhaseStart?.(subMovement, 1, 'execute', subInstruction);
-        const subResponse = await runAgent(subMovement.persona, subInstruction, agentOptions);
+        const subResponse = await executeAgent(subMovement.persona, subInstruction, agentOptions);
         updatePersonaSession(subSessionKey, subResponse.sessionId);
         this.deps.onPhaseComplete?.(subMovement, 1, 'execute', subResponse.content, subResponse.status, subResponse.error);
 
@@ -114,15 +114,19 @@ export class ParallelRunner {
         }
 
         // Phase 3: status judgment for sub-movement
-        let subTagContent = '';
-        if (needsStatusJudgmentPhase(subMovement)) {
-          subTagContent = await runStatusJudgmentPhase(subMovement, phaseCtx);
-        }
+        const subPhase3 = needsStatusJudgmentPhase(subMovement)
+          ? await runStatusJudgmentPhase(subMovement, phaseCtx)
+          : undefined;
 
-        const match = await detectMatchedRule(subMovement, subResponse.content, subTagContent, ruleCtx);
-        const finalResponse = match
-          ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
-          : subResponse;
+        let finalResponse: AgentResponse;
+        if (subPhase3) {
+          finalResponse = { ...subResponse, matchedRuleIndex: subPhase3.ruleIndex, matchedRuleMethod: subPhase3.method };
+        } else {
+          const match = await detectMatchedRule(subMovement, subResponse.content, '', ruleCtx);
+          finalResponse = match
+            ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
+            : subResponse;
+        }
 
         state.movementOutputs.set(subMovement.name, finalResponse);
         this.deps.movementExecutor.emitMovementReports(subMovement);

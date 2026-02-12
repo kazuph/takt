@@ -9,11 +9,12 @@ import {
   updateIsolatedConfig,
   type IsolatedEnv,
 } from '../helpers/isolated-env';
-import { createTestRepo, type TestRepo } from '../helpers/test-repo';
+import { createTestRepo, isGitHubE2EAvailable, type TestRepo } from '../helpers/test-repo';
 import { runTakt } from '../helpers/takt-runner';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const requiresGitHub = isGitHubE2EAvailable();
 
 // E2E更新時は docs/testing/e2e.md も更新すること
 describe('E2E: Add task from GitHub issue (takt add)', () => {
@@ -67,7 +68,7 @@ describe('E2E: Add task from GitHub issue (takt add)', () => {
     }
   });
 
-  it('should create a task file from issue reference', () => {
+  it.skipIf(!requiresGitHub)('should create a task file from issue reference', () => {
     const scenarioPath = resolve(__dirname, '../fixtures/scenarios/add-task.json');
 
     const result = runTakt({

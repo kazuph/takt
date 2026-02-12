@@ -65,6 +65,7 @@ export async function callMock(
     content,
     timestamp: new Date(),
     sessionId,
+    structuredOutput: options.structuredOutput,
   };
 }
 

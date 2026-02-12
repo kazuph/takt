@@ -1,7 +1,9 @@
 [
-  { "persona": "test-coder", "status": "done", "content": "Plan created." },
-  { "persona": "test-reviewer-a", "status": "done", "content": "Architecture approved." },
-  { "persona": "test-reviewer-b", "status": "done", "content": "Security approved." },
+  { "persona": "agents/test-coder", "status": "done", "content": "Plan created." },
+  { "persona": "agents/test-reviewer-a", "status": "done", "content": "Architecture approved." },
+  { "persona": "agents/test-reviewer-b", "status": "done", "content": "Security approved." },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" }
 ]

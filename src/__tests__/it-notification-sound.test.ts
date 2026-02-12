@@ -104,8 +104,7 @@ vi.mock('../core/piece/index.js', () => ({
   PieceEngine: MockPieceEngine,
 }));
 
-vi.mock('../infra/claude/index.js', () => ({
-  detectRuleIndex: vi.fn(),
+vi.mock('../infra/claude/query-manager.js', () => ({
   interruptAllQueries: mockInterruptAllQueries,
 }));
 

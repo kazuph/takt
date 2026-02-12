@@ -65,6 +65,12 @@ export class SdkOptionsBuilder {
     if (this.options.agents) sdkOptions.agents = this.options.agents;
     if (this.options.mcpServers) sdkOptions.mcpServers = this.options.mcpServers;
     if (this.options.systemPrompt) sdkOptions.systemPrompt = this.options.systemPrompt;
+    if (this.options.outputSchema) {
+      (sdkOptions as Record<string, unknown>).outputFormat = {
+        type: 'json_schema',
+        schema: this.options.outputSchema,
+      };
+    }
     if (canUseTool) sdkOptions.canUseTool = canUseTool;
     if (hooks) sdkOptions.hooks = hooks;
 

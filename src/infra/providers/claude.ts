@@ -2,7 +2,8 @@
  * Claude provider implementation
  */
 
-import { callClaude, callClaudeCustom, callClaudeAgent, callClaudeSkill, type ClaudeCallOptions } from '../claude/index.js';
+import { callClaude, callClaudeCustom, callClaudeAgent, callClaudeSkill } from '../claude/client.js';
+import type { ClaudeCallOptions } from '../claude/types.js';
 import { resolveAnthropicApiKey } from '../config/index.js';
 import type { AgentResponse } from '../../core/models/index.js';
 import type { AgentSetup, Provider, ProviderAgent, ProviderCallOptions } from './types.js';
@@ -10,6 +11,7 @@ import type { AgentSetup, Provider, ProviderAgent, ProviderCallOptions } from '.
 function toClaudeOptions(options: ProviderCallOptions): ClaudeCallOptions {
   return {
     cwd: options.cwd,
+    abortSignal: options.abortSignal,
     sessionId: options.sessionId,
     allowedTools: options.allowedTools,
     mcpServers: options.mcpServers,
@@ -21,6 +23,7 @@ function toClaudeOptions(options: ProviderCallOptions): ClaudeCallOptions {
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
     anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
+    outputSchema: options.outputSchema,
   };
 }
 

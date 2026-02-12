@@ -38,9 +38,11 @@ REJECT without exception if any of the following apply.
 - Direct mutation of objects/arrays
 - Swallowed errors (empty catch blocks)
 - TODO comments (not tracked in an issue)
-- Duplicated code in 3+ places (DRY violation)
+- Essentially identical logic duplicated (DRY violation)
 - Method proliferation doing the same thing (should be absorbed by configuration differences)
 - Specific implementation leaking into generic layers (imports and branching for specific implementations in generic layers)
+- Internal implementation exported from public API (infrastructure functions or internal classes exposed publicly)
+- Replaced code/exports surviving after refactoring
 - Missing cross-validation of related fields (invariants of semantically coupled config values left unverified)
 
 ### Warning

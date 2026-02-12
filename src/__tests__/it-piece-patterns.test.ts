@@ -13,7 +13,7 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setMockScenario, resetScenario } from '../infra/mock/index.js';
-import { detectRuleIndex } from '../infra/claude/index.js';
+import { detectRuleIndex } from '../shared/utils/ruleIndex.js';
 import { callAiJudge } from '../agents/ai-judge.js';
 
 // --- Mocks ---
@@ -37,7 +37,7 @@ vi.mock('../agents/ai-judge.js', async (importOriginal) => {
 vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
-  runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
+  runStatusJudgmentPhase: vi.fn().mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' }),
 }));
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({

@@ -2,7 +2,7 @@
  * Type definitions for agent execution
  */
 
-import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../infra/claude/index.js';
+import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../infra/claude/types.js';
 import type { PermissionMode, Language, McpServerConfig } from '../core/models/index.js';
 
 export type { StreamCallback };
@@ -39,4 +39,6 @@ export interface RunAgentOptions {
     movementsList: ReadonlyArray<{ name: string; description?: string }>;
     currentPosition: string;
   };
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }

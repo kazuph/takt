@@ -15,7 +15,8 @@ import type { ArpeggioMovementConfig, BatchResult, DataBatch } from '../arpeggio
 import { createDataSource } from '../arpeggio/data-source-factory.js';
 import { loadTemplate, expandTemplate } from '../arpeggio/template.js';
 import { buildMergeFn, writeMergedOutput } from '../arpeggio/merge.js';
-import { runAgent, type RunAgentOptions } from '../../../agents/runner.js';
+import type { RunAgentOptions } from '../../../agents/runner.js';
+import { executeAgent } from '../agent-usecases.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { incrementMovementIteration } from './state-manager.js';
 import { createLogger } from '../../../shared/utils/index.js';
@@ -84,7 +85,7 @@ async function executeBatchWithRetry(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await runAgent(persona, prompt, agentOptions);
+      const response = await executeAgent(persona, prompt, agentOptions);
       if (response.status === 'error') {
         lastError = response.error ?? response.content ?? 'Agent returned error status';
         log.info('Batch execution failed, retrying', {

@@ -94,10 +94,28 @@ export class QueryExecutor {
     let resultContent: string | undefined;
     let hasResultMessage = false;
     let accumulatedAssistantText = '';
+    let structuredOutput: Record<string, unknown> | undefined;
+    let onExternalAbort: (() => void) | undefined;
 
     try {
       const q = query({ prompt, options: sdkOptions });
       registerQuery(queryId, q);
+      if (options.abortSignal) {
+        const interruptQuery = () => {
+          void q.interrupt().catch((interruptError: unknown) => {
+            log.debug('Failed to interrupt Claude query', {
+              queryId,
+              error: getErrorMessage(interruptError),
+            });
+          });
+        };
+        if (options.abortSignal.aborted) {
+          interruptQuery();
+        } else {
+          onExternalAbort = interruptQuery;
+          options.abortSignal.addEventListener('abort', onExternalAbort, { once: true });
+        }
+      }
 
       for await (const message of q) {
         if ('session_id' in message) {
@@ -122,6 +140,17 @@ export class QueryExecutor {
           const resultMsg = message as SDKResultMessage;
           if (resultMsg.subtype === 'success') {
             resultContent = resultMsg.result;
+            const rawStructuredOutput = (resultMsg as unknown as {
+              structured_output?: unknown;
+              structuredOutput?: unknown;
+            }).structured_output ?? (resultMsg as unknown as { structuredOutput?: unknown }).structuredOutput;
+            if (
+              rawStructuredOutput
+              && typeof rawStructuredOutput === 'object'
+              && !Array.isArray(rawStructuredOutput)
+            ) {
+              structuredOutput = rawStructuredOutput as Record<string, unknown>;
+            }
             success = true;
           } else {
             success = false;
@@ -133,6 +162,9 @@ export class QueryExecutor {
       }
 
       unregisterQuery(queryId);
+      if (onExternalAbort && options.abortSignal) {
+        options.abortSignal.removeEventListener('abort', onExternalAbort);
+      }
 
       const finalContent = resultContent || accumulatedAssistantText;
 
@@ -149,8 +181,12 @@ export class QueryExecutor {
         content: finalContent.trim(),
         sessionId,
         fullContent: accumulatedAssistantText.trim(),
+        structuredOutput,
       };
     } catch (error) {
+      if (onExternalAbort && options.abortSignal) {
+        options.abortSignal.removeEventListener('abort', onExternalAbort);
+      }
       unregisterQuery(queryId);
       return QueryExecutor.handleQueryError(error, queryId, sessionId, hasResultMessage, success, resultContent, stderrChunks);
     }

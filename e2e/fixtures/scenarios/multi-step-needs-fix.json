@@ -1,15 +1,19 @@
 [
-  { "persona": "test-coder", "status": "done", "content": "Plan created." },
+  { "persona": "agents/test-coder", "status": "done", "content": "Plan created." },
 
-  { "persona": "test-reviewer-a", "status": "done", "content": "Architecture looks good." },
-  { "persona": "test-reviewer-b", "status": "done", "content": "Security issues found." },
+  { "persona": "agents/test-reviewer-a", "status": "done", "content": "Architecture looks good." },
+  { "persona": "agents/test-reviewer-b", "status": "done", "content": "Security issues found." },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:2]" },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:2]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:2]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:2]" },
 
-  { "persona": "test-coder", "status": "done", "content": "Fix applied." },
+  { "persona": "agents/test-coder", "status": "done", "content": "Fix applied." },
 
-  { "persona": "test-reviewer-a", "status": "done", "content": "Architecture still approved." },
-  { "persona": "test-reviewer-b", "status": "done", "content": "Security now approved." },
+  { "persona": "agents/test-reviewer-a", "status": "done", "content": "Architecture still approved." },
+  { "persona": "agents/test-reviewer-b", "status": "done", "content": "Security now approved." },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
+  { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" },
   { "persona": "conductor", "status": "done", "content": "[ARCH-REVIEW:1] [SECURITY-REVIEW:1]" }
 ]

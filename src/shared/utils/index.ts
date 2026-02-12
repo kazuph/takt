@@ -11,6 +11,7 @@ export * from './slackWebhook.js';
 export * from './sleep.js';
 export * from './slug.js';
 export * from './streamDiagnostics.js';
+export * from './structuredOutput.js';
 export * from './taskPaths.js';
 export * from './text.js';
 export * from './types.js';

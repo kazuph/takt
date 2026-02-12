@@ -71,7 +71,7 @@ describe('preventSleep', () => {
 
     expect(spawn).toHaveBeenCalledWith(
       '/usr/bin/caffeinate',
-      ['-di', '-w', String(process.pid)],
+      ['-dis', '-w', String(process.pid)],
       { stdio: 'ignore', detached: true }
     );
     expect(mockChild.unref).toHaveBeenCalled();

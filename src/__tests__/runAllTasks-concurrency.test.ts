@@ -115,9 +115,8 @@ vi.mock('../infra/github/index.js', () => ({
   pushBranch: vi.fn(),
 }));
 
-vi.mock('../infra/claude/index.js', () => ({
+vi.mock('../infra/claude/query-manager.js', () => ({
   interruptAllQueries: vi.fn(),
-  detectRuleIndex: vi.fn(),
 }));
 
 vi.mock('../agents/ai-judge.js', () => ({

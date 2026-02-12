@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.13.0-alpha.1] - 2026-02-13
+
+### Added
+
+- **Team Leader ムーブメント**: ムーブメント内でチームリーダーエージェントがタスクを動的にサブタスク（Part）へ分解し、複数のパートエージェントを並列実行する新しいムーブメントタイプ — `team_leader` 設定（persona, maxParts, timeoutMs, partPersona, partEdit, partPermissionMode）をサポート (#244)
+- **構造化出力（Structured Output）**: エージェント呼び出しに JSON Schema ベースの構造化出力を導入 — タスク分解（decomposition）、ルール評価（evaluation）、ステータス判定（judgment）の3つのスキーマを `builtins/schemas/` に追加。Claude / Codex 両プロバイダーで対応 (#257)
+- **`backend` ビルトインピース**: バックエンド開発特化のピースを新規追加 — バックエンド、セキュリティ、QA の並列専門家レビュー対応
+- **`backend-cqrs` ビルトインピース**: CQRS+ES 特化のバックエンド開発ピースを新規追加 — CQRS+ES、セキュリティ、QA の並列専門家レビュー対応
+- **AbortSignal によるパートタイムアウト**: Team Leader のパート実行にタイムアウト制御と親シグナル連動の AbortSignal を追加
+- **エージェントユースケース層**: `agent-usecases.ts` にエージェント呼び出しのユースケース（`decomposeTask`, `executeAgent`, `evaluateRules`）を集約し、構造化出力の注入を一元管理
+
+### Changed
+
+- **BREAKING: パブリック API の整理**: `src/index.ts` の公開 API を大幅に絞り込み — 内部実装の詳細（セッション管理、Claude/Codex クライアント詳細、ユーティリティ関数等）を非公開化し、安定した最小限の API サーフェスに (#257)
+- **Phase 3 判定ロジックの刷新**: `JudgmentDetector` / `FallbackStrategy` を廃止し、構造化出力ベースの `status-judgment-phase.ts` に統合。判定の安定性と保守性を向上 (#257)
+- **Report フェーズのリトライ改善**: Report Phase（Phase 2）が失敗した場合、新規セッションで自動リトライするよう改善 (#245)
+- **Ctrl+C シャットダウンの統一**: `sigintHandler.ts` を廃止し、`ShutdownManager` に統合 — グレースフルシャットダウン → タイムアウト → 強制終了の3段階制御を全プロバイダーで共通化 (#237)
+- フロントエンドナレッジにデザイントークンとテーマスコープのガイダンスを追加
+- アーキテクチャナレッジの改善（en/ja 両対応）
+
+### Fixed
+
+- clone 時に既存ブランチの checkout が失敗する問題を修正 — `git clone --shared` で `--branch` を渡してからリモートを削除するよう変更
+- Issue 参照付きブランチ名から `#` を除去（`takt/#N/slug` → `takt/N/slug`）
+- OpenCode の report フェーズで deprecated ツール依存を解消し、permission 中心の制御へ移行 (#246)
+- 不要な export を排除し、パブリック API の整合性を確保
+
+### Internal
+
+- Team Leader 関連のテスト追加（engine-team-leader, team-leader-schema-loader, task-decomposer）
+- 構造化出力関連のテスト追加（parseStructuredOutput, claude-executor-structured-output, codex-structured-output, provider-structured-output, structured-output E2E）
+- ShutdownManager のユニットテスト追加
+- AbortSignal のユニットテスト追加（abort-signal, claude-executor-abort-signal, claude-provider-abort-signal）
+- Report Phase リトライのユニットテスト追加（report-phase-retry）
+- パブリック API エクスポートのユニットテスト追加（public-api-exports）
+- E2E テストの大幅拡充: cycle-detection, model-override, multi-step-sequential, pipeline-local-repo, report-file-output, run-sigint-graceful, session-log, structured-output, task-status-persistence
+- E2E テストヘルパーのリファクタリング（共通 setup 関数の抽出）
+- `judgment/` ディレクトリ（JudgmentDetector, FallbackStrategy）を削除
+- `ruleIndex.ts` ユーティリティを追加（1-based → 0-based インデックス変換）
+
 ## [0.12.1] - 2026-02-11
 
 ### Fixed

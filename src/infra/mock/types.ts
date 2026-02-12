@@ -13,6 +13,8 @@ export interface MockCallOptions {
   mockResponse?: string;
   /** Fixed status to return (optional, defaults to 'done') */
   mockStatus?: 'done' | 'blocked' | 'error' | 'approved' | 'rejected' | 'improve';
+  /** Structured output payload returned as-is */
+  structuredOutput?: Record<string, unknown>;
 }
 
 /** A single entry in a mock scenario */

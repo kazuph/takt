@@ -17,5 +17,6 @@ export interface AgentResponse {
   matchedRuleIndex?: number;
   /** How the rule match was detected */
   matchedRuleMethod?: RuleMatchMethod;
+  /** Structured output returned by provider SDK (JSON Schema mode) */
+  structuredOutput?: Record<string, unknown>;
 }
-

@@ -111,6 +111,7 @@ export class AgentRunner {
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
       bypassPermissions: options.bypassPermissions,
+      outputSchema: options.outputSchema,
     };
   }
 

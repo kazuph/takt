@@ -7,7 +7,7 @@ Prioritize correctness over speed, and code accuracy over ease of implementation
 | Principle | Criteria |
 |-----------|----------|
 | Simple > Easy | Prioritize readability over writability |
-| DRY | Extract after 3 repetitions |
+| DRY | Eliminate essential duplication |
 | Comments | Why only. Never write What/How |
 | Function size | One function, one responsibility. ~30 lines |
 | File size | ~300 lines as a guideline. Be flexible depending on the task |
@@ -245,23 +245,19 @@ Request → toInput() → UseCase/Service → Output → Response.from()
 
 ## Shared Code Decisions
 
-### Rule of Three
-
-- 1st occurrence: Write it inline
-- 2nd occurrence: Do not extract yet (observe)
-- 3rd occurrence: Consider extracting
+Eliminate duplication by default. When logic is essentially the same and should be unified, apply DRY. Do not decide mechanically by count.
 
 ### Should Be Shared
 
-- Same logic in 3+ places
+- Essentially identical logic duplicated
 - Same style/UI pattern
 - Same validation logic
 - Same formatting logic
 
 ### Should Not Be Shared
 
-- Similar but subtly different (forced generalization adds complexity)
-- Used in only 1-2 places
+- Duplication across different domains (e.g., customer validation and admin validation are separate concerns)
+- Superficially similar code with different reasons to change
 - Based on "might need it in the future" predictions
 
 ```typescript
@@ -289,4 +285,6 @@ function formatPercentage(value: number): string { ... }
 - **Hardcoded secrets**
 - **Scattered try-catch** - Centralize error handling at the upper layer
 - **Unsolicited backward compatibility / legacy support** - Not needed unless explicitly instructed
+- **Internal implementation exported from public API** - Only export domain-level functions and types. Do not export infrastructure functions or internal classes
+- **Replaced code surviving after refactoring** - Remove replaced code and exports. Do not keep unless explicitly told to
 - **Workarounds that bypass safety mechanisms** - If the root fix is correct, no additional bypass is needed

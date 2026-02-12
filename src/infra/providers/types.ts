@@ -40,6 +40,8 @@ export interface ProviderCallOptions {
   openaiApiKey?: string;
   /** OpenCode API key for OpenCode provider */
   opencodeApiKey?: string;
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }
 
 /** A configured agent ready to be called */

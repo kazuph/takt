@@ -9,12 +9,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, parse, resolve, sep } from 'node:path';
 import type { PieceMovement, Language, AgentResponse } from '../models/types.js';
 import type { PhaseName } from './types.js';
-import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
+import type { RunAgentOptions } from '../../agents/runner.js';
 import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
 import { hasTagBasedRules, getReportFiles } from './evaluation/rule-utils.js';
-import { JudgmentStrategyFactory, type JudgmentContext } from './judgment/index.js';
+import { executeAgent } from './agent-usecases.js';
 import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
+export { runStatusJudgmentPhase, type StatusJudgmentPhaseResult } from './status-judgment-phase.js';
 
 const log = createLogger('phase-runner');
 
@@ -35,7 +36,9 @@ export interface PhaseRunnerContext {
   /** Get persona session ID */
   getSessionId: (persona: string) => string | undefined;
   /** Build resume options for a movement */
-  buildResumeOptions: (step: PieceMovement, sessionId: string, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>) => RunAgentOptions;
+  buildResumeOptions: (step: PieceMovement, sessionId: string, overrides: Pick<RunAgentOptions, 'maxTurns'>) => RunAgentOptions;
+  /** Build options for report phase retry in a new session */
+  buildNewSessionReportOptions: (step: PieceMovement, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>) => RunAgentOptions;
   /** Update persona session after a phase run */
   updatePersonaSession: (persona: string, sessionId: string | undefined) => void;
   /** Callback for phase lifecycle logging */
@@ -140,102 +143,101 @@ export async function runReportPhase(
       targetFile: fileName,
     }).build();
 
-    ctx.onPhaseStart?.(step, 2, 'report', reportInstruction);
-
     const reportOptions = ctx.buildResumeOptions(step, currentSessionId, {
+      maxTurns: 3,
+    });
+    const firstAttempt = await runSingleReportAttempt(step, reportInstruction, reportOptions, ctx);
+    if (firstAttempt.kind === 'blocked') {
+      return { blocked: true, response: firstAttempt.response };
+    }
+    if (firstAttempt.kind === 'success') {
+      writeReportFile(ctx.reportDir, fileName, firstAttempt.content);
+      if (firstAttempt.response.sessionId) {
+        currentSessionId = firstAttempt.response.sessionId;
+        ctx.updatePersonaSession(sessionKey, currentSessionId);
+      }
+      log.debug('Report file generated', { movement: step.name, fileName });
+      continue;
+    }
+
+    log.info('Report phase failed, retrying with new session', {
+      movement: step.name,
+      fileName,
+      reason: firstAttempt.errorMessage,
+    });
+
+    const retryInstruction = new ReportInstructionBuilder(step, {
+      cwd: ctx.cwd,
+      reportDir: ctx.reportDir,
+      movementIteration: movementIteration,
+      language: ctx.language,
+      targetFile: fileName,
+      lastResponse: ctx.lastResponse,
+    }).build();
+    const retryOptions = ctx.buildNewSessionReportOptions(step, {
       allowedTools: [],
       maxTurns: 3,
     });
 
-    let reportResponse;
-    try {
-      reportResponse = await runAgent(step.persona, reportInstruction, reportOptions);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
-      throw error;
+    const retryAttempt = await runSingleReportAttempt(step, retryInstruction, retryOptions, ctx);
+    if (retryAttempt.kind === 'blocked') {
+      return { blocked: true, response: retryAttempt.response };
+    }
+    if (retryAttempt.kind === 'retryable_failure') {
+      throw new Error(`Report phase failed for ${fileName}: ${retryAttempt.errorMessage}`);
     }
 
-    if (reportResponse.status === 'blocked') {
-      ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
-      return { blocked: true, response: reportResponse };
-    }
-
-    if (reportResponse.status !== 'done') {
-      const errorMsg = reportResponse.error || reportResponse.content || 'Unknown error';
-      ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status, errorMsg);
-      throw new Error(`Report phase failed for ${fileName}: ${errorMsg}`);
-    }
-
-    const content = reportResponse.content.trim();
-    if (content.length === 0) {
-      throw new Error(`Report output is empty for file: ${fileName}`);
-    }
-
-    writeReportFile(ctx.reportDir, fileName, content);
-
-    if (reportResponse.sessionId) {
-      currentSessionId = reportResponse.sessionId;
+    writeReportFile(ctx.reportDir, fileName, retryAttempt.content);
+    if (retryAttempt.response.sessionId) {
+      currentSessionId = retryAttempt.response.sessionId;
       ctx.updatePersonaSession(sessionKey, currentSessionId);
     }
-
-    ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
     log.debug('Report file generated', { movement: step.name, fileName });
   }
 
   log.debug('Report phase complete', { movement: step.name, filesGenerated: reportFiles.length });
 }
 
-/**
- * Phase 3: Status judgment.
- * Uses the 'conductor' agent in a new session to output a status tag.
- * Implements multi-stage fallback logic to ensure judgment succeeds.
- * Returns the Phase 3 response content (containing the status tag).
- */
-export async function runStatusJudgmentPhase(
+type ReportAttemptResult =
+  | { kind: 'success'; content: string; response: AgentResponse }
+  | { kind: 'blocked'; response: AgentResponse }
+  | { kind: 'retryable_failure'; errorMessage: string };
+
+async function runSingleReportAttempt(
   step: PieceMovement,
+  instruction: string,
+  options: RunAgentOptions,
   ctx: PhaseRunnerContext,
-): Promise<string> {
-  log.debug('Running status judgment phase', { movement: step.name });
+): Promise<ReportAttemptResult> {
+  ctx.onPhaseStart?.(step, 2, 'report', instruction);
 
-  // フォールバック戦略を順次試行（AutoSelectStrategy含む）
-  const strategies = JudgmentStrategyFactory.createStrategies();
-  const sessionKey = buildSessionKey(step);
-  const judgmentContext: JudgmentContext = {
-    step,
-    cwd: ctx.cwd,
-    language: ctx.language,
-    reportDir: ctx.reportDir,
-    lastResponse: ctx.lastResponse,
-    sessionId: ctx.getSessionId(sessionKey),
-  };
-
-  for (const strategy of strategies) {
-    if (!strategy.canApply(judgmentContext)) {
-      log.debug(`Strategy ${strategy.name} not applicable, skipping`);
-      continue;
-    }
-
-    log.debug(`Trying strategy: ${strategy.name}`);
-    ctx.onPhaseStart?.(step, 3, 'judge', `Strategy: ${strategy.name}`);
-
-    try {
-      const result = await strategy.execute(judgmentContext);
-      if (result.success) {
-        log.debug(`Strategy ${strategy.name} succeeded`, { tag: result.tag });
-        ctx.onPhaseComplete?.(step, 3, 'judge', result.tag!, 'done');
-        return result.tag!;
-      }
-
-      log.debug(`Strategy ${strategy.name} failed`, { reason: result.reason });
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      log.debug(`Strategy ${strategy.name} threw error`, { error: errorMsg });
-    }
+  let response: AgentResponse;
+  try {
+    response = await executeAgent(step.persona, instruction, options);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
+    throw error;
   }
 
-  // 全戦略失敗
-  const errorMsg = 'All judgment strategies failed';
-  ctx.onPhaseComplete?.(step, 3, 'judge', '', 'error', errorMsg);
-  throw new Error(errorMsg);
+  if (response.status === 'blocked') {
+    ctx.onPhaseComplete?.(step, 2, 'report', response.content, response.status);
+    return { kind: 'blocked', response };
+  }
+
+  if (response.status !== 'done') {
+    const errorMessage = response.error || response.content || 'Unknown error';
+    ctx.onPhaseComplete?.(step, 2, 'report', response.content, response.status, errorMessage);
+    return { kind: 'retryable_failure', errorMessage };
+  }
+
+  const trimmedContent = response.content.trim();
+  if (trimmedContent.length === 0) {
+    const errorMessage = 'Report output is empty';
+    ctx.onPhaseComplete?.(step, 2, 'report', response.content, 'error', errorMessage);
+    return { kind: 'retryable_failure', errorMessage };
+  }
+
+  ctx.onPhaseComplete?.(step, 2, 'report', response.content, response.status);
+  return { kind: 'success', content: trimmedContent, response };
 }

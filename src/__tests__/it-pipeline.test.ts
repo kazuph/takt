@@ -125,7 +125,7 @@ vi.mock('../shared/prompt/index.js', () => ({
 vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
-  runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
+  runStatusJudgmentPhase: vi.fn().mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' }),
 }));
 
 // --- Imports (after mocks) ---

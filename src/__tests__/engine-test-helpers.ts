@@ -10,17 +10,20 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { PieceConfig, PieceMovement, AgentResponse, PieceRule } from '../core/models/index.js';
+import type { PieceConfig, PieceMovement, AgentResponse } from '../core/models/index.js';
+import { makeRule } from './test-helpers.js';
 
 // --- Mock imports (consumers must call vi.mock before importing this) ---
 
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../core/piece/index.js';
-import type { RuleMatch } from '../core/piece/index.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/index.js';
+import { detectMatchedRule } from '../core/piece/evaluation/index.js';
+import type { RuleMatch } from '../core/piece/evaluation/index.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/phase-runner.js';
 import { generateReportDir } from '../shared/utils/index.js';
 
 // --- Factory functions ---
+
+export { makeRule };
 
 export function makeResponse(overrides: Partial<AgentResponse> = {}): AgentResponse {
   return {
@@ -31,10 +34,6 @@ export function makeResponse(overrides: Partial<AgentResponse> = {}): AgentRespo
     sessionId: `session-${randomUUID()}`,
     ...overrides,
   };
-}
-
-export function makeRule(condition: string, next: string, extra: Partial<PieceRule> = {}): PieceRule {
-  return { condition, next, ...extra };
 }
 
 export function makeMovement(name: string, overrides: Partial<PieceMovement> = {}): PieceMovement {
@@ -174,7 +173,7 @@ export function createTestTmpDir(): string {
 export function applyDefaultMocks(): void {
   vi.mocked(needsStatusJudgmentPhase).mockReturnValue(false);
   vi.mocked(runReportPhase).mockResolvedValue(undefined);
-  vi.mocked(runStatusJudgmentPhase).mockResolvedValue('');
+  vi.mocked(runStatusJudgmentPhase).mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' });
   vi.mocked(generateReportDir).mockReturnValue('test-report-dir');
 }
 

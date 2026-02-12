@@ -16,6 +16,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { PieceMovement, PieceState, PieceRule, AgentResponse } from '../core/models/index.js';
+import { makeRule } from './test-helpers.js';
 
 // --- Mocks ---
 
@@ -33,15 +34,12 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { detectMatchedRule, evaluateAggregateConditions } from '../core/piece/index.js';
-import { detectRuleIndex } from '../infra/claude/index.js';
+import { evaluateAggregateConditions } from '../core/piece/index.js';
+import { detectMatchedRule } from '../core/piece/evaluation/index.js';
+import { detectRuleIndex } from '../shared/utils/ruleIndex.js';
 import type { RuleMatch, RuleEvaluatorContext } from '../core/piece/index.js';
 
 // --- Test helpers ---
-
-function makeRule(condition: string, next: string, extra?: Partial<PieceRule>): PieceRule {
-  return { condition, next, ...extra };
-}
 
 function makeMovement(
   name: string,

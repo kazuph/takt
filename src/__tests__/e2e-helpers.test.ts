@@ -76,7 +76,7 @@ describe('createIsolatedEnv', () => {
     expect(isolated.env.GIT_CONFIG_GLOBAL).toContain('takt-e2e-');
   });
 
-  it('should create config.yaml from E2E fixture with notification_sound timing controls', () => {
+  it('should create config.yaml from E2E fixture with notification_sound disabled', () => {
     const isolated = createIsolatedEnv();
     cleanups.push(isolated.cleanup);
 
@@ -86,13 +86,13 @@ describe('createIsolatedEnv', () => {
     expect(config.language).toBe('en');
     expect(config.log_level).toBe('info');
     expect(config.default_piece).toBe('default');
-    expect(config.notification_sound).toBe(true);
+    expect(config.notification_sound).toBe(false);
     expect(config.notification_sound_events).toEqual({
       iteration_limit: false,
       piece_complete: false,
       piece_abort: false,
       run_complete: true,
-      run_abort: true,
+      run_abort: false,
     });
   });
 
@@ -120,13 +120,13 @@ describe('createIsolatedEnv', () => {
 
     expect(config.provider).toBe('mock');
     expect(config.concurrency).toBe(2);
-    expect(config.notification_sound).toBe(true);
+    expect(config.notification_sound).toBe(false);
     expect(config.notification_sound_events).toEqual({
       iteration_limit: false,
       piece_complete: false,
       piece_abort: false,
       run_complete: true,
-      run_abort: true,
+      run_abort: false,
     });
     expect(config.language).toBe('en');
   });
@@ -149,7 +149,7 @@ describe('createIsolatedEnv', () => {
       piece_complete: false,
       piece_abort: false,
       run_complete: false,
-      run_abort: true,
+      run_abort: false,
     });
   });
 

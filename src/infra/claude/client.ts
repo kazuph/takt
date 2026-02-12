@@ -11,7 +11,6 @@ import { createLogger } from '../../shared/utils/index.js';
 import { loadTemplate } from '../../shared/prompts/index.js';
 
 export type { ClaudeCallOptions } from './types.js';
-export { detectRuleIndex, isRegexSafe } from './utils.js';
 
 const log = createLogger('client');
 
@@ -38,6 +37,7 @@ export class ClaudeClient {
   private static toSpawnOptions(options: ClaudeCallOptions): ClaudeSpawnOptions {
     return {
       cwd: options.cwd,
+      abortSignal: options.abortSignal,
       sessionId: options.sessionId,
       allowedTools: options.allowedTools,
       mcpServers: options.mcpServers,
@@ -51,6 +51,7 @@ export class ClaudeClient {
       onAskUserQuestion: options.onAskUserQuestion,
       bypassPermissions: options.bypassPermissions,
       anthropicApiKey: options.anthropicApiKey,
+      outputSchema: options.outputSchema,
     };
   }
 
@@ -75,6 +76,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 
@@ -103,6 +105,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 
@@ -125,6 +128,7 @@ export class ClaudeClient {
     const fullPrompt = `/${skillName}\n\n${prompt}`;
     const spawnOptions: ClaudeSpawnOptions = {
       cwd: options.cwd,
+      abortSignal: options.abortSignal,
       sessionId: options.sessionId,
       allowedTools: options.allowedTools,
       mcpServers: options.mcpServers,
@@ -151,6 +155,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 
@@ -192,4 +197,3 @@ export async function callClaudeSkill(
 ): Promise<AgentResponse> {
   return defaultClient.callSkill(skillName, prompt, options);
 }
-

@@ -1,10 +1,3 @@
-/**
- * Builds RunAgentOptions for different execution phases.
- *
- * Centralizes the option construction logic that was previously
- * scattered across PieceEngine methods.
- */
-
 import { join } from 'node:path';
 import type { PieceMovement, PieceState, Language } from '../../models/types.js';
 import type { RunAgentOptions } from '../../../agents/runner.js';
@@ -85,13 +78,26 @@ export class OptionsBuilder {
   buildResumeOptions(
     step: PieceMovement,
     sessionId: string,
-    overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>,
+    overrides: Pick<RunAgentOptions, 'maxTurns'>,
   ): RunAgentOptions {
     return {
       ...this.buildBaseOptions(step),
       // Report/status phases are read-only regardless of movement settings.
       permissionMode: 'readonly',
       sessionId,
+      allowedTools: [],
+      maxTurns: overrides.maxTurns,
+    };
+  }
+
+  /** Build RunAgentOptions for Phase 2 retry with a new session */
+  buildNewSessionReportOptions(
+    step: PieceMovement,
+    overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>,
+  ): RunAgentOptions {
+    return {
+      ...this.buildBaseOptions(step),
+      permissionMode: 'readonly',
       allowedTools: overrides.allowedTools,
       maxTurns: overrides.maxTurns,
     };
@@ -113,6 +119,7 @@ export class OptionsBuilder {
       lastResponse,
       getSessionId: (persona: string) => state.personaSessions.get(persona),
       buildResumeOptions: this.buildResumeOptions.bind(this),
+      buildNewSessionReportOptions: this.buildNewSessionReportOptions.bind(this),
       updatePersonaSession,
       onPhaseStart,
       onPhaseComplete,

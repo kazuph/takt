@@ -21,6 +21,8 @@ export type Status =
 /** How a rule match was detected */
 export type RuleMatchMethod =
   | 'aggregate'
+  | 'auto_select'
+  | 'structured_output'
   | 'phase3_tag'
   | 'phase1_tag'
   | 'ai_judge'

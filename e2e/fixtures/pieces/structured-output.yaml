@@ -1,0 +1,18 @@
+name: e2e-structured-output
+description: E2E piece to verify structured output rule matching
+
+max_movements: 5
+
+movements:
+  - name: execute
+    edit: false
+    persona: ../agents/test-coder.md
+    permission_mode: readonly
+    instruction_template: |
+      Reply with exactly: "Task completed successfully."
+      Do not do anything else.
+    rules:
+      - condition: Task completed
+        next: COMPLETE
+      - condition: Task failed
+        next: ABORT

@@ -15,7 +15,7 @@ import type {
   Language,
 } from '../../models/types.js';
 import type { PhaseName } from '../types.js';
-import { runAgent } from '../../../agents/runner.js';
+import { executeAgent } from '../agent-usecases.js';
 import { InstructionBuilder, isOutputContractItem } from '../instruction/InstructionBuilder.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
@@ -202,7 +202,7 @@ export class MovementExecutor {
     // Phase 1: main execution (Write excluded if movement has report)
     this.deps.onPhaseStart?.(step, 1, 'execute', instruction);
     const agentOptions = this.deps.optionsBuilder.buildAgentOptions(step);
-    let response = await runAgent(step.persona, instruction, agentOptions);
+    let response = await executeAgent(step.persona, instruction, agentOptions);
     updatePersonaSession(sessionKey, response.sessionId);
     this.deps.onPhaseComplete?.(step, 1, 'execute', response.content, response.status, response.error);
 
@@ -220,22 +220,28 @@ export class MovementExecutor {
       }
     }
 
-    // Phase 3: status judgment (resume session, no tools, output status tag)
-    let tagContent = '';
-    if (needsStatusJudgmentPhase(step)) {
-      tagContent = await runStatusJudgmentPhase(step, phaseCtx);
-    }
+    // Phase 3: status judgment (new session, no tools, determines matched rule)
+    const phase3Result = needsStatusJudgmentPhase(step)
+      ? await runStatusJudgmentPhase(step, phaseCtx)
+      : undefined;
 
-    const match = await detectMatchedRule(step, response.content, tagContent, {
-      state,
-      cwd: this.deps.getCwd(),
-      interactive: this.deps.getInteractive(),
-      detectRuleIndex: this.deps.detectRuleIndex,
-      callAiJudge: this.deps.callAiJudge,
-    });
-    if (match) {
-      log.debug('Rule matched', { movement: step.name, ruleIndex: match.index, method: match.method });
-      response = { ...response, matchedRuleIndex: match.index, matchedRuleMethod: match.method };
+    if (phase3Result) {
+      // Phase 3 already determined the matched rule — use its result directly
+      log.debug('Rule matched (Phase 3)', { movement: step.name, ruleIndex: phase3Result.ruleIndex, method: phase3Result.method });
+      response = { ...response, matchedRuleIndex: phase3Result.ruleIndex, matchedRuleMethod: phase3Result.method };
+    } else {
+      // No Phase 3 — use rule evaluator with Phase 1 content
+      const match = await detectMatchedRule(step, response.content, '', {
+        state,
+        cwd: this.deps.getCwd(),
+        interactive: this.deps.getInteractive(),
+        detectRuleIndex: this.deps.detectRuleIndex,
+        callAiJudge: this.deps.callAiJudge,
+      });
+      if (match) {
+        log.debug('Rule matched', { movement: step.name, ruleIndex: match.index, method: match.method });
+        response = { ...response, matchedRuleIndex: match.index, matchedRuleMethod: match.method };
+      }
     }
 
     state.movementOutputs.set(step.name, response);

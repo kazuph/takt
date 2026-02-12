@@ -371,19 +371,30 @@ Files: `.takt/logs/{sessionId}.jsonl`, with `latest.json` pointer. Legacy `.json
 
 **Instruction auto-injection over explicit placeholders.** The instruction builder auto-injects `{task}`, `{previous_response}`, `{user_inputs}`, and status rules. Templates should contain only step-specific instructions, not boilerplate.
 
-**Persona prompts contain only domain knowledge.** Persona prompt files (`builtins/{lang}/personas/*.md`) must contain only domain expertise and behavioral principles — never piece-specific procedures. Piece-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the piece YAML's `instruction_template`. This keeps personas reusable across different pieces.
+**Faceted prompting: each facet has a dedicated file type.** TAKT assembles agent prompts from 4 facets. Each facet has a distinct role. When adding new rules or knowledge, place content in the correct facet.
 
-What belongs in persona prompts:
-- Role definition ("You are a ... specialist")
-- Domain expertise, review criteria, judgment standards
-- Do / Don't behavioral rules
-- Tool usage knowledge (general, not piece-specific)
+```
+builtins/{lang}/
+  personas/     — WHO: identity, expertise, behavioral habits
+  policies/     — HOW: judgment criteria, REJECT/APPROVE rules, prohibited patterns
+  knowledge/    — WHAT TO KNOW: domain patterns, anti-patterns, detailed reasoning with examples
+  instructions/ — WHAT TO DO NOW: step-specific procedures and checklists
+```
 
-What belongs in piece `instruction_template`:
-- Step-specific procedures ("Read these specific reports")
-- References to other steps or their outputs
-- Specific report file names or formats
-- Comment/output templates with hardcoded review type names
+| Deciding where to place content | Facet | Example |
+|--------------------------------|-------|---------|
+| Role definition, AI habit prevention | Persona | "置き換えたコードを残す → 禁止" |
+| Actionable REJECT/APPROVE criterion | Policy | "内部実装のパブリックAPIエクスポート → REJECT" |
+| Detailed reasoning, REJECT/OK table with examples | Knowledge | "パブリックAPIの公開範囲" section |
+| This-step-only procedure or checklist | Instruction | "レビュー観点: 構造・設計の妥当性..." |
+| Workflow structure, facet assignment | Piece YAML | `persona: coder`, `policy: coding`, `knowledge: architecture` |
+
+Key rules:
+- Persona files are reusable across pieces. Never include piece-specific procedures (report names, step references)
+- Policy REJECT lists are what reviewers enforce. If a criterion is not in the policy REJECT list, reviewers will not catch it — even if knowledge explains the reasoning
+- Knowledge provides the WHY behind policy criteria. Knowledge alone does not trigger enforcement
+- Instructions are bound to a single piece step. They reference procedures, not principles
+- Piece YAML `instruction_template` is for step-specific details (which reports to read, step routing, output templates)
 
 **Separation of concerns in piece engine:**
 - `PieceEngine` - Orchestration, state management, event emission

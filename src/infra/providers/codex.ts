@@ -33,6 +33,7 @@ function toCodexOptions(options: ProviderCallOptions): CodexCallOptions {
     permissionMode: options.permissionMode,
     onStream: options.onStream,
     openaiApiKey: options.openaiApiKey ?? resolveOpenaiApiKey(),
+    outputSchema: options.outputSchema,
   };
 }
 

@@ -26,6 +26,8 @@ export interface SessionLog {
     matchedRuleIndex?: number;
     /** How the rule match was detected */
     matchedRuleMethod?: string;
+    /** Method used by status judgment phase */
+    matchMethod?: string;
   }>;
 }
 
@@ -56,6 +58,7 @@ export interface NdjsonStepComplete {
   instruction: string;
   matchedRuleIndex?: number;
   matchedRuleMethod?: string;
+  matchMethod?: string;
   error?: string;
   timestamp: string;
 }
