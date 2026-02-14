@@ -69,7 +69,8 @@ describe('E2E: Task status persistence in tasks.yaml (mock)', () => {
     const tasksContent = readFileSync(join(repo.path, '.takt', 'tasks.yaml'), 'utf-8');
     const tasks = parseYaml(tasksContent) as { tasks: Array<Record<string, unknown>> };
     expect(Array.isArray(tasks.tasks)).toBe(true);
-    expect(tasks.tasks.length).toBe(0);
+    expect(tasks.tasks.length).toBe(1);
+    expect(tasks.tasks[0]?.status).toBe('completed');
   }, 240_000);
 
   it('should persist failed status and failure details on failure', () => {

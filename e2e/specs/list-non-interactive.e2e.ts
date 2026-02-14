@@ -1,10 +1,30 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createIsolatedEnv, type IsolatedEnv } from '../helpers/isolated-env';
 import { createTestRepo, type TestRepo } from '../helpers/test-repo';
 import { runTakt } from '../helpers/takt-runner';
+
+function writeCompletedTask(repoPath: string, name: string, branch: string): void {
+  const taktDir = join(repoPath, '.takt');
+  mkdirSync(taktDir, { recursive: true });
+  const now = new Date().toISOString();
+  writeFileSync(
+    join(taktDir, 'tasks.yaml'),
+    [
+      'tasks:',
+      `  - name: ${name}`,
+      '    status: completed',
+      `    content: "E2E test task for ${name}"`,
+      `    branch: "${branch}"`,
+      `    created_at: "${now}"`,
+      `    started_at: "${now}"`,
+      `    completed_at: "${now}"`,
+    ].join('\n'),
+    'utf-8',
+  );
+}
 
 // E2E更新時は docs/testing/e2e.md も更新すること
 describe('E2E: List tasks non-interactive (takt list)', () => {
@@ -38,6 +58,8 @@ describe('E2E: List tasks non-interactive (takt list)', () => {
     execFileSync('git', ['commit', '-m', 'takt: list diff e2e'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['checkout', testRepo.branch], { cwd: testRepo.path, stdio: 'pipe' });
 
+    writeCompletedTask(testRepo.path, 'e2e-list-diff', branchName);
+
     const result = runTakt({
       args: ['list', '--non-interactive', '--action', 'diff', '--branch', branchName],
       cwd: testRepo.path,
@@ -57,6 +79,8 @@ describe('E2E: List tasks non-interactive (takt list)', () => {
     execFileSync('git', ['add', 'LIST_TRY.txt'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['commit', '-m', 'takt: list try e2e'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['checkout', testRepo.branch], { cwd: testRepo.path, stdio: 'pipe' });
+
+    writeCompletedTask(testRepo.path, 'e2e-list-try', branchName);
 
     const result = runTakt({
       args: ['list', '--non-interactive', '--action', 'try', '--branch', branchName],
@@ -84,6 +108,8 @@ describe('E2E: List tasks non-interactive (takt list)', () => {
     execFileSync('git', ['commit', '-m', 'takt: list merge e2e'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['checkout', testRepo.branch], { cwd: testRepo.path, stdio: 'pipe' });
 
+    writeCompletedTask(testRepo.path, 'e2e-list-merge', branchName);
+
     const result = runTakt({
       args: ['list', '--non-interactive', '--action', 'merge', '--branch', branchName],
       cwd: testRepo.path,
@@ -109,6 +135,8 @@ describe('E2E: List tasks non-interactive (takt list)', () => {
     execFileSync('git', ['add', 'LIST_E2E.txt'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['commit', '-m', 'takt: list e2e'], { cwd: testRepo.path, stdio: 'pipe' });
     execFileSync('git', ['checkout', testRepo.branch], { cwd: testRepo.path, stdio: 'pipe' });
+
+    writeCompletedTask(testRepo.path, 'e2e-list-test', branchName);
 
     const result = runTakt({
       args: ['list', '--non-interactive', '--action', 'delete', '--branch', branchName, '--yes'],
