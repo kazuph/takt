@@ -366,7 +366,7 @@ movements:
     policy: coding
     knowledge: architecture
     edit: true
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: 実装完了
         next: review
@@ -590,6 +590,16 @@ interactive_preview_movements: 3  # 対話モードでのムーブメントプ�
 #   coder: codex             # coder を Codex で実行
 #   ai-antipattern-reviewer: claude  # レビュアーは Claude のまま
 
+# プロバイダー別パーミッションプロファイル（オプション）
+# 優先順: project override → global override → project default → global default → required_permission_mode（下限）
+# provider_profiles:
+#   codex:
+#     default_permission_mode: full
+#     movement_permission_overrides:
+#       ai_review: readonly
+#   claude:
+#     default_permission_mode: edit
+
 # API Key 設定（オプション）
 # 環境変数 TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY / TAKT_OPENCODE_API_KEY で上書き可能
 anthropic_api_key: sk-ant-...  # Claude (Anthropic) を使う場合
@@ -739,7 +749,7 @@ movements:
   - name: implement
     persona: coder
     edit: true
-    permission_mode: edit
+    required_permission_mode: edit
     pass_previous_response: true
     rules:
       - condition: 完了
@@ -808,7 +818,7 @@ rules:
 | `allowed_tools` | - | エージェントが使用できるツール一覧（Read, Glob, Grep, Edit, Write, Bash等） |
 | `provider` | - | このムーブメントのプロバイダーを上書き（`claude`、`codex`、または`opencode`） |
 | `model` | - | このムーブメントのモデルを上書き |
-| `permission_mode` | - | パーミッションモード: `readonly`、`edit`、`full`（プロバイダー非依存） |
+| `required_permission_mode` | - | 必要最小パーミッションモード: `readonly`、`edit`、`full`（下限として機能; 実際のモードは `provider_profiles` で解決） |
 | `provider_options` | - | プロバイダー固有オプション（例: `codex.network_access`、`opencode.network_access`） |
 | `output_contracts` | - | レポートファイルの出力契約定義 |
 | `quality_gates` | - | ムーブメント完了要件のAIディレクティブ |

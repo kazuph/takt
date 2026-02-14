@@ -229,7 +229,7 @@ steps:
     provider: codex                     # claude|codex (optional)
     model: opus                         # Model name (optional)
     edit: true                          # Whether step can edit files
-    permission_mode: acceptEdits        # Tool permission mode (optional)
+    required_permission_mode: edit       # Required minimum permission mode (optional)
     instruction_template: |
       Custom instructions for this step.
       {task}, {previous_response} are auto-injected if not present as placeholders.
@@ -500,10 +500,9 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 - Claude supports aliases: `opus`, `sonnet`, `haiku`
 - Codex defaults to `codex` if model not specified
 
-**Permission modes (v0.3.8+: provider-independent values):**
+**Permission modes (provider-independent values):**
 - `readonly`: Read-only access, no file modifications (Claude: `default`, Codex: `read-only`)
 - `edit`: Allow file edits with confirmation (Claude: `acceptEdits`, Codex: `workspace-write`)
 - `full`: Bypass all permission checks (Claude: `bypassPermissions`, Codex: `danger-full-access`)
-- Specified at step level (`permission_mode` field) or global config
-- **v0.3.8+:** Permission mode values are unified across providers; TAKT translates to provider-specific flags
-- Legacy values (`default`, `acceptEdits`, `bypassPermissions`) are **no longer supported**
+- Resolved via `provider_profiles` (global/project config) with `required_permission_mode` as minimum floor
+- Movement-level `required_permission_mode` sets the minimum; `provider_profiles` defaults/overrides can raise it

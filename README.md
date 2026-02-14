@@ -366,7 +366,7 @@ movements:
     policy: coding
     knowledge: architecture
     edit: true
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Implementation complete
         next: review
@@ -590,6 +590,16 @@ interactive_preview_movements: 3  # Movement previews in interactive mode (0-10,
 #   coder: codex             # Run coder on Codex
 #   ai-antipattern-reviewer: claude  # Keep reviewers on Claude
 
+# Provider-specific permission profiles (optional)
+# Priority: project override → global override → project default → global default → required_permission_mode (floor)
+# provider_profiles:
+#   codex:
+#     default_permission_mode: full
+#     movement_permission_overrides:
+#       ai_review: readonly
+#   claude:
+#     default_permission_mode: edit
+
 # API Key configuration (optional)
 # Can be overridden by environment variables TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY / TAKT_OPENCODE_API_KEY
 anthropic_api_key: sk-ant-...  # For Claude (Anthropic)
@@ -739,7 +749,7 @@ movements:
   - name: implement
     persona: coder
     edit: true
-    permission_mode: edit
+    required_permission_mode: edit
     pass_previous_response: true
     rules:
       - condition: Complete
@@ -808,7 +818,7 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure)
 | `allowed_tools` | - | List of tools agent can use (Read, Glob, Grep, Edit, Write, Bash, etc.) |
 | `provider` | - | Override provider for this movement (`claude`, `codex`, or `opencode`) |
 | `model` | - | Override model for this movement |
-| `permission_mode` | - | Permission mode: `readonly`, `edit`, `full` (provider-independent) |
+| `required_permission_mode` | - | Required minimum permission mode: `readonly`, `edit`, `full` (acts as floor; actual mode resolved via `provider_profiles`) |
 | `provider_options` | - | Provider-specific options (e.g. `codex.network_access`, `opencode.network_access`) |
 | `output_contracts` | - | Output contract definitions for report files |
 | `quality_gates` | - | AI directives for movement completion requirements |

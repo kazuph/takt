@@ -161,7 +161,7 @@ report:
 | `allowed_tools` | - | List of tools the agent can use (Read, Glob, Grep, Edit, Write, Bash, etc.) |
 | `provider` | - | Override provider for this step (`claude` or `codex`) |
 | `model` | - | Override model for this step |
-| `permission_mode` | `default` | Permission mode: `default`, `acceptEdits`, or `bypassPermissions` |
+| `required_permission_mode` | - | Required minimum permission mode: `readonly`, `edit`, or `full` (provider-independent) |
 | `report` | - | Report file configuration (name, format) for auto-generated reports |
 
 ## Examples
@@ -176,7 +176,7 @@ steps:
   - name: implement
     agent: ../agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    required_permission_mode: edit
     allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, WebSearch, WebFetch]
     rules:
       - condition: Implementation complete
@@ -197,7 +197,7 @@ steps:
   - name: implement
     agent: ../agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    required_permission_mode: edit
     allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, WebSearch, WebFetch]
     rules:
       - condition: Implementation complete
@@ -238,7 +238,7 @@ steps:
     agent: ../agents/default/coder.md
     edit: true
     pass_previous_response: true
-    permission_mode: acceptEdits
+    required_permission_mode: edit
     allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, WebSearch, WebFetch]
     rules:
       - condition: Implementation complete
