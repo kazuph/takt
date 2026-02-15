@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.1] - 2026-02-15
+
+### Changed
+
+- `.takt/.gitignore` テンプレートをホワイトリスト方式に変更 — デフォルトで全ファイルを無視し、`config.yaml` のみを追跡対象に。新しいファイルが追加されても ignore 漏れが発生しない
+
 ## [0.17.0] - 2026-02-15
 
 ### Added
