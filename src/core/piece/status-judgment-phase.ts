@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import type { PieceMovement, RuleMatchMethod } from '../models/types.js';
 import { judgeStatus } from './agent-usecases.js';
 import { StatusJudgmentBuilder, type StatusJudgmentContext } from './instruction/StatusJudgmentBuilder.js';
-import { getReportFiles } from './evaluation/rule-utils.js';
+import { getJudgmentReportFiles } from './evaluation/rule-utils.js';
 import { createLogger } from '../../shared/utils/index.js';
 import type { PhaseRunnerContext } from './phase-runner.js';
 
@@ -23,7 +23,7 @@ function buildBaseContext(
   step: PieceMovement,
   ctx: PhaseRunnerContext,
 ): Omit<StatusJudgmentContext, 'structuredOutput'> | undefined {
-  const reportFiles = getReportFiles(step.outputContracts);
+  const reportFiles = getJudgmentReportFiles(step.outputContracts);
 
   if (reportFiles.length > 0) {
     const reports: string[] = [];
@@ -41,6 +41,7 @@ function buildBaseContext(
         inputSource: 'report',
       };
     }
+    throw new Error(`Status judgment requires existing use_judge reports for movement "${step.name}"`);
   }
 
   if (!ctx.lastResponse) return undefined;

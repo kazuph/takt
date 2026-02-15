@@ -188,7 +188,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
         makeMovement('step', agentPath, [
           makeRule('Done', 'COMPLETE'),
           makeRule('Not done', 'ABORT'),
-        ], { outputContracts: [{ label: 'test', path: 'test-report.md' }] }),
+        ], { outputContracts: [{ name: 'test-report.md', format: 'test-report', useJudge: true }] }),
       ],
     };
 
@@ -217,7 +217,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
       movements: [
         makeMovement('step', agentPath, [
           makeRule('Done', 'COMPLETE'),
-        ], { outputContracts: [{ label: 'Scope', path: 'scope.md' }, { label: 'Decisions', path: 'decisions.md' }] }),
+        ], { outputContracts: [{ name: 'scope.md', format: 'scope', useJudge: true }, { name: 'decisions.md', format: 'decisions', useJudge: true }] }),
       ],
     };
 
@@ -320,7 +320,7 @@ describe('Three-Phase Execution IT: all three phases', () => {
         makeMovement('step', agentPath, [
           makeRule('Done', 'COMPLETE'),
           makeRule('Not done', 'ABORT'),
-        ], { outputContracts: [{ label: 'test', path: 'test-report.md' }] }),
+        ], { outputContracts: [{ name: 'test-report.md', format: 'test-report', useJudge: true }] }),
       ],
     };
 

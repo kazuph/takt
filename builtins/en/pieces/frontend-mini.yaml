@@ -1,5 +1,5 @@
-name: review-fix-minimal
-description: Review and fix piece for existing code (starts with review, no implementation)
+name: frontend-mini
+description: Frontend-focused mini development piece (plan -> implement -> parallel review -> fix if needed -> complete)
 piece_config:
   provider_options:
     codex:
@@ -7,14 +7,44 @@ piece_config:
     opencode:
       network_access: true
 max_movements: 20
-initial_movement: reviewers
+initial_movement: plan
 movements:
+  - name: plan
+    edit: false
+    persona: planner
+    knowledge:
+      - frontend
+      - security
+      - architecture
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+      - WebSearch
+      - WebFetch
+    rules:
+      - condition: Requirements are clear and implementation is possible
+        next: implement
+      - condition: User is asking a question (not an implementation task)
+        next: COMPLETE
+      - condition: Requirements are unclear, insufficient information
+        next: ABORT
+    instruction: plan
+    output_contracts:
+      report:
+        - name: 00-plan.md
+          format: plan
   - name: implement
     edit: true
     persona: coder
     policy:
       - coding
       - testing
+    knowledge:
+      - frontend
+      - security
+      - architecture
     allowed_tools:
       - Read
       - Glob
@@ -67,6 +97,10 @@ movements:
         edit: false
         persona: supervisor
         policy: review
+        knowledge:
+          - frontend
+          - security
+          - architecture
         allowed_tools:
           - Read
           - Glob
@@ -102,6 +136,10 @@ movements:
         policy:
           - coding
           - testing
+        knowledge:
+          - frontend
+          - security
+          - architecture
         allowed_tools:
           - Read
           - Glob
@@ -122,6 +160,10 @@ movements:
         policy:
           - coding
           - testing
+        knowledge:
+          - frontend
+          - security
+          - architecture
         allowed_tools:
           - Read
           - Glob
@@ -146,6 +188,10 @@ movements:
     policy:
       - coding
       - testing
+    knowledge:
+      - frontend
+      - security
+      - architecture
     allowed_tools:
       - Read
       - Glob
@@ -171,6 +217,10 @@ movements:
     policy:
       - coding
       - testing
+    knowledge:
+      - frontend
+      - security
+      - architecture
     allowed_tools:
       - Read
       - Glob

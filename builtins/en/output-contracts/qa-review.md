@@ -15,13 +15,22 @@
 | Documentation | ✅ | - |
 | Maintainability | ✅ | - |
 
-## Previous Open Findings
-| finding_id | Previous Status | Current Status (new/persists/resolved) | Evidence |
-|------------|-----------------|-----------------------------------------|----------|
-| QA-EXAMPLE-src-file-L42 | open | persists | `src/file.ts:42` |
+## Current Iteration Findings (new)
+| # | finding_id | Category | Location | Issue | Fix Suggestion |
+|---|------------|----------|----------|-------|----------------|
+| 1 | QA-NEW-src-test-L42 | Testing | `src/test.ts:42` | Missing negative test | Add failure-path test |
 
-## Issues (if REJECT)
-| # | finding_id | Status (new/persists) | Category | Issue | Fix Suggestion |
-|---|------------|-----------------------|----------|-------|----------------|
-| 1 | QA-EXAMPLE-src-file-L42 | new | Testing | Issue description | Fix approach |
+## Carry-over Findings (persists)
+| # | finding_id | Previous Evidence | Current Evidence | Issue | Fix Suggestion |
+|---|------------|-------------------|------------------|-------|----------------|
+| 1 | QA-PERSIST-src-test-L77 | `src/test.ts:77` | `src/test.ts:77` | Still flaky | Stabilize assertion & setup |
+
+## Resolved Findings (resolved)
+| finding_id | Resolution Evidence |
+|------------|---------------------|
+| QA-RESOLVED-src-test-L10 | `src/test.ts:10` now covers error path |
+
+## Rejection Gate
+- REJECT is valid only when at least one finding exists in `new` or `persists`
+- Findings without `finding_id` are invalid
 ```

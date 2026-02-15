@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 10
 initial_movement: plan
 movements:
@@ -109,6 +108,7 @@ movements:
       調査結果を評価し、元の依頼に対して十分な回答になっているか判断してください。
 
       **重要**: 問題がある場合は、Plannerへの具体的な指示を含めてください。
+    pass_previous_response: false
     rules:
       - condition: 調査結果が元の依頼に対して十分である
         next: COMPLETE

@@ -6,10 +6,7 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
-
 max_movements: 3
-
 movements:
   - name: execute
     edit: true
@@ -21,7 +18,8 @@ movements:
     required_permission_mode: edit
     output_contracts:
       report:
-        - Report: report.md
+        - name: report.md
+          format: report
     instruction_template: |
       {task}
     rules:

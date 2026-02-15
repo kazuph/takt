@@ -6,13 +6,12 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
-
 max_movements: 20
 initial_movement: review
-
 loop_monitors:
-  - cycle: [review, fix]
+  - cycle:
+      - review
+      - fix
     threshold: 2
     judge:
       persona: ../agents/test-reviewer-b.md
@@ -21,7 +20,6 @@ loop_monitors:
           next: review
         - condition: abort_loop
           next: ABORT
-
 movements:
   - name: review
     persona: ../agents/test-reviewer-a.md
@@ -32,7 +30,6 @@ movements:
         next: COMPLETE
       - condition: needs_fix
         next: fix
-
   - name: fix
     persona: ../agents/test-coder.md
     edit: true

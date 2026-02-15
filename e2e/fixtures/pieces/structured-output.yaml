@@ -6,10 +6,7 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
-
 max_movements: 5
-
 movements:
   - name: execute
     edit: false

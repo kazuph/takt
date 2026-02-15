@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 30
 initial_movement: plan
 movements:
@@ -65,8 +64,10 @@ movements:
         interactive_only: true
     output_contracts:
       report:
-        - Scope: 01-coder-scope.md
-        - Decisions: 02-coder-decisions.md
+        - name: coder-scope.md
+          format: coder-scope
+        - name: coder-decisions.md
+          format: coder-decisions
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
@@ -111,6 +112,7 @@ movements:
       - WebSearch
       - WebFetch
     instruction: ai-fix
+    pass_previous_response: false
     rules:
       - condition: AI Reviewerの指摘に対する修正が完了した
         next: ai_review
@@ -220,6 +222,7 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: 修正が完了した
         next: reviewers
@@ -237,6 +240,7 @@ movements:
       - WebSearch
       - WebFetch
     instruction: supervise
+    pass_previous_response: false
     rules:
       - condition: すべての検証が完了し、マージ可能な状態である
         next: COMPLETE
@@ -244,8 +248,11 @@ movements:
         next: fix_supervisor
     output_contracts:
       report:
-        - Validation: 07-supervisor-validation.md
-        - Summary: summary.md
+        - name: supervisor-validation.md
+          format: supervisor-validation
+        - name: summary.md
+          format: summary
+          use_judge: false
   - name: fix_supervisor
     edit: true
     persona: coder
@@ -267,6 +274,7 @@ movements:
       - WebSearch
       - WebFetch
     instruction: fix-supervisor
+    pass_previous_response: false
     rules:
       - condition: 監督者の指摘に対する修正が完了した
         next: supervise

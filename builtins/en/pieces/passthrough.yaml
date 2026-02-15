@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 10
 initial_movement: execute
 movements:
@@ -39,4 +38,6 @@ movements:
       Do the task.
     output_contracts:
       report:
-        - Summary: summary.md
+        - name: summary.md
+          format: summary
+          use_judge: false

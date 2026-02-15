@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 20
 initial_movement: plan_test
 loop_monitors:
@@ -65,7 +64,6 @@ movements:
       report:
         - name: 00-test-plan.md
           format: test-plan
-
   - name: implement_test
     edit: true
     persona: coder
@@ -100,9 +98,10 @@ movements:
     instruction: implement-e2e-test
     output_contracts:
       report:
-        - Scope: 02-coder-scope.md
-        - Decisions: 03-coder-decisions.md
-
+        - name: coder-scope.md
+          format: coder-scope
+        - name: coder-decisions.md
+          format: coder-decisions
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
@@ -125,7 +124,6 @@ movements:
       report:
         - name: 04-ai-review.md
           format: ai-review
-
   - name: ai_fix
     edit: true
     persona: coder
@@ -146,6 +144,7 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: AI問題の修正完了
         next: ai_review
@@ -154,7 +153,6 @@ movements:
       - condition: 判断できない、情報不足
         next: ai_no_fix
     instruction: ai-fix
-
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
@@ -169,7 +167,6 @@ movements:
       - condition: ai_fixの判断が妥当（修正不要）
         next: review_test
     instruction: arbitrate
-
   - name: review_test
     edit: false
     persona: qa-reviewer
@@ -192,7 +189,6 @@ movements:
       report:
         - name: 05-qa-review.md
           format: qa-review
-
   - name: fix
     edit: true
     persona: coder
@@ -213,13 +209,13 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: 修正完了
         next: review_test
       - condition: 判断できない、情報不足
         next: plan_test
     instruction: fix
-
   - name: supervise
     edit: false
     persona: supervisor
@@ -231,6 +227,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
+    pass_previous_response: false
     rules:
       - condition: すべて問題なし
         next: COMPLETE
@@ -239,5 +236,8 @@ movements:
     instruction: supervise
     output_contracts:
       report:
-        - Validation: 06-supervisor-validation.md
-        - Summary: summary.md
+        - name: supervisor-validation.md
+          format: supervisor-validation
+        - name: summary.md
+          format: summary
+          use_judge: false

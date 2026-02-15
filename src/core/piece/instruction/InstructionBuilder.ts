@@ -267,16 +267,12 @@ export function renderReportContext(
 
   if (outputContracts.length === 1) {
     const entry = outputContracts[0]!;
-    const fileName = isOutputContractItem(entry) ? entry.name : entry.path;
+    const fileName = entry.name;
     lines.push(`- ${reportFile}: ${reportDir}/${fileName}`);
   } else {
     lines.push(`- ${reportFiles}:`);
     for (const entry of outputContracts) {
-      if (isOutputContractItem(entry)) {
-        lines.push(`  - ${entry.name}: ${reportDir}/${entry.name}`);
-      } else {
-        lines.push(`  - ${entry.label}: ${reportDir}/${entry.path}`);
-      }
+      lines.push(`  - ${entry.name}: ${reportDir}/${entry.name}`);
     }
   }
 

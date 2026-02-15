@@ -14,22 +14,28 @@
 - [x] Dead code
 - [x] Call chain verification
 
-## Previous Open Findings
-| finding_id | Previous Status | Current Status (new/persists/resolved) | Evidence |
-|------------|-----------------|-----------------------------------------|----------|
-| ARCH-EXAMPLE-src-file-L42 | open | persists | `src/file.ts:42` |
-
-## Issues (if REJECT)
-| # | finding_id | Status (new/persists) | Scope | Location | Issue | Fix Suggestion |
-|---|------------|-----------------------|-------|----------|-------|----------------|
-| 1 | ARCH-EXAMPLE-src-file-L42 | new | In-scope | `src/file.ts:42` | Issue description | Fix approach |
+## Current Iteration Findings (new)
+| # | finding_id | Scope | Location | Issue | Fix Suggestion |
+|---|------------|-------|----------|-------|----------------|
+| 1 | ARCH-NEW-src-file-L42 | In-scope | `src/file.ts:42` | Issue description | Fix approach |
 
 Scope: "In-scope" (fixable in this change) / "Out-of-scope" (existing issue, non-blocking)
 
-## Existing Issues (reference, non-blocking)
-- {Record of existing issues unrelated to the current change}
+## Carry-over Findings (persists)
+| # | finding_id | Previous Evidence | Current Evidence | Issue | Fix Suggestion |
+|---|------------|-------------------|------------------|-------|----------------|
+| 1 | ARCH-PERSIST-src-file-L77 | `src/file.ts:77` | `src/file.ts:77` | Still unresolved | Apply prior fix plan |
+
+## Resolved Findings (resolved)
+| finding_id | Resolution Evidence |
+|------------|---------------------|
+| ARCH-RESOLVED-src-file-L10 | `src/file.ts:10` now satisfies the rule |
+
+## Rejection Gate
+- REJECT is valid only when at least one finding exists in `new` or `persists`
+- Findings without `finding_id` are invalid
 ```
 
 **Cognitive load reduction rules:**
 - APPROVE → Summary only (5 lines or fewer)
-- REJECT → Issues in table format (30 lines or fewer)
+- REJECT → Include only relevant finding rows (30 lines or fewer)

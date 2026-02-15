@@ -6,12 +6,8 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
-
 max_movements: 2
-
 initial_movement: step-a
-
 movements:
   - name: step-a
     edit: true
@@ -22,7 +18,6 @@ movements:
     rules:
       - condition: Done
         next: step-b
-
   - name: step-b
     edit: true
     persona: ../agents/test-coder.md
