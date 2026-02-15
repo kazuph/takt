@@ -467,7 +467,9 @@ TAKT includes multiple builtin pieces:
 | `review-fix-minimal` | Review-focused piece: review → fix → supervisor. For iterative improvement based on review feedback. |
 | `research` | Research piece: planner → digger → supervisor. Autonomously executes research without asking questions. |
 | `expert` | Full-stack development piece: architecture, frontend, security, QA reviews with fix loops. |
+| `expert-mini` | Mini expert piece: plan → implement → parallel review (AI antipattern + expert supervisor) with full-stack knowledge injection. |
 | `expert-cqrs` | Full-stack development piece (CQRS+ES specialized): CQRS+ES, frontend, security, QA reviews with fix loops. |
+| `expert-cqrs-mini` | Mini CQRS+ES expert piece: plan → implement → parallel review (AI antipattern + expert supervisor) with CQRS+ES knowledge injection. |
 | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
 | `passthrough` | Thinnest wrapper. Pass task directly to coder as-is. No review. |
 | `compound-eye` | Multi-model review: sends the same instruction to Claude and Codex simultaneously, then synthesizes both responses. |

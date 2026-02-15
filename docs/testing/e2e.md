@@ -43,7 +43,7 @@ E2Eテストを追加・変更した場合は、このドキュメントも更�
     - `.takt/tasks.yaml` にタスクを作成（`piece` は `e2e/fixtures/pieces/simple.yaml` を指定）。
     - `takt run` を実行する。
     - `README.md` に行が追加されることを確認する。
-    - 実行後にタスクが `tasks.yaml` から消えることを確認する。
+    - 実行後にタスクが `tasks.yaml` で `completed` ステータスになることを確認する。
 - Worktree/Clone isolation（`e2e/specs/worktree.e2e.ts`）
   - 目的: `--create-worktree yes` 指定で隔離環境に実行されることを確認。
   - LLM: 条件付き（`TAKT_E2E_PROVIDER` が `claude` / `codex` の場合に呼び出す）

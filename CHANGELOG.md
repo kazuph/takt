@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.2] - 2026-02-15
+
+### Added
+
+- `expert-mini`、`expert-cqrs-mini` ピースを追加 — Expert ピースの軽量版として、plan → implement → 並列レビュー（AI アンチパターン＋スーパーバイザー）→ 修正のワークフローを提供
+- ピースカテゴリの「⚡ Mini」「🔧 エキスパート」に新ピースを追加
+
+### Fixed
+
+- パーミッションモード未解決時にエラーをスローしていた問題を修正 — `readonly` にフォールバックするように変更
+
 ## [0.17.1] - 2026-02-15
 
 ### Changed

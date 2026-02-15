@@ -74,10 +74,10 @@ describe('E2E: Add task and run (takt add → takt run)', () => {
     const readme = readFileSync(readmePath, 'utf-8');
     expect(readme).toContain('E2E test passed');
 
-    // Verify completed task was removed from tasks.yaml
+    // Verify completed task is marked as completed in tasks.yaml
     const tasksRaw = readFileSync(tasksFile, 'utf-8');
     const parsed = parseYaml(tasksRaw) as { tasks?: Array<{ name?: string; status?: string }> };
     const executed = parsed.tasks?.find((task) => task.name === 'e2e-test-task');
-    expect(executed).toBeUndefined();
+    expect(executed?.status).toBe('completed');
   }, 240_000);
 });
