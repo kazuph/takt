@@ -15,13 +15,22 @@
 | ドキュメント | ✅ | - |
 | 保守性 | ✅ | - |
 
-## 前回Open Findings
-| finding_id | 前回状態 | 今回状態(new/persists/resolved) | 根拠 |
-|------------|----------|----------------------------------|------|
-| QA-EXAMPLE-src-file-L42 | open | persists | `src/file.ts:42` |
+## 今回の指摘（new）
+| # | finding_id | カテゴリ | 場所 | 問題 | 修正案 |
+|---|------------|---------|------|------|--------|
+| 1 | QA-NEW-src-test-L42 | テスト | `src/test.ts:42` | 異常系テスト不足 | 失敗系ケースを追加 |
 
-## 問題点（REJECTの場合）
-| # | finding_id | 状態(new/persists) | カテゴリ | 問題 | 修正案 |
-|---|------------|--------------------|---------|------|--------|
-| 1 | QA-EXAMPLE-src-file-L42 | new | テスト | 問題の説明 | 修正方法 |
+## 継続指摘（persists）
+| # | finding_id | 前回根拠 | 今回根拠 | 問題 | 修正案 |
+|---|------------|----------|----------|------|--------|
+| 1 | QA-PERSIST-src-test-L77 | `src/test.ts:77` | `src/test.ts:77` | 不安定なまま | アサーションとセットアップを安定化 |
+
+## 解消済み（resolved）
+| finding_id | 解消根拠 |
+|------------|----------|
+| QA-RESOLVED-src-test-L10 | `src/test.ts:10` で異常系が網羅済み |
+
+## REJECT判定条件
+- `new` または `persists` が1件以上ある場合のみ REJECT 可
+- `finding_id` なしの指摘は無効
 ```

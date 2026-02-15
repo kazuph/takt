@@ -6,10 +6,8 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 10
 initial_movement: evaluate
-
 movements:
   - name: evaluate
     parallel:
@@ -30,8 +28,27 @@ movements:
           - condition: failed
         output_contracts:
           report:
-            - name: 01-claude.md
+            - name: claude-review.md
+              format: |
+                ```markdown
+                # Claudeレビュー結果
 
+                ## 結論
+                {1行結論}
+
+                ## 主要な指摘
+                - {finding 1}
+                - {finding 2}
+
+                ## 根拠
+                - {file:line と理由}
+
+                ## リスク / 注意点
+                - {risk}
+
+                ## 推奨次アクション
+                - {action}
+                ```
       - name: codex-eye
         edit: false
         persona: coder
@@ -49,11 +66,30 @@ movements:
           - condition: failed
         output_contracts:
           report:
-            - name: 02-codex.md
+            - name: codex-review.md
+              format: |
+                ```markdown
+                # Codexレビュー結果
+
+                ## 結論
+                {1行結論}
+
+                ## 主要な指摘
+                - {finding 1}
+                - {finding 2}
+
+                ## 根拠
+                - {file:line と理由}
+
+                ## リスク / 注意点
+                - {risk}
+
+                ## 推奨次アクション
+                - {action}
+                ```
     rules:
       - condition: any("done")
         next: synthesize
-
   - name: synthesize
     edit: false
     persona: supervisor
@@ -70,8 +106,8 @@ movements:
 
       **やること:**
       1. Report Directory 内のレポートを読む
-         - `01-claude.md`（Claude の回答）
-         - `02-codex.md`（Codex の回答）
+         - `claude-review.md`（Claude の回答）
+         - `codex-review.md`（Codex の回答）
          ※ 片方が存在しない場合（エラーで失敗した場合）、存在するレポートのみで統合する
       2. 両方のレポートがある場合は比較し、以下を明示する
          - 一致している点
@@ -109,4 +145,32 @@ movements:
       ```
     output_contracts:
       report:
-        - Summary: 03-synthesis.md
+        - name: synthesis.md
+          format: |
+            ```markdown
+            # 複数モデルレビュー統合
+
+            ## 結論
+            {統合結論}
+
+            ## 応答状況
+            | モデル | 状態 |
+            |--------|------|
+            | Claude | ✅ / ❌ |
+            | Codex | ✅ / ❌ |
+
+            ## 一致点
+            - {両者が一致した点}
+
+            ## 相違点
+            | 論点 | Claude | Codex |
+            |------|--------|-------|
+            | {topic} | {Claudeの見解} | {Codexの見解} |
+
+            ## 片側のみの指摘
+            - **Claudeのみ:** {Claudeのみが言及}
+            - **Codexのみ:** {Codexのみが言及}
+
+            ## 総合評価
+            {両者を踏まえた総合評価}
+            ```

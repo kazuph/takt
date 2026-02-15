@@ -16,7 +16,7 @@ import type {
 } from '../../models/types.js';
 import type { PhaseName } from '../types.js';
 import { executeAgent } from '../agent-usecases.js';
-import { InstructionBuilder, isOutputContractItem } from '../instruction/InstructionBuilder.js';
+import { InstructionBuilder } from '../instruction/InstructionBuilder.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { buildSessionKey } from '../session-key.js';
@@ -257,7 +257,7 @@ export class MovementExecutor {
     const baseDir = join(this.deps.getCwd(), this.deps.getReportDir());
 
     for (const entry of step.outputContracts) {
-      const fileName = isOutputContractItem(entry) ? entry.name : entry.path;
+      const fileName = entry.name;
       this.checkReportFile(step, baseDir, fileName);
     }
   }

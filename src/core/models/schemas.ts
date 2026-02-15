@@ -119,52 +119,35 @@ export const PieceProviderOptionsSchema = z.object({
  *
  * YAML format:
  *   output_contracts:
- *     - name: 00-plan.md
- *       order: |
- *         **レポート出力:** {report:00-plan.md} に出力してください。
- *       format: |
- *         **出力契約:**
- *         ```markdown
- *         ...
- *         ```
+ *     report:
+ *       - name: 00-plan.md
+ *         format: plan
+ *         use_judge: true
  */
 export const OutputContractItemSchema = z.object({
   /** Report file name */
   name: z.string().min(1),
+  /** Instruction appended after instruction_template (e.g., output format) */
+  format: z.string().min(1),
+  /** Whether this report is used as input for status judgment phase */
+  use_judge: z.boolean().optional().default(true),
   /** Instruction prepended before instruction_template (e.g., output destination) */
   order: z.string().optional(),
-  /** Instruction appended after instruction_template (e.g., output format) */
-  format: z.string().optional(),
 });
-
-/**
- * Raw output contract entry — array item in output_contracts.report
- *
- * Supports:
- *   - Label:path format: { Scope: "01-scope.md" }
- *   - Item format: { name, order?, format? }
- */
-export const OutputContractEntrySchema = z.union([
-  z.record(z.string(), z.string()),  // {Scope: "01-scope.md"} format
-  OutputContractItemSchema,           // {name, order?, format?} format
-]);
 
 /**
  * Output contracts field schema for movement-level definition.
  *
  * YAML format:
  *   output_contracts:
- *     report:                           # report array (required if output_contracts is specified)
- *       - Scope: 01-scope.md            # label:path format
- *       - Decisions: 02-decisions.md
- *   output_contracts:
  *     report:
- *       - name: 00-plan.md              # name + order + format format
+ *       - name: 00-plan.md
  *         order: ...
  *         format: plan
+ *         use_judge: true
  */
 export const OutputContractsFieldSchema = z.object({
-  report: z.array(OutputContractEntrySchema).optional(),
+  report: z.array(OutputContractItemSchema).optional(),
 }).optional();
 
 /** Quality gates schema - AI directives for movement completion (string array) */

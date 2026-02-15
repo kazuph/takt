@@ -10,7 +10,7 @@ import { dirname, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import type { z } from 'zod';
 import { PieceConfigRawSchema, PieceMovementRawSchema } from '../../../core/models/index.js';
-import type { PieceConfig, PieceMovement, PieceRule, OutputContractEntry, OutputContractLabelPath, OutputContractItem, LoopMonitorConfig, LoopMonitorJudge, ArpeggioMovementConfig, ArpeggioMergeMovementConfig, TeamLeaderConfig } from '../../../core/models/index.js';
+import type { PieceConfig, PieceMovement, PieceRule, OutputContractEntry, OutputContractItem, LoopMonitorConfig, LoopMonitorJudge, ArpeggioMovementConfig, ArpeggioMergeMovementConfig, TeamLeaderConfig } from '../../../core/models/index.js';
 import { getLanguage } from '../global/globalConfig.js';
 import {
   type PieceSections,
@@ -93,51 +93,47 @@ function normalizeRuntimeConfig(raw: RawPiece['piece_config']): PieceRuntimeConf
   };
 }
 
-/** Check if a raw output contract item is the object form (has 'name' property). */
-function isOutputContractItem(raw: unknown): raw is { name: string; order?: string; format?: string } {
-  return typeof raw === 'object' && raw !== null && !Array.isArray(raw) && 'name' in raw;
-}
-
 /**
  * Normalize the raw output_contracts field from YAML into internal format.
  *
  * Input format (YAML):
  *   output_contracts:
  *     report:
- *       - Scope: 01-scope.md           # label:path format
- *       - name: 00-plan.md             # item format
+ *       - name: 00-plan.md
  *         format: plan
+ *         use_judge: true
  *
  * Output: OutputContractEntry[]
  */
 function normalizeOutputContracts(
-  raw: { report?: Array<Record<string, string> | { name: string; order?: string; format?: string }> } | undefined,
+  raw: { report?: Array<{ name: string; format: string; use_judge?: boolean; order?: string }> } | undefined,
   pieceDir: string,
   resolvedReportFormats?: Record<string, string>,
   context?: FacetResolutionContext,
 ): OutputContractEntry[] | undefined {
   if (raw?.report == null || raw.report.length === 0) return undefined;
 
-  const result: OutputContractEntry[] = [];
+  const result: OutputContractItem[] = raw.report.map((entry) => {
+    const resolvedFormat = resolveRefToContent(entry.format, resolvedReportFormats, pieceDir, 'output-contracts', context);
+    if (!resolvedFormat) {
+      throw new Error(`Failed to resolve output contract format "${entry.format}" for report "${entry.name}"`);
+    }
 
-  for (const entry of raw.report) {
-    if (isOutputContractItem(entry)) {
-      // Item format: {name, order?, format?}
-      const item: OutputContractItem = {
-        name: entry.name,
-        order: entry.order ? resolveRefToContent(entry.order, resolvedReportFormats, pieceDir, 'output-contracts', context) : undefined,
-        format: entry.format ? resolveRefToContent(entry.format, resolvedReportFormats, pieceDir, 'output-contracts', context) : undefined,
-      };
-      result.push(item);
-    } else {
-      // Label:path format: {Scope: "01-scope.md"}
-      for (const [label, path] of Object.entries(entry)) {
-        const labelPath: OutputContractLabelPath = { label, path };
-        result.push(labelPath);
+    let resolvedOrder: string | undefined;
+    if (entry.order) {
+      resolvedOrder = resolveRefToContent(entry.order, resolvedReportFormats, pieceDir, 'output-contracts', context);
+      if (!resolvedOrder) {
+        throw new Error(`Failed to resolve output contract order "${entry.order}" for report "${entry.name}"`);
       }
     }
-  }
 
+    return {
+      name: entry.name,
+      useJudge: entry.use_judge ?? true,
+      format: resolvedFormat,
+      order: resolvedOrder,
+    };
+  });
   return result.length > 0 ? result : undefined;
 }
 

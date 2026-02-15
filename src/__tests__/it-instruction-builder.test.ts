@@ -281,7 +281,7 @@ describe('Instruction Builder IT: buildReportInstruction', () => {
   it('should build report instruction with report context', () => {
     const step = makeMovement({
       name: 'plan',
-      outputContracts: [{ name: '00-plan.md', format: '# Plan\n{movement_iteration}' }],
+      outputContracts: [{ name: '00-plan.md', format: '# Plan\n{movement_iteration}', useJudge: true }],
     });
 
     const result = buildReportInstruction(step, {

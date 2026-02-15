@@ -4,7 +4,6 @@ export type {
   Status,
   RuleMatchMethod,
   PermissionMode,
-  OutputContractLabelPath,
   OutputContractItem,
   OutputContractEntry,
   McpServerConfig,

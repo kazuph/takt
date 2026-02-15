@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 20
 initial_movement: implement
 movements:
@@ -38,8 +37,10 @@ movements:
         interactive_only: true
     output_contracts:
       report:
-        - Scope: 01-coder-scope.md
-        - Decisions: 02-coder-decisions.md
+        - name: coder-scope.md
+          format: coder-scope
+        - name: coder-decisions.md
+          format: coder-decisions
   - name: reviewers
     parallel:
       - name: ai_review
@@ -79,8 +80,11 @@ movements:
           - condition: 要求未達成、テスト失敗、ビルドエラー
         output_contracts:
           report:
-            - Validation: 05-supervisor-validation.md
-            - Summary: summary.md
+            - name: supervisor-validation.md
+              format: supervisor-validation
+            - name: summary.md
+              format: summary
+              use_judge: false
     rules:
       - condition: all("AI特有の問題なし", "すべて問題なし")
         next: COMPLETE
@@ -152,6 +156,7 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: AI問題の修正完了
         next: reviewers
@@ -176,6 +181,7 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: 監督者の指摘に対する修正が完了した
         next: reviewers

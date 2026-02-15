@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 10
 initial_movement: evaluate
 movements:
@@ -30,7 +29,27 @@ movements:
           - condition: failed
         output_contracts:
           report:
-            - name: 01-claude.md
+            - name: claude-review.md
+              format: |
+                ```markdown
+                # Claude Review Result
+
+                ## Conclusion
+                {One-line conclusion}
+
+                ## Key Findings
+                - {finding 1}
+                - {finding 2}
+
+                ## Evidence
+                - {file:line and rationale}
+
+                ## Risks / Caveats
+                - {risk}
+
+                ## Recommended Next Step
+                - {action}
+                ```
       - name: codex-eye
         edit: false
         persona: coder
@@ -49,11 +68,30 @@ movements:
           - condition: failed
         output_contracts:
           report:
-            - name: 02-codex.md
+            - name: codex-review.md
+              format: |
+                ```markdown
+                # Codex Review Result
+
+                ## Conclusion
+                {One-line conclusion}
+
+                ## Key Findings
+                - {finding 1}
+                - {finding 2}
+
+                ## Evidence
+                - {file:line and rationale}
+
+                ## Risks / Caveats
+                - {risk}
+
+                ## Recommended Next Step
+                - {action}
+                ```
     rules:
       - condition: any("done")
         next: synthesize
-
   - name: synthesize
     edit: false
     persona: supervisor
@@ -70,8 +108,8 @@ movements:
 
       **Tasks:**
       1. Read reports in the Report Directory
-         - `01-claude.md` (Claude's response)
-         - `02-codex.md` (Codex's response)
+         - `claude-review.md` (Claude's response)
+         - `codex-review.md` (Codex's response)
          Note: If one report is missing (model failed), synthesize from the available report only
       2. If both reports exist, compare and clarify:
          - Points of agreement
@@ -109,4 +147,32 @@ movements:
       ```
     output_contracts:
       report:
-        - Summary: 03-synthesis.md
+        - name: synthesis.md
+          format: |
+            ```markdown
+            # Multi-Model Review Synthesis
+
+            ## Conclusion
+            {Synthesized conclusion}
+
+            ## Response Status
+            | Model | Status |
+            |-------|--------|
+            | Claude | ✅ / ❌ |
+            | Codex | ✅ / ❌ |
+
+            ## Agreements
+            - {Points where both models agree}
+
+            ## Disagreements
+            | Topic | Claude | Codex |
+            |-------|--------|-------|
+            | {topic} | {Claude's view} | {Codex's view} |
+
+            ## Unique Findings
+            - **Claude only:** {Points only Claude mentioned}
+            - **Codex only:** {Points only Codex mentioned}
+
+            ## Overall Assessment
+            {Overall assessment considering both responses}
+            ```

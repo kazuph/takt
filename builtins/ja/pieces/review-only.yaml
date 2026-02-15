@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 10
 initial_movement: plan
 movements:
@@ -119,6 +118,7 @@ movements:
       - Grep
       - WebSearch
       - WebFetch
+    pass_previous_response: false
     rules:
       - condition: approved, PR comment requested
         next: pr-comment
@@ -170,7 +170,45 @@ movements:
       ```
     output_contracts:
       report:
-        - Review Summary: 04-review-summary.md
+        - name: review-summary.md
+          format: |
+            ```markdown
+            # レビューサマリー
+
+            ## 総合判定: APPROVE / REJECT
+
+            ## サマリー
+            {2-3文で全レビュー結果を統合}
+
+            ## レビュー結果
+            | レビュー | 結果 | 主要な発見 |
+            |---------|------|-----------|
+            | アーキテクチャ | APPROVE/REJECT | {概要} |
+            | セキュリティ | APPROVE/REJECT | {概要} |
+            | AIアンチパターン | APPROVE/REJECT | {概要} |
+
+            ## 今回の指摘（new）
+            | # | finding_id | 重大度 | ソース | 場所 | 問題 | 修正案 |
+            |---|------------|--------|--------|------|------|--------|
+            | 1 | SUM-NEW-src-file-L42 | High | セキュリティ | `file:line` | 説明 | 提案 |
+
+            ## 継続指摘（persists）
+            | # | finding_id | ソース | 前回根拠 | 今回根拠 | 問題 |
+            |---|------------|--------|----------|----------|------|
+            | 1 | SUM-PERSIST-src-file-L77 | アーキテクチャ | `file:line` | `file:line` | 説明 |
+
+            ## 解消済み（resolved）
+            | finding_id | ソース | 解消根拠 |
+            |------------|--------|----------|
+            | SUM-RESOLVED-src-file-L10 | QA | `file:line` |
+
+            ## 改善提案
+            - {全レビューからの統合提案}
+
+            ## REJECT判定条件
+            - `new` または `persists` が1件以上ある場合のみ REJECT 可
+            - `finding_id` なしの指摘は無効
+            ```
   - name: pr-comment
     edit: false
     persona: pr-commenter
@@ -196,14 +234,14 @@ movements:
          - `01-architect-review.md`（アーキテクチャレビュー）
          - `02-security-review.md`（セキュリティレビュー）
          - `03-ai-review.md`（AIアンチパターンレビュー）
-         - `04-review-summary.md`（統合サマリー）
+         - `review-summary.md`（統合サマリー）
       3. 重要度でフィルタリングし、Critical/High/Mediumの指摘をインラインコメントとして投稿
       4. 以下のフォーマットでサマリーコメントを投稿:
 
       ```
       ## 自動レビューサマリー
 
-      {04-review-summary.mdからの総合判定とサマリー}
+      {review-summary.mdからの総合判定とサマリー}
 
       ### レビュー結果
       | レビュー | 結果 |

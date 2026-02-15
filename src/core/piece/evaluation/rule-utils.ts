@@ -3,7 +3,6 @@
  */
 
 import type { PieceMovement, OutputContractEntry } from '../../models/types.js';
-import { isOutputContractItem } from '../instruction/InstructionBuilder.js';
 
 /**
  * Check whether a movement has tag-based rules (i.e., rules that require
@@ -42,8 +41,15 @@ export function getAutoSelectedTag(step: PieceMovement): string {
  */
 export function getReportFiles(outputContracts: OutputContractEntry[] | undefined): string[] {
   if (!outputContracts || outputContracts.length === 0) return [];
-  return outputContracts.map((entry) => {
-    if (isOutputContractItem(entry)) return entry.name;
-    return entry.path;
-  });
+  return outputContracts.map((entry) => entry.name);
+}
+
+/**
+ * Get report file names that are eligible for Phase 3 status judgment.
+ */
+export function getJudgmentReportFiles(outputContracts: OutputContractEntry[] | undefined): string[] {
+  if (!outputContracts || outputContracts.length === 0) return [];
+  return outputContracts
+    .filter((entry) => entry.useJudge !== false)
+    .map((entry) => entry.name);
 }

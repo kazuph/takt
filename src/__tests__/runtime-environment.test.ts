@@ -52,7 +52,7 @@ describe('prepareRuntimeEnvironment', () => {
     expect(result).toBeDefined();
     expect(result?.prepare).toEqual(['gradle', 'node']);
 
-    const runtimeRoot = join(cwd, '.runtime');
+    const runtimeRoot = join(cwd, '.takt', '.runtime');
     expect(existsSync(runtimeRoot)).toBe(true);
     expect(existsSync(join(runtimeRoot, 'tmp'))).toBe(true);
     expect(existsSync(join(runtimeRoot, 'cache'))).toBe(true);
@@ -89,8 +89,8 @@ describe('prepareRuntimeEnvironment', () => {
     });
 
     expect(result).toBeDefined();
-    expect(result?.injectedEnv.CUSTOM_CACHE_DIR).toBe(join(cwd, '.runtime', 'custom-cache'));
-    expect(existsSync(join(cwd, '.runtime', 'custom-cache'))).toBe(true);
+    expect(result?.injectedEnv.CUSTOM_CACHE_DIR).toBe(join(cwd, '.takt', '.runtime', 'custom-cache'));
+    expect(existsSync(join(cwd, '.takt', '.runtime', 'custom-cache'))).toBe(true);
   });
 });
 

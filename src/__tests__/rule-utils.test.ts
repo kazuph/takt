@@ -131,24 +131,24 @@ describe('getReportFiles', () => {
 
   it('should extract name from OutputContractItem entries', () => {
     const contracts: OutputContractEntry[] = [
-      { name: '00-plan.md' },
-      { name: '01-review.md' },
+      { name: '00-plan.md', format: '00-plan', useJudge: true },
+      { name: '01-review.md', format: '01-review', useJudge: true },
     ];
     expect(getReportFiles(contracts)).toEqual(['00-plan.md', '01-review.md']);
   });
 
   it('should extract path from OutputContractLabelPath entries', () => {
     const contracts: OutputContractEntry[] = [
-      { label: 'Scope', path: 'scope.md' },
-      { label: 'Decisions', path: 'decisions.md' },
+      { name: 'scope.md', format: 'scope', useJudge: true },
+      { name: 'decisions.md', format: 'decisions', useJudge: true },
     ];
     expect(getReportFiles(contracts)).toEqual(['scope.md', 'decisions.md']);
   });
 
   it('should handle mixed entry types', () => {
     const contracts: OutputContractEntry[] = [
-      { name: '00-plan.md' },
-      { label: 'Review', path: 'review.md' },
+      { name: '00-plan.md', format: '00-plan', useJudge: true },
+      { name: 'review.md', format: 'review', useJudge: true },
     ];
     expect(getReportFiles(contracts)).toEqual(['00-plan.md', 'review.md']);
   });

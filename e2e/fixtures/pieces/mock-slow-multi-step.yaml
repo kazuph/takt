@@ -6,12 +6,8 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
-
 max_movements: 20
-
 initial_movement: step-1
-
 movements:
   - name: step-1
     edit: true
@@ -21,7 +17,6 @@ movements:
     rules:
       - condition: Done
         next: step-2
-
   - name: step-2
     edit: true
     persona: ../agents/test-coder.md
@@ -30,7 +25,6 @@ movements:
     rules:
       - condition: Done
         next: step-3
-
   - name: step-3
     edit: true
     persona: ../agents/test-coder.md
@@ -39,7 +33,6 @@ movements:
     rules:
       - condition: Done
         next: step-4
-
   - name: step-4
     edit: true
     persona: ../agents/test-coder.md
@@ -48,7 +41,6 @@ movements:
     rules:
       - condition: Done
         next: step-5
-
   - name: step-5
     edit: true
     persona: ../agents/test-coder.md
@@ -57,7 +49,6 @@ movements:
     rules:
       - condition: Done
         next: step-6
-
   - name: step-6
     edit: true
     persona: ../agents/test-coder.md
@@ -66,7 +57,6 @@ movements:
     rules:
       - condition: Done
         next: step-7
-
   - name: step-7
     edit: true
     persona: ../agents/test-coder.md
@@ -75,7 +65,6 @@ movements:
     rules:
       - condition: Done
         next: step-8
-
   - name: step-8
     edit: true
     persona: ../agents/test-coder.md

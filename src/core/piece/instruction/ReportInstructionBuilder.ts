@@ -68,9 +68,12 @@ export class ReportInstructionBuilder {
       language,
     };
 
-    const firstContract = this.step.outputContracts[0];
-    if (firstContract && isOutputContractItem(firstContract) && firstContract.order) {
-      reportOutput = replaceTemplatePlaceholders(firstContract.order.trimEnd(), this.step, instrContext);
+    const targetContract = this.context.targetFile
+      ? this.step.outputContracts.find((entry) => entry.name === this.context.targetFile)
+      : this.step.outputContracts[0];
+
+    if (targetContract && isOutputContractItem(targetContract) && targetContract.order) {
+      reportOutput = replaceTemplatePlaceholders(targetContract.order.trimEnd(), this.step, instrContext);
       hasReportOutput = true;
     } else if (!this.context.targetFile) {
       const output = renderReportOutputInstruction(this.step, instrContext, language);
@@ -82,8 +85,8 @@ export class ReportInstructionBuilder {
 
     let outputContract = '';
     let hasOutputContract = false;
-    if (firstContract && isOutputContractItem(firstContract) && firstContract.format) {
-      outputContract = replaceTemplatePlaceholders(firstContract.format.trimEnd(), this.step, instrContext);
+    if (targetContract && isOutputContractItem(targetContract) && targetContract.format) {
+      outputContract = replaceTemplatePlaceholders(targetContract.format.trimEnd(), this.step, instrContext);
       hasOutputContract = true;
     }
 

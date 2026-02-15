@@ -560,6 +560,7 @@ describe('section reference resolution', () => {
           report: [{
             name: '00-plan.md',
             format: 'plan',
+            use_judge: true,
           }],
         },
       }],

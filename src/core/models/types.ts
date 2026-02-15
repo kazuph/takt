@@ -33,7 +33,6 @@ export type {
 // Piece configuration and runtime state
 export type {
   PieceRule,
-  OutputContractLabelPath,
   OutputContractItem,
   OutputContractEntry,
   McpServerConfig,

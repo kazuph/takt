@@ -34,26 +34,20 @@ export interface PieceRule {
   aggregateConditionText?: string | string[];
 }
 
-/** Output contract configuration (label: path pair format) */
-export interface OutputContractLabelPath {
-  /** Display label (e.g., "Scope", "Decisions") */
-  label: string;
-  /** File path relative to report directory (e.g., "01-coder-scope.md") */
-  path: string;
-}
-
 /** Output contract item configuration with order/format instructions */
 export interface OutputContractItem {
   /** Report file name (e.g., "00-plan.md") */
   name: string;
+  /** Output format template key or inline format content */
+  format: string;
+  /** Whether this report is used as input for status judgment phase (default: true) */
+  useJudge?: boolean;
   /** Instruction prepended before instruction_template (e.g., output destination) */
   order?: string;
-  /** Instruction appended after instruction_template (e.g., output format) - resolved from report_formats */
-  format?: string;
 }
 
-/** Union type for output contract entries */
-export type OutputContractEntry = OutputContractLabelPath | OutputContractItem;
+/** Output contract entry */
+export type OutputContractEntry = OutputContractItem;
 
 /** MCP server configuration for stdio transport */
 export interface McpStdioServerConfig {

@@ -235,7 +235,7 @@ describe('pr-comment instruction_template contains piece-specific procedures', (
     expect(template).toContain('01-architect-review.md');
     expect(template).toContain('02-security-review.md');
     expect(template).toContain('03-ai-review.md');
-    expect(template).toContain('04-review-summary.md');
+    expect(template).toContain('review-summary.md');
   });
 
   it('JA: should reference specific report files', () => {
@@ -245,6 +245,6 @@ describe('pr-comment instruction_template contains piece-specific procedures', (
     expect(template).toContain('01-architect-review.md');
     expect(template).toContain('02-security-review.md');
     expect(template).toContain('03-ai-review.md');
-    expect(template).toContain('04-review-summary.md');
+    expect(template).toContain('review-summary.md');
   });
 });

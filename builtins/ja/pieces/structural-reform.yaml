@@ -6,7 +6,6 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
-
 max_movements: 50
 initial_movement: review
 loop_monitors:
@@ -118,8 +117,41 @@ movements:
         next: COMPLETE
     output_contracts:
       report:
-        - name: 00-full-review.md
+        - name: full-review.md
+          format: |
+            ```markdown
+            # 全体構造レビュー
 
+            ## サマリー
+            - レビュー対象ファイル数: {N}
+            - 問題件数: {N}（Critical: {N}, High: {N}, Medium: {N}）
+
+            ## Critical な問題
+
+            ### 1. {ファイルパス}（{行数} lines）
+            - **問題カテゴリ**: {category}
+            - **重大度**: Critical
+            - **含まれている責務**:
+              1. {responsibility 1}
+              2. {responsibility 2}
+            - **分割案**:
+              - `{new-file-1}.ts`: {responsibility}
+              - `{new-file-2}.ts`: {responsibility}
+            - **影響を受ける依存側**: {このモジュールをimportしているファイル}
+
+            ## High 優先の問題
+            - {Issue}
+
+            ## Medium 優先の問題
+            - {Issue}
+
+            ## 依存グラフ上の懸念
+            - {循環依存・レイヤ違反 など}
+
+            ## 推奨リファクタ順序
+            1. {file} - {優先理由}
+            2. {file} - {優先理由}
+            ```
   - name: plan_reform
     edit: false
     persona: planner
@@ -206,7 +238,6 @@ movements:
       report:
         - name: 01-reform-plan.md
           format: plan
-
   - name: implement
     edit: true
     persona: coder
@@ -239,9 +270,10 @@ movements:
         interactive_only: true
     output_contracts:
       report:
-        - Scope: 02-coder-scope.md
-        - Decisions: 03-coder-decisions.md
-
+        - name: coder-scope.md
+          format: coder-scope
+        - name: coder-decisions.md
+          format: coder-decisions
   - name: reviewers
     parallel:
       - name: arch-review
@@ -290,7 +322,6 @@ movements:
         next: verify
       - condition: any("needs_fix")
         next: fix
-
   - name: fix
     edit: true
     persona: coder
@@ -310,13 +341,13 @@ movements:
       - WebSearch
       - WebFetch
     required_permission_mode: edit
+    pass_previous_response: false
     rules:
       - condition: 修正完了
         next: reviewers
       - condition: 判断できない、情報不足
         next: plan_reform
     instruction: fix
-
   - name: verify
     edit: false
     persona: supervisor
@@ -371,7 +402,6 @@ movements:
       report:
         - name: 06-verification.md
           format: validation
-
   - name: next_target
     edit: false
     persona: planner
@@ -434,4 +464,25 @@ movements:
         next: COMPLETE
     output_contracts:
       report:
-        - name: 07-progress.md
+        - name: progress.md
+          format: |
+            ```markdown
+            # 改修進捗
+
+            ## 完了ターゲット
+            | # | ターゲット | 状態 |
+            |---|------------|------|
+            | 1 | {file} | Completed |
+
+            ## 残ターゲット
+            | # | ターゲット | 優先度 |
+            |---|------------|--------|
+            | 2 | {file} | Next |
+
+            ## 次アクション
+            - **対象**: {next file to reform}
+            - **実施計画**: {brief description of the split}
+
+            ## 全体進捗
+            {N}/{total} targets completed. 推定残り反復: {N}
+            ```

@@ -188,7 +188,7 @@ export function prepareRuntimeEnvironment(
   }
 
   const deduped = dedupePrepare(prepareEntries);
-  const runtimeRoot = join(cwd, '.runtime');
+  const runtimeRoot = join(cwd, '.takt', '.runtime');
   const envFile = join(runtimeRoot, 'env.sh');
   const injectedEnv = buildInjectedEnvironment(cwd, runtimeRoot, deduped);
 

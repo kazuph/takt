@@ -474,7 +474,7 @@ describe('instruction-builder', () => {
     it('should include report info in Phase 1 when step has report', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const context = createMinimalContext({
         reportDir: '/project/.takt/runs/20260129-test/reports',
         language: 'en',
@@ -491,8 +491,8 @@ describe('instruction-builder', () => {
     it('should include report info for OutputContractEntry[] in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.outputContracts = [
-        { label: 'Scope', path: '01-scope.md' },
-        { label: 'Decisions', path: '02-decisions.md' },
+        { name: '01-scope.md', format: '01-scope', useJudge: true },
+        { name: '02-decisions.md', format: '02-decisions', useJudge: true },
       ];
       const context = createMinimalContext({
         reportDir: '/project/.takt/runs/20260129-test/reports',
@@ -508,7 +508,7 @@ describe('instruction-builder', () => {
 
     it('should include report info for OutputContractItem in Phase 1', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const context = createMinimalContext({
         reportDir: '/project/.takt/runs/20260129-test/reports',
         language: 'en',
@@ -653,7 +653,7 @@ describe('instruction-builder', () => {
   describe('buildInstruction report-free (phase separation)', () => {
     it('should include Report Directory info but NOT report output instruction in Phase 1', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const context = createMinimalContext({
         reportDir: '/project/.takt/runs/20260129-test/reports',
         language: 'en',
@@ -673,7 +673,7 @@ describe('instruction-builder', () => {
 
     it('should NOT include output contract in buildInstruction', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md', format: '**Format:**\n# Plan' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '**Format:**\n# Plan', useJudge: true }];
       const context = createMinimalContext({
         reportDir: '/project/.takt/runs/20260129-test/reports',
         language: 'en',
@@ -727,7 +727,7 @@ describe('instruction-builder', () => {
 
     it('should include execution context with working directory', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext({ cwd: '/my/project' });
 
       const result = buildReportInstruction(step, ctx);
@@ -737,7 +737,7 @@ describe('instruction-builder', () => {
 
     it('should include no-source-edit rule in execution rules', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext();
 
       const result = buildReportInstruction(step, ctx);
@@ -747,7 +747,7 @@ describe('instruction-builder', () => {
 
     it('should include no-commit and no-cd rules', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext();
 
       const result = buildReportInstruction(step, ctx);
@@ -758,7 +758,7 @@ describe('instruction-builder', () => {
 
     it('should include report directory and file for string report', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext({ reportDir: '/project/.takt/runs/20260130-test/reports' });
 
       const result = buildReportInstruction(step, ctx);
@@ -770,8 +770,8 @@ describe('instruction-builder', () => {
     it('should include report files for OutputContractEntry[] report', () => {
       const step = createMinimalStep('Do work');
       step.outputContracts = [
-        { label: 'Scope', path: '01-scope.md' },
-        { label: 'Decisions', path: '02-decisions.md' },
+        { name: '01-scope.md', format: '01-scope', useJudge: true },
+        { name: '02-decisions.md', format: '02-decisions', useJudge: true },
       ];
       const ctx = createReportContext();
 
@@ -779,13 +779,13 @@ describe('instruction-builder', () => {
 
       expect(result).toContain('- Report Directory: /project/.takt/runs/20260129-test/reports/');
       expect(result).toContain('- Report Files:');
-      expect(result).toContain('  - Scope: /project/.takt/runs/20260129-test/reports/01-scope.md');
-      expect(result).toContain('  - Decisions: /project/.takt/runs/20260129-test/reports/02-decisions.md');
+      expect(result).toContain('  - 01-scope.md: /project/.takt/runs/20260129-test/reports/01-scope.md');
+      expect(result).toContain('  - 02-decisions.md: /project/.takt/runs/20260129-test/reports/02-decisions.md');
     });
 
     it('should include report file for OutputContractItem report', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext();
 
       const result = buildReportInstruction(step, ctx);
@@ -795,7 +795,7 @@ describe('instruction-builder', () => {
 
     it('should include auto-generated report output instruction', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext();
 
       const result = buildReportInstruction(step, ctx);
@@ -810,6 +810,8 @@ describe('instruction-builder', () => {
       step.outputContracts = [{
         name: '00-plan.md',
         order: 'Output to {report:00-plan.md} file.',
+        format: '00-plan',
+        useJudge: true,
       }];
       const ctx = createReportContext();
 
@@ -824,6 +826,7 @@ describe('instruction-builder', () => {
       step.outputContracts = [{
         name: '00-plan.md',
         format: '**Format:**\n```markdown\n# Plan\n```',
+        useJudge: true,
       }];
       const ctx = createReportContext();
 
@@ -835,7 +838,7 @@ describe('instruction-builder', () => {
 
     it('should include overwrite-and-archive rule in report output instruction', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext({ movementIteration: 5 });
 
       const result = buildReportInstruction(step, ctx);
@@ -845,7 +848,7 @@ describe('instruction-builder', () => {
 
     it('should include instruction body text', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext();
 
       const result = buildReportInstruction(step, ctx);
@@ -856,7 +859,7 @@ describe('instruction-builder', () => {
 
     it('should NOT include user request, previous response, or status rules', () => {
       const step = createMinimalStep('Do work');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       step.rules = [
         { condition: 'Done', next: 'COMPLETE' },
       ];
@@ -872,7 +875,7 @@ describe('instruction-builder', () => {
 
     it('should render Japanese report instruction', () => {
       const step = createMinimalStep('作業する');
-      step.outputContracts = [{ name: '00-plan.md' }];
+      step.outputContracts = [{ name: '00-plan.md', format: '00-plan', useJudge: true }];
       const ctx = createReportContext({ language: 'ja' });
 
       const result = buildReportInstruction(step, ctx);
@@ -892,8 +895,8 @@ describe('instruction-builder', () => {
     it('should include multi-file report output instruction for OutputContractEntry[]', () => {
       const step = createMinimalStep('Do work');
       step.outputContracts = [
-        { label: 'Scope', path: '01-scope.md' },
-        { label: 'Decisions', path: '02-decisions.md' },
+        { name: '01-scope.md', format: '01-scope', useJudge: true },
+        { name: '02-decisions.md', format: '02-decisions', useJudge: true },
       ];
       const ctx = createReportContext();
 
@@ -1144,15 +1147,15 @@ describe('instruction-builder', () => {
 
   describe('isOutputContractItem', () => {
     it('should return true for OutputContractItem', () => {
-      expect(isOutputContractItem({ name: '00-plan.md' })).toBe(true);
+      expect(isOutputContractItem({ name: '00-plan.md', format: '00-plan', useJudge: true })).toBe(true);
     });
 
     it('should return true for OutputContractItem with order/format', () => {
       expect(isOutputContractItem({ name: '00-plan.md', order: 'output to...', format: '# Plan' })).toBe(true);
     });
 
-    it('should return false for OutputContractLabelPath', () => {
-      expect(isOutputContractItem({ label: 'Scope', path: '01-scope.md' })).toBe(false);
+    it('should return false when name is missing', () => {
+      expect(isOutputContractItem({ format: '01-scope', useJudge: true })).toBe(false);
     });
   });
 
