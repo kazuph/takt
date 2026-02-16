@@ -88,10 +88,13 @@ export async function askAboutBranch(
   info('Asking about outcome...');
   const display = new StreamDisplay('ask', isQuietMode());
   try {
-    const response = await provider.call('ask', prompt, {
+    const agent = provider.setup({
+      name: 'ask',
+      systemPrompt: ASK_SYSTEM_PROMPT,
+    });
+    const response = await agent.call(prompt, {
       cwd: projectDir,
       model,
-      systemPrompt: ASK_SYSTEM_PROMPT,
       allowedTools: [],
       onStream: display.createHandler(),
     });

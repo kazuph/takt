@@ -2,7 +2,38 @@
  * Tests for ask prompt builder
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../infra/config/index.js', () => ({
+  loadGlobalConfig: vi.fn(),
+}));
+
+vi.mock('../infra/task/index.js', () => ({
+  buildBranchContext: vi.fn(),
+}));
+
+vi.mock('../infra/providers/index.js', () => ({
+  getProvider: vi.fn(),
+}));
+
+vi.mock('../shared/context.js', () => ({
+  isQuietMode: vi.fn(),
+}));
+
+vi.mock('../shared/ui/index.js', () => ({
+  StreamDisplay: class MockStreamDisplay {
+    createHandler = vi.fn();
+    flush = vi.fn();
+  },
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('../shared/utils/index.js', () => ({
+  createLogger: vi.fn(() => ({ error: vi.fn() })),
+  getErrorMessage: vi.fn(),
+}));
+
 import { buildAskPrompt } from '../features/tasks/execute/ask.js';
 
 describe('buildAskPrompt', () => {
