@@ -5,7 +5,7 @@
 export { executePiece, type PieceExecutionResult, type PieceExecutionOptions } from './execute/pieceExecution.js';
 export { executeTask, runAllTasks, type TaskExecutionOptions } from './execute/taskExecution.js';
 export { executeAndCompleteTask, resolveTaskExecution } from './execute/taskExecution.js';
-export { withPersonaSession } from './execute/session.js';
+export { withAgentSession } from './execute/session.js';
 export type { PipelineExecutionOptions } from './execute/types.js';
 export {
   selectAndExecuteTask,
@@ -14,8 +14,7 @@ export {
   type SelectAndExecuteOptions,
   type WorktreeConfirmationResult,
 } from './execute/selectAndExecute.js';
-export { resolveAutoPr, postExecutionFlow, type PostExecutionOptions } from './execute/postExecution.js';
-export { addTask, saveTaskFile, saveTaskFromInteractive, createIssueFromTask, createIssueAndSaveTask } from './add/index.js';
+export { addTask, saveTaskFile, saveTaskFromInteractive, createIssueFromTask } from './add/index.js';
 export { watchTasks } from './watch/index.js';
 export {
   listTasks,
@@ -26,4 +25,6 @@ export {
   mergeBranch,
   deleteBranch,
   instructBranch,
+  resumeBranch,
+  askBranch,
 } from './list/index.js';

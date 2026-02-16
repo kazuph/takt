@@ -24,19 +24,8 @@ export { TaskRunner } from './runner.js';
 
 export { showTaskList } from './display.js';
 
-export {
-  TaskFileSchema,
-  type TaskFileData,
-  TaskExecutionConfigSchema,
-  TaskStatusSchema,
-  type TaskStatus,
-  TaskFailureSchema,
-  type TaskFailure,
-  TaskRecordSchema,
-  type TaskRecord,
-  TasksFileSchema,
-  type TasksFileData,
-} from './schema.js';
+export { TaskFileSchema, type TaskFileData } from './schema.js';
+export { parseTaskFile, parseTaskFiles, type ParsedTask } from './parser.js';
 export {
   createSharedClone,
   removeClone,
@@ -54,7 +43,8 @@ export {
   getOriginalInstruction,
   buildListItems,
 } from './branchList.js';
-export { stageAndCommit, getCurrentBranch } from './git.js';
+export { buildBranchContext, type BranchContextOptions } from './branchContext.js';
+export { stageAndCommit } from './git.js';
 export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
 export { summarizeTaskName } from './summarize.js';
 export { TaskWatcher, type TaskWatcherOptions } from './watcher.js';

@@ -1,21 +1,20 @@
 /**
  * CLI subcommand definitions
  *
- * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config, prompt, catalog).
+ * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config, prompt).
  */
 
-import { clearPersonaSessions, getCurrentPiece } from '../../infra/config/index.js';
+import { clearAgentSessions, getCurrentPiece } from '../../infra/config/index.js';
 import { success } from '../../shared/ui/index.js';
 import { runAllTasks, addTask, watchTasks, listTasks } from '../../features/tasks/index.js';
-import { switchPiece, switchConfig, ejectBuiltin, ejectFacet, parseFacetType, VALID_FACET_TYPES, resetCategoriesToDefault, deploySkill } from '../../features/config/index.js';
+import { switchPiece, switchConfig, ejectBuiltin, resetCategoriesToDefault, deploySkill } from '../../features/config/index.js';
 import { previewPrompts } from '../../features/prompt/index.js';
-import { showCatalog } from '../../features/catalog/index.js';
 import { program, resolvedCwd } from './program.js';
 import { resolveAgentOverrides } from './helpers.js';
 
 program
   .command('run')
-  .description('Run all pending tasks from .takt/tasks.yaml')
+  .description('Run all pending tasks from .takt/tasks/')
   .action(async () => {
     const piece = getCurrentPiece(resolvedCwd);
     await runAllTasks(resolvedCwd, piece, resolveAgentOverrides(program));
@@ -30,7 +29,7 @@ program
 
 program
   .command('add')
-  .description('Add a new task')
+  .description('Add a new task (interactive AI conversation)')
   .argument('[task]', 'Task description or GitHub issue reference (e.g. "#28")')
   .action(async (task?: string) => {
     await addTask(resolvedCwd, task);
@@ -38,7 +37,7 @@ program
 
 program
   .command('list')
-  .description('List task branches (merge/delete)')
+  .description('List task branches (resume/ask/merge/delete)')
   .option('--non-interactive', 'Run list in non-interactive mode')
   .option('--action <action>', 'Non-interactive action (diff|try|merge|delete)')
   .option('--format <format>', 'Output format for non-interactive list (text|json)')
@@ -70,30 +69,17 @@ program
   .command('clear')
   .description('Clear agent conversation sessions')
   .action(() => {
-    clearPersonaSessions(resolvedCwd);
+    clearAgentSessions(resolvedCwd);
     success('Agent sessions cleared');
   });
 
 program
   .command('eject')
-  .description('Copy builtin piece or facet for customization (default: project .takt/)')
-  .argument('[typeOrName]', `Piece name, or facet type (${VALID_FACET_TYPES.join(', ')})`)
-  .argument('[facetName]', 'Facet name (when first arg is a facet type)')
+  .description('Copy builtin piece/agents for customization (default: project .takt/)')
+  .argument('[name]', 'Specific builtin to eject')
   .option('--global', 'Eject to ~/.takt/ instead of project .takt/')
-  .action(async (typeOrName: string | undefined, facetName: string | undefined, opts: { global?: boolean }) => {
-    const ejectOptions = { global: opts.global, projectDir: resolvedCwd };
-
-    if (typeOrName && facetName) {
-      const facetType = parseFacetType(typeOrName);
-      if (!facetType) {
-        console.error(`Invalid facet type: ${typeOrName}. Valid types: ${VALID_FACET_TYPES.join(', ')}`);
-        process.exitCode = 1;
-        return;
-      }
-      await ejectFacet(facetType, facetName, ejectOptions);
-    } else {
-      await ejectBuiltin(typeOrName, ejectOptions);
-    }
+  .action(async (name: string | undefined, opts: { global?: boolean }) => {
+    await ejectBuiltin(name, { global: opts.global, projectDir: resolvedCwd });
   });
 
 program
@@ -128,12 +114,4 @@ program
   .description('Export takt pieces/agents as Claude Code Skill (~/.claude/)')
   .action(async () => {
     await deploySkill();
-  });
-
-program
-  .command('catalog')
-  .description('List available facets (personas, policies, knowledge, instructions, output-contracts)')
-  .argument('[type]', 'Facet type to list')
-  .action((type?: string) => {
-    showCatalog(resolvedCwd, type);
   });
