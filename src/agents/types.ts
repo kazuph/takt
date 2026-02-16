@@ -10,6 +10,7 @@ export type { StreamCallback };
 /** Common options for running agents */
 export interface RunAgentOptions {
   cwd: string;
+  projectCwd?: string;
   abortSignal?: AbortSignal;
   sessionId?: string;
   model?: string;

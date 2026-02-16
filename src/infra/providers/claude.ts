@@ -39,7 +39,10 @@ export class ClaudeProvider implements Provider {
       const agentName = config.claudeAgent;
       return {
         call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
-          callClaudeAgent(agentName, prompt, toClaudeOptions(options)),
+          callClaudeAgent(agentName, prompt, {
+            ...toClaudeOptions(options),
+            systemPrompt: config.systemPrompt,
+          }),
       };
     }
 
@@ -47,7 +50,10 @@ export class ClaudeProvider implements Provider {
       const skillName = config.claudeSkill;
       return {
         call: (prompt: string, options: ProviderCallOptions): Promise<AgentResponse> =>
-          callClaudeSkill(skillName, prompt, toClaudeOptions(options)),
+          callClaudeSkill(skillName, prompt, {
+            ...toClaudeOptions(options),
+            systemPrompt: config.systemPrompt,
+          }),
       };
     }
 

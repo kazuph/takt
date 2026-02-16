@@ -116,7 +116,10 @@ export class ClaudeClient {
     prompt: string,
     options: ClaudeCallOptions,
   ): Promise<AgentResponse> {
-    const systemPrompt = loadTemplate('perform_builtin_agent_system_prompt', 'en', { agentName: claudeAgentName });
+    const builtinPrompt = loadTemplate('perform_builtin_agent_system_prompt', 'en', { agentName: claudeAgentName });
+    const systemPrompt = options.systemPrompt
+      ? `${options.systemPrompt}\n\n---\n\n${builtinPrompt}`
+      : builtinPrompt;
     return this.callCustom(claudeAgentName, prompt, systemPrompt, options);
   }
 
@@ -135,6 +138,7 @@ export class ClaudeClient {
       mcpServers: options.mcpServers,
       model: options.model,
       maxTurns: options.maxTurns,
+      systemPrompt: options.systemPrompt,
       permissionMode: options.permissionMode,
       onStream: options.onStream,
       onPermissionRequest: options.onPermissionRequest,

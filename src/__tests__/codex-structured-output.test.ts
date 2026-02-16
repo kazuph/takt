@@ -1,64 +1,94 @@
 /**
- * Codex SDK layer structured output tests.
+ * Codex CLI layer structured output tests.
  *
  * Tests CodexClient's extraction of structuredOutput by parsing
- * JSON text from agent_message items when outputSchema is provided.
- *
- * Codex SDK returns structured output as JSON text in agent_message
- * items (not via turn.completed.finalResponse which doesn't exist
- * on TurnCompletedEvent).
+ * JSON text from `item.completed` events when outputSchema is provided.
  */
 
+import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// ===== Codex SDK mock =====
+type SpawnCall = {
+  command: string;
+  args: string[];
+  options: Record<string, unknown>;
+};
 
-let mockEvents: Array<Record<string, unknown>> = [];
-let lastThreadOptions: Record<string, unknown> | undefined;
+type SpawnScenario = {
+  stdoutLines: string[];
+  stderrText?: string;
+  closeCode?: number;
+  closeSignal?: NodeJS.Signals | null;
+  spawnError?: Error;
+};
 
-vi.mock('@openai/codex-sdk', () => {
+let spawnCalls: SpawnCall[] = [];
+let scenarios: SpawnScenario[] = [];
+
+function queueScenario(scenario: SpawnScenario): void {
+  scenarios.push(scenario);
+}
+
+vi.mock('node:child_process', () => {
   return {
-    Codex: class MockCodex {
-      async startThread(options?: Record<string, unknown>) {
-        lastThreadOptions = options;
-        return {
-          id: 'thread-mock',
-          runStreamed: async () => ({
-            events: (async function* () {
-              for (const event of mockEvents) {
-                yield event;
-              }
-            })(),
-          }),
-        };
-      }
-      async resumeThread() {
-        return this.startThread();
-      }
-    },
+    spawn: vi.fn((command: string, args: string[], options: Record<string, unknown>) => {
+      spawnCalls.push({ command, args, options });
+      const scenario = scenarios.shift() ?? { stdoutLines: [], closeCode: 0, closeSignal: null };
+
+      const child = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter;
+        stderr: EventEmitter;
+        kill: ReturnType<typeof vi.fn>;
+        killed: boolean;
+      };
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      child.killed = false;
+      child.kill = vi.fn(() => {
+        child.killed = true;
+        return true;
+      });
+
+      queueMicrotask(() => {
+        if (scenario.spawnError) {
+          child.emit('error', scenario.spawnError);
+          return;
+        }
+        for (const line of scenario.stdoutLines) {
+          child.stdout.emit('data', `${line}\n`);
+        }
+        if (scenario.stderrText) {
+          child.stderr.emit('data', scenario.stderrText);
+        }
+        child.emit('close', scenario.closeCode ?? 0, scenario.closeSignal ?? null);
+      });
+
+      return child;
+    }),
   };
 });
 
-// CodexClient は @openai/codex-sdk をインポートするため、mock 後にインポート
 const { CodexClient } = await import('../infra/codex/client.js');
 
 describe('CodexClient — structuredOutput 抽出', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockEvents = [];
-    lastThreadOptions = undefined;
+    spawnCalls = [];
+    scenarios = [];
   });
 
   it('outputSchema 指定時に agent_message の JSON テキストを structuredOutput として返す', async () => {
     const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2, "reason": "approved"}' },
-      },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({
+          type: 'item.completed',
+          item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2, "reason": "approved"}' },
+        }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
@@ -68,14 +98,16 @@ describe('CodexClient — structuredOutput 抽出', () => {
   });
 
   it('outputSchema なしの場合はテキストを JSON パースしない', async () => {
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2}' },
-      },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({
+          type: 'item.completed',
+          item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2}' },
+        }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', { cwd: '/tmp' });
@@ -86,14 +118,16 @@ describe('CodexClient — structuredOutput 抽出', () => {
 
   it('agent_message が JSON でない場合は undefined', async () => {
     const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'plain text response' },
-      },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({
+          type: 'item.completed',
+          item: { id: 'msg-1', type: 'agent_message', text: 'plain text response' },
+        }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
@@ -104,14 +138,16 @@ describe('CodexClient — structuredOutput 抽出', () => {
 
   it('JSON が配列の場合は無視する', async () => {
     const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: '[1, 2, 3]' },
-      },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({
+          type: 'item.completed',
+          item: { id: 'msg-1', type: 'agent_message', text: '[1, 2, 3]' },
+        }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
@@ -121,10 +157,12 @@ describe('CodexClient — structuredOutput 抽出', () => {
 
   it('agent_message がない場合は structuredOutput なし', async () => {
     const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
@@ -133,40 +171,49 @@ describe('CodexClient — structuredOutput 抽出', () => {
     expect(result.structuredOutput).toBeUndefined();
   });
 
-  it('outputSchema 付きで呼び出して structuredOutput が返る', async () => {
-    const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 1}' },
-      },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+  it('resume セッション時は codex exec resume を使う', async () => {
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
     const result = await client.call('coder', 'prompt', {
       cwd: '/tmp',
-      outputSchema: schema,
+      sessionId: 'session-123',
+      model: 'o3',
     });
 
-    expect(result.structuredOutput).toEqual({ step: 1 });
+    expect(result.status).toBe('done');
+    expect(spawnCalls[0]?.command).toBe('codex');
+    expect(spawnCalls[0]?.args[0]).toBe('exec');
+    expect(spawnCalls[0]?.args[1]).toBe('resume');
+    expect(spawnCalls[0]?.args).toContain('session-123');
+    expect(spawnCalls[0]?.args).toContain('--json');
   });
 
-  it('provider_options.codex.network_access が ThreadOptions に反映される', async () => {
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
-    ];
+  it('通常実行時は codex exec と --sandbox を使う', async () => {
+    queueScenario({
+      stdoutLines: [
+        JSON.stringify({ type: 'thread.started', thread_id: 'thread-1' }),
+        JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } }),
+      ],
+    });
 
     const client = new CodexClient();
-    await client.call('coder', 'prompt', {
+    const result = await client.call('coder', 'prompt', {
       cwd: '/tmp',
-      networkAccess: true,
+      permissionMode: 'edit',
     });
 
-    expect(lastThreadOptions).toMatchObject({
-      networkAccessEnabled: true,
-    });
+    expect(result.status).toBe('done');
+    expect(spawnCalls[0]?.command).toBe('codex');
+    expect(spawnCalls[0]?.args).toContain('exec');
+    expect(spawnCalls[0]?.args).toContain('--sandbox');
+    expect(spawnCalls[0]?.args).toContain('workspace-write');
+    expect(spawnCalls[0]?.args).toContain('--cd');
+    expect(spawnCalls[0]?.args).toContain('/tmp');
   });
 });

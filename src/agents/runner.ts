@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { loadCustomAgents, loadAgentPrompt, loadGlobalConfig, loadProjectConfig } from '../infra/config/index.js';
+import { loadProjectContext } from '../infra/fs/session.js';
 import { getProvider, type ProviderType, type ProviderCallOptions } from '../infra/providers/index.js';
 import type { AgentResponse, CustomAgentConfig } from '../core/models/index.js';
 import { createLogger } from '../shared/utils/index.js';
@@ -118,6 +119,42 @@ export class AgentRunner {
     };
   }
 
+  /** Load CLAUDE.md context from cwd/projectCwd and merge duplicates */
+  private static loadProjectSystemPrompt(options: Pick<RunAgentOptions, 'cwd' | 'projectCwd'>): string | undefined {
+    const dirs = options.projectCwd && options.projectCwd !== options.cwd
+      ? [options.cwd, options.projectCwd]
+      : [options.cwd];
+
+    const contexts: string[] = [];
+    for (const dir of dirs) {
+      try {
+        const context = loadProjectContext(dir).trim();
+        if (context.length > 0 && !contexts.includes(context)) {
+          contexts.push(context);
+        }
+      } catch (error) {
+        log.debug('Failed to load project context', { dir, error });
+      }
+    }
+
+    if (contexts.length === 0) {
+      return undefined;
+    }
+    return contexts.join('\n\n---\n\n');
+  }
+
+  /** Prepend project CLAUDE.md context to the base system prompt when available */
+  private static withProjectSystemPrompt(
+    options: Pick<RunAgentOptions, 'cwd' | 'projectCwd'>,
+    basePrompt?: string,
+  ): string | undefined {
+    const projectPrompt = AgentRunner.loadProjectSystemPrompt(options);
+    if (projectPrompt && basePrompt) {
+      return `${projectPrompt}\n\n---\n\n${basePrompt}`;
+    }
+    return basePrompt ?? projectPrompt;
+  }
+
   /** Run a custom agent */
   async runCustom(
     agentConfig: CustomAgentConfig,
@@ -126,12 +163,13 @@ export class AgentRunner {
   ): Promise<AgentResponse> {
     const providerType = AgentRunner.resolveProvider(options.cwd, options, agentConfig);
     const provider = getProvider(providerType);
+    const isClaudeBuiltin = !!(agentConfig.claudeAgent || agentConfig.claudeSkill);
+    const basePrompt = isClaudeBuiltin ? undefined : loadAgentPrompt(agentConfig);
+    const systemPrompt = AgentRunner.withProjectSystemPrompt(options, basePrompt);
 
     const agent = provider.setup({
       name: agentConfig.name,
-      systemPrompt: agentConfig.claudeAgent || agentConfig.claudeSkill
-        ? undefined
-        : loadAgentPrompt(agentConfig),
+      systemPrompt,
       claudeAgent: agentConfig.claudeAgent,
       claudeSkill: agentConfig.claudeSkill,
     });
@@ -178,7 +216,8 @@ export class AgentRunner {
       }
 
       const systemPrompt = loadTemplate('perform_agent_system_prompt', language, templateVars);
-      const agent = provider.setup({ name: personaName, systemPrompt });
+      const mergedPrompt = AgentRunner.withProjectSystemPrompt(options, systemPrompt);
+      const agent = provider.setup({ name: personaName, systemPrompt: mergedPrompt });
       return agent.call(task, callOptions);
     }
 
@@ -191,12 +230,14 @@ export class AgentRunner {
         return this.runCustom(agentConfig, task, options);
       }
 
-      const agent = provider.setup({ name: personaName, systemPrompt: personaSpec });
+      const systemPrompt = AgentRunner.withProjectSystemPrompt(options, personaSpec);
+      const agent = provider.setup({ name: personaName, systemPrompt });
       return agent.call(task, callOptions);
     }
 
-    // 3. No persona specified — run with instruction_template only (no system prompt)
-    const agent = provider.setup({ name: personaName });
+    // 3. No persona specified — use project CLAUDE.md when present
+    const systemPrompt = AgentRunner.withProjectSystemPrompt(options);
+    const agent = provider.setup({ name: personaName, systemPrompt });
     return agent.call(task, callOptions);
   }
 }

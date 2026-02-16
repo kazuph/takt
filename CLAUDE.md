@@ -151,13 +151,21 @@ Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method 
 - Inline system prompts: If agent file doesn't exist, the agent string is used as inline system prompt
 
 **Provider Integration** (`src/infra/claude/`, `src/infra/codex/`)
-- **Claude** - Uses `@anthropic-ai/claude-agent-sdk`
+- **Claude** - Uses Claude CLI invocation (`claude -p`) as the runtime execution path
   - `client.ts` - High-level API: `callClaude()`, `callClaudeCustom()`, `callClaudeAgent()`, `callClaudeSkill()`
-  - `process.ts` - SDK wrapper with `ClaudeProcess` class
+  - `process.ts` - CLI wrapper with `ClaudeProcess` class
   - `executor.ts` - Query execution
   - `query-manager.ts` - Concurrent query tracking with query IDs
-- **Codex** - Direct OpenAI SDK integration
+- **Codex** - Uses Codex CLI invocation (`codex exec`) as the runtime execution path
   - `CodexStreamHandler.ts` - Stream handling and tool execution
+
+### Provider Runtime Invariants (MUST)
+
+- The runtime execution backend MUST use CLI commands:
+  - Claude provider: `claude -p`
+  - Codex provider: `codex exec` (or `codex exec resume` when resuming)
+- Do not replace these runtime paths with SDK-direct execution in this repository.
+- If upstream merge/cherry-pick reverts this behavior, you MUST re-apply a patch immediately to restore the CLI backend before finishing the task.
 
 **Configuration** (`src/infra/config/`)
 - `loaders/loader.ts` - Custom agent loading from `.takt/agents.yaml`

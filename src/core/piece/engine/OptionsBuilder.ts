@@ -41,6 +41,7 @@ export class OptionsBuilder {
 
     return {
       cwd: this.getCwd(),
+      projectCwd: this.getProjectCwd(),
       abortSignal: this.engineOptions.abortSignal,
       personaPath: step.personaPath,
       provider: this.engineOptions.provider,

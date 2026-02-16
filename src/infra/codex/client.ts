@@ -1,10 +1,10 @@
 /**
- * Codex SDK integration for agent interactions
+ * Codex CLI integration for agent interactions
  *
- * Uses @openai/codex-sdk for native TypeScript integration.
+ * Executes `codex exec` for non-interactive runs.
  */
 
-import { Codex, type TurnOptions } from '@openai/codex-sdk';
+import { spawn } from 'node:child_process';
 import type { AgentResponse } from '../../core/models/index.js';
 import { createLogger, getErrorMessage, createStreamDiagnostics, parseStructuredOutput, type StreamDiagnostics } from '../../shared/utils/index.js';
 import { mapToCodexSandboxMode, type CodexCallOptions } from './types.js';
@@ -14,6 +14,7 @@ import {
   createStreamTrackingState,
   extractThreadId,
   emitInit,
+  emitText,
   emitResult,
   emitCodexItemStart,
   emitCodexItemCompleted,
@@ -45,6 +46,17 @@ const CODEX_RETRYABLE_ERROR_PATTERNS = [
  * and response processing.
  */
 export class CodexClient {
+  private buildStructuredOutputSuffix(schema: Record<string, unknown>): string {
+    return [
+      '',
+      '---',
+      'IMPORTANT: You MUST respond with ONLY a valid JSON object matching this schema. No other text, no markdown code blocks, no explanation.',
+      '```json',
+      JSON.stringify(schema, null, 2),
+      '```',
+    ].join('\n');
+  }
+
   private isRetriableError(message: string, aborted: boolean, abortCause?: 'timeout' | 'external'): boolean {
     if (aborted || abortCause) {
       return false;
@@ -91,240 +103,190 @@ export class CodexClient {
     const sandboxMode = options.permissionMode
       ? mapToCodexSandboxMode(options.permissionMode)
       : 'workspace-write';
-    const threadOptions = {
-      ...(options.model ? { model: options.model } : {}),
-      workingDirectory: options.cwd,
-      sandboxMode,
-      ...(options.networkAccess === undefined ? {} : { networkAccessEnabled: options.networkAccess }),
-    };
-    let threadId = options.sessionId;
+    const diag = createStreamDiagnostics('codex-cli', {
+      agentType,
+      model: options.model,
+      hasSystemPrompt: !!options.systemPrompt,
+    });
 
-    const fullPrompt = options.systemPrompt
+    let fullPrompt = options.systemPrompt
       ? `${options.systemPrompt}\n\n${prompt}`
       : prompt;
+    if (options.outputSchema) {
+      fullPrompt = `${fullPrompt}${this.buildStructuredOutputSuffix(options.outputSchema)}`;
+    }
 
-    for (let attempt = 1; attempt <= CODEX_RETRY_MAX_ATTEMPTS; attempt++) {
-      const codex = new Codex(options.openaiApiKey ? { apiKey: options.openaiApiKey } : undefined);
-      const thread = threadId
-        ? await codex.resumeThread(threadId, threadOptions)
-        : await codex.startThread(threadOptions);
-      let currentThreadId = extractThreadId(thread) || threadId;
+    const args: string[] = options.sessionId
+      ? ['exec', 'resume', options.sessionId, fullPrompt, '--json', '--color', 'never']
+      : ['exec', fullPrompt, '--json', '--color', 'never', '--sandbox', sandboxMode];
 
-      let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
-      const streamAbortController = new AbortController();
-      const timeoutMessage = `Codex stream timed out after ${Math.floor(CODEX_STREAM_IDLE_TIMEOUT_MS / 60000)} minutes of inactivity`;
-      let abortCause: 'timeout' | 'external' | undefined;
-      let diagRef: StreamDiagnostics | undefined;
+    if (!options.sessionId) {
+      args.push('--cd', options.cwd);
+    }
+    if (options.model) {
+      args.push('--model', options.model);
+    }
+    if (options.permissionMode === 'full') {
+      args.push('--dangerously-bypass-approvals-and-sandbox');
+    }
 
-      const resetIdleTimeout = (): void => {
-        if (idleTimeoutId !== undefined) {
-          clearTimeout(idleTimeoutId);
+    const env = options.openaiApiKey
+      ? { ...process.env, OPENAI_API_KEY: options.openaiApiKey }
+      : process.env;
+
+    let threadId = options.sessionId;
+    let content = '';
+    let failedMessage = '';
+    let stdoutNoise = '';
+    let stderrOutput = '';
+    let turnCompleted = false;
+    let aborted = false;
+    const contentOffsets = new Map<string, number>();
+
+    return new Promise<AgentResponse>((resolve) => {
+      const child = spawn('codex', args, {
+        cwd: options.cwd,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      const onAbort = (): void => {
+        aborted = true;
+        if (!child.killed) {
+          child.kill('SIGINT');
         }
-        idleTimeoutId = setTimeout(() => {
-          diagRef?.onIdleTimeoutFired();
-          abortCause = 'timeout';
-          streamAbortController.abort();
-        }, CODEX_STREAM_IDLE_TIMEOUT_MS);
       };
-
-      const onExternalAbort = (): void => {
-        abortCause = 'external';
-        streamAbortController.abort();
-      };
-
       if (options.abortSignal) {
         if (options.abortSignal.aborted) {
-          streamAbortController.abort();
+          onAbort();
         } else {
-          options.abortSignal.addEventListener('abort', onExternalAbort, { once: true });
+          options.abortSignal.addEventListener('abort', onAbort, { once: true });
         }
       }
 
-      try {
-        log.debug('Executing Codex thread', {
-          agentType,
-          model: options.model,
-          hasSystemPrompt: !!options.systemPrompt,
-          attempt,
-        });
+      let stdoutBuffer = '';
+      child.stdout.on('data', (chunk: Buffer | string) => {
+        stdoutBuffer += chunk.toString();
+        let newlineIndex = stdoutBuffer.indexOf('\n');
+        while (newlineIndex >= 0) {
+          const rawLine = stdoutBuffer.slice(0, newlineIndex).trim();
+          stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+          newlineIndex = stdoutBuffer.indexOf('\n');
 
-        const diag = createStreamDiagnostics('codex-sdk', { agentType, model: options.model, attempt });
-        diagRef = diag;
-
-        const turnOptions: TurnOptions = {
-          signal: streamAbortController.signal,
-          ...(options.outputSchema ? { outputSchema: options.outputSchema } : {}),
-        };
-        const { events } = await thread.runStreamed(fullPrompt, turnOptions);
-        resetIdleTimeout();
-        diag.onConnected();
-
-        let content = '';
-        const contentOffsets = new Map<string, number>();
-        let success = true;
-        let failureMessage = '';
-        const state = createStreamTrackingState();
-
-        for await (const event of events as AsyncGenerator<CodexEvent>) {
-          resetIdleTimeout();
-          diag.onFirstEvent(event.type);
-          diag.onEvent(event.type);
-
-          if (event.type === 'thread.started') {
-            currentThreadId = typeof event.thread_id === 'string' ? event.thread_id : currentThreadId;
-            emitInit(options.onStream, options.model, currentThreadId);
+          if (rawLine.length === 0) {
             continue;
           }
 
-          if (event.type === 'turn.failed') {
-            success = false;
-            if (event.error && typeof event.error === 'object' && 'message' in event.error) {
-              failureMessage = String((event.error as { message?: unknown }).message ?? '');
+          try {
+            const event = JSON.parse(rawLine) as CodexEvent;
+            diag.onFirstEvent(event.type);
+            diag.onEvent(event.type);
+
+            if (event.type === 'thread.started') {
+              threadId = typeof event.thread_id === 'string' ? event.thread_id : threadId;
+              emitInit(options.onStream, options.model, threadId);
+              continue;
             }
-            diag.onStreamError('turn.failed', failureMessage);
-            break;
-          }
 
-          if (event.type === 'error') {
-            success = false;
-            failureMessage = typeof event.message === 'string' ? event.message : 'Unknown error';
-            diag.onStreamError('error', failureMessage);
-            break;
-          }
-
-          if (event.type === 'item.started') {
-            const item = event.item as CodexItem | undefined;
-            if (item) {
-              emitCodexItemStart(item, options.onStream, state.startedItems);
+            if (event.type === 'turn.completed') {
+              turnCompleted = true;
+              continue;
             }
-            continue;
-          }
 
-          if (event.type === 'item.updated') {
-            const item = event.item as CodexItem | undefined;
-            if (item) {
-              if (item.type === 'agent_message' && typeof item.text === 'string') {
-                const itemId = item.id;
-                const text = item.text;
-                if (itemId) {
-                  const prev = contentOffsets.get(itemId) ?? 0;
-                  if (text.length > prev) {
-                    if (prev === 0 && content.length > 0) {
-                      content += '\n';
-                    }
-                    content += text.slice(prev);
-                    contentOffsets.set(itemId, text.length);
-                  }
-                }
+            if (event.type === 'turn.failed') {
+              if (event.error && typeof event.error === 'object' && 'message' in event.error) {
+                failedMessage = String((event.error as { message?: unknown }).message ?? '');
+              } else {
+                failedMessage = 'Codex execution failed';
               }
-              emitCodexItemUpdate(item, options.onStream, state);
+              continue;
             }
-            continue;
-          }
 
-          if (event.type === 'item.completed') {
-            const item = event.item as CodexItem | undefined;
-            if (item) {
-              if (item.type === 'agent_message' && typeof item.text === 'string') {
+            if (event.type === 'error') {
+              failedMessage = typeof event.message === 'string' ? event.message : 'Codex execution failed';
+              continue;
+            }
+
+            if (event.type === 'item.updated' || event.type === 'item.completed') {
+              const item = event.item as CodexItem | undefined;
+              if (item && item.type === 'agent_message' && typeof item.text === 'string') {
                 const itemId = item.id;
                 const text = item.text;
                 if (itemId) {
                   const prev = contentOffsets.get(itemId) ?? 0;
                   if (text.length > prev) {
+                    const delta = text.slice(prev);
                     if (prev === 0 && content.length > 0) {
                       content += '\n';
                     }
-                    content += text.slice(prev);
+                    content += delta;
                     contentOffsets.set(itemId, text.length);
+                    emitText(options.onStream, delta);
                   }
-                } else if (text) {
+                } else {
                   if (content.length > 0) {
                     content += '\n';
                   }
                   content += text;
+                  emitText(options.onStream, text);
                 }
               }
-              emitCodexItemCompleted(item, options.onStream, state);
             }
-            continue;
+          } catch {
+            stdoutNoise += (stdoutNoise ? '\n' : '') + rawLine;
           }
         }
+      });
 
-        diag.onCompleted(success ? 'normal' : 'error', success ? undefined : failureMessage);
+      child.stderr.on('data', (chunk: Buffer | string) => {
+        stderrOutput += chunk.toString();
+      });
 
-        if (!success) {
-          const message = failureMessage || 'Codex execution failed';
-          const retriable = this.isRetriableError(message, streamAbortController.signal.aborted, abortCause);
-          if (retriable && attempt < CODEX_RETRY_MAX_ATTEMPTS) {
-            log.info('Retrying Codex call after transient failure', { agentType, attempt, message });
-            threadId = currentThreadId;
-            await this.waitForRetryDelay(attempt, options.abortSignal);
-            continue;
-          }
+      child.on('error', (error) => {
+        if (options.abortSignal) {
+          options.abortSignal.removeEventListener('abort', onAbort);
+        }
+        const message = getErrorMessage(error);
+        diag.onCompleted('error', message);
+        emitResult(options.onStream, false, message, threadId);
+        resolve({
+          persona: agentType,
+          status: 'error',
+          content: message,
+          timestamp: new Date(),
+          sessionId: threadId,
+        });
+      });
 
-          emitResult(options.onStream, false, message, currentThreadId);
-          return {
-            persona: agentType,
-            status: 'error',
-            content: message,
-            timestamp: new Date(),
-            sessionId: currentThreadId,
-          };
+      child.on('close', (code, signal) => {
+        if (options.abortSignal) {
+          options.abortSignal.removeEventListener('abort', onAbort);
+        }
+
+        if (stdoutBuffer.trim().length > 0) {
+          stdoutNoise += (stdoutNoise ? '\n' : '') + stdoutBuffer.trim();
         }
 
         const trimmed = content.trim();
         const structuredOutput = parseStructuredOutput(trimmed, !!options.outputSchema);
-        emitResult(options.onStream, true, trimmed, currentThreadId);
+        const success = !aborted && !failedMessage && turnCompleted && code === 0 && signal == null;
+        const errorMessage = success
+          ? ''
+          : (failedMessage || stderrOutput.trim() || stdoutNoise.trim() || CODEX_STREAM_ABORTED_MESSAGE);
 
-        return {
+        diag.onCompleted(success ? 'normal' : (aborted ? 'abort' : 'error'), success ? undefined : errorMessage);
+        emitResult(options.onStream, success, success ? trimmed : errorMessage, threadId);
+
+        resolve({
           persona: agentType,
-          status: 'done',
-          content: trimmed,
+          status: success ? 'done' : 'error',
+          content: success ? trimmed : errorMessage,
           timestamp: new Date(),
-          sessionId: currentThreadId,
+          sessionId: threadId,
           structuredOutput,
-        };
-      } catch (error) {
-        const message = getErrorMessage(error);
-        const errorMessage = streamAbortController.signal.aborted
-          ? abortCause === 'timeout'
-            ? timeoutMessage
-            : CODEX_STREAM_ABORTED_MESSAGE
-          : message;
-
-        diagRef?.onCompleted(
-          abortCause === 'timeout' ? 'timeout' : streamAbortController.signal.aborted ? 'abort' : 'error',
-          errorMessage,
-        );
-
-        const retriable = this.isRetriableError(errorMessage, streamAbortController.signal.aborted, abortCause);
-        if (retriable && attempt < CODEX_RETRY_MAX_ATTEMPTS) {
-          log.info('Retrying Codex call after transient exception', { agentType, attempt, errorMessage });
-          threadId = currentThreadId;
-          await this.waitForRetryDelay(attempt, options.abortSignal);
-          continue;
-        }
-
-        emitResult(options.onStream, false, errorMessage, currentThreadId);
-
-        return {
-          persona: agentType,
-          status: 'error',
-          content: errorMessage,
-          timestamp: new Date(),
-          sessionId: currentThreadId,
-        };
-      } finally {
-        if (idleTimeoutId !== undefined) {
-          clearTimeout(idleTimeoutId);
-        }
-        if (options.abortSignal) {
-          options.abortSignal.removeEventListener('abort', onExternalAbort);
-        }
-      }
-    }
-
-    throw new Error('Unreachable: Codex retry loop exhausted without returning');
+        });
+      });
+    });
   }
 
   /** Call Codex with a custom agent configuration (system prompt + prompt) */

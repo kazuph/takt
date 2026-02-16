@@ -34,6 +34,12 @@
 - バージョン更新や変更履歴の更新は明示的なメッセージで行います（例: `0.5.1`, `update CHANGELOG`）。
 - PR には変更概要、テスト結果、関連 Issue を記載し、小さく分割してレビュー負荷を抑えます。UI/ログ変更がある場合はスクリーンショットやログを添付します。
 
+## Required Development Workflow
+- 実装ごとに必ず `テスト実行 → コミット → push → npm link` の順で完了させてください。
+- コミット前に必ず関連テストを実行し、結果を確認してください。
+- Claude 実行は `claude -p`、Codex 実行は `codex exec`（resume 時は `codex exec resume`）を実行バックエンドとして維持してください。
+- upstream 取り込みで上記バックエンドが崩れた場合は、完了報告前に必ずパッチで復旧してください。
+
 ## Security & Configuration Tips
 - 脆弱性は公開 Issue ではなくメンテナへ直接報告します。
 - `.takt/logs/` など機密情報を含む可能性のあるファイルは共有しないでください。
