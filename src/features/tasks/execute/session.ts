@@ -27,3 +27,6 @@ export async function withPersonaSession(
 
   return result;
 }
+
+/** Backward-compatible alias */
+export const withAgentSession = withPersonaSession;

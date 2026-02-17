@@ -44,7 +44,7 @@ export {
   buildListItems,
 } from './branchList.js';
 export { buildBranchContext, type BranchContextOptions } from './branchContext.js';
-export { stageAndCommit } from './git.js';
+export { getCurrentBranch, stageAndCommit } from './git.js';
 export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
 export { summarizeTaskName } from './summarize.js';
 export { TaskWatcher, type TaskWatcherOptions } from './watcher.js';

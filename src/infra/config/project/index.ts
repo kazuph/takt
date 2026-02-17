@@ -1,3 +1,5 @@
+import { clearPersonaSessions } from './sessionStore.js';
+
 /**
  * Project configuration - barrel exports
  */
@@ -42,3 +44,10 @@ export {
   saveSessionState,
   clearSessionState,
 } from './sessionState.js';
+
+/**
+ * Backward-compatible session clear entrypoint.
+ */
+export function clearAgentSessions(projectDir: string): void {
+  clearPersonaSessions(projectDir);
+}

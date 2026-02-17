@@ -18,6 +18,7 @@ import {
   buildBranchContext,
   autoCommitAndPush,
   type BranchListItem,
+  type TaskListItem,
 } from '../../../infra/task/index.js';
 import { selectOption, promptInput, readMultilineFromStream } from '../../../shared/prompt/index.js';
 import { info, success, error as logError, warn, header, blankLine } from '../../../shared/ui/index.js';
@@ -33,6 +34,21 @@ const log = createLogger('list-tasks');
 
 /** Actions available for a listed branch */
 export type ListAction = 'diff' | 'resume' | 'ask' | 'instruct' | 'try' | 'merge' | 'delete';
+
+type BranchActionItem = BranchListItem | TaskListItem;
+
+function resolveBranchActionInfo(item: BranchActionItem): { branch: string; worktreePath?: string } {
+  if ('info' in item) {
+    return {
+      branch: item.info.branch,
+      worktreePath: item.info.worktreePath,
+    };
+  }
+  return {
+    branch: item.branch ?? '',
+    worktreePath: item.worktreePath,
+  };
+}
 
 /**
  * Check if a branch has already been merged into HEAD.
@@ -118,8 +134,12 @@ export async function showDiffAndPromptAction(
 /**
  * Try-merge (squash): stage changes from branch without committing.
  */
-export function tryMergeBranch(projectDir: string, item: BranchListItem): boolean {
-  const { branch } = item.info;
+export function tryMergeBranch(projectDir: string, item: BranchActionItem): boolean {
+  const { branch } = resolveBranchActionInfo(item);
+  if (!branch) {
+    logError('Cannot try-merge: branch is missing.');
+    return false;
+  }
 
   try {
     execFileSync('git', ['merge', '--squash', branch], {
@@ -144,8 +164,12 @@ export function tryMergeBranch(projectDir: string, item: BranchListItem): boolea
 /**
  * Merge & cleanup: if already merged, skip merge and just delete the branch.
  */
-export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
-  const { branch } = item.info;
+export function mergeBranch(projectDir: string, item: BranchActionItem): boolean {
+  const { branch } = resolveBranchActionInfo(item);
+  if (!branch) {
+    logError('Cannot merge: branch is missing.');
+    return false;
+  }
   const alreadyMerged = isBranchMerged(projectDir, branch);
 
   try {
@@ -192,8 +216,12 @@ export function mergeBranch(projectDir: string, item: BranchListItem): boolean {
  * Delete a branch (discard changes).
  * For worktree branches, removes the worktree directory and session file.
  */
-export function deleteBranch(projectDir: string, item: BranchListItem): boolean {
-  const { branch, worktreePath } = item.info;
+export function deleteBranch(projectDir: string, item: BranchActionItem): boolean {
+  const { branch, worktreePath } = resolveBranchActionInfo(item);
+  if (!branch) {
+    logError('Cannot delete: branch is missing.');
+    return false;
+  }
 
   try {
     // If this is a worktree branch, remove the worktree directory and session file
