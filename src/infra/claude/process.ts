@@ -119,7 +119,9 @@ function buildClaudeArgs(prompt: string, options: ClaudeSpawnOptions): string[] 
     args.push('--json-schema', JSON.stringify(options.outputSchema));
   }
 
-  args.push(prompt);
+  // `--allowed-tools` is variadic in Claude CLI, so we terminate option parsing
+  // before passing the user prompt to avoid it being consumed as an extra tool.
+  args.push('--', prompt);
   return args;
 }
 
