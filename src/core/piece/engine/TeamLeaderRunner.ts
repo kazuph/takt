@@ -5,7 +5,7 @@ import type {
   PartDefinition,
   PartResult,
 } from '../../models/types.js';
-import { decomposeTask, executeAgent, requestMoreParts } from '../agent-usecases.js';
+import { decomposeTask, executeAgent, requestMoreParts } from '../../../agents/agent-usecases.js';
 import { buildSessionKey } from '../session-key.js';
 import { ParallelLogger } from './parallel-logger.js';
 import { incrementMovementIteration } from './state-manager.js';

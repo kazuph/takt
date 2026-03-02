@@ -110,14 +110,6 @@ async function resolvePrInput(
  */
 export async function executeDefaultAction(task?: string): Promise<void> {
   const opts = program.opts();
-  if (opts.createWorktree !== undefined) {
-    logError(
-      '--create-worktree has been removed. ' +
-      'execute now always runs in-place. ' +
-      'Use "takt add" (save_task) + "takt run" for worktree-based execution.'
-    );
-    process.exit(1);
-  }
   if (!pipelineMode && (opts.autoPr === true || opts.draft === true)) {
     logError('--auto-pr/--draft are supported only in --pipeline mode');
     process.exit(1);

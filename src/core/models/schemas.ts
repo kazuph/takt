@@ -249,7 +249,7 @@ export const ParallelSubMovementRawSchema = z.object({
   mcp_servers: McpServersSchema,
   provider: z.enum(['claude', 'codex', 'opencode', 'cursor', 'copilot', 'mock']).optional(),
   model: z.string().optional(),
-  /** Removed legacy field (no backward compatibility) */
+  /** Deprecated alias */
   permission_mode: z.never().optional(),
   required_permission_mode: PermissionModeSchema.optional(),
   provider_options: MovementProviderOptionsSchema,
@@ -282,7 +282,7 @@ export const PieceMovementRawSchema = z.object({
   mcp_servers: McpServersSchema,
   provider: z.enum(['claude', 'codex', 'opencode', 'cursor', 'copilot', 'mock']).optional(),
   model: z.string().optional(),
-  /** Removed legacy field (no backward compatibility) */
+  /** Deprecated alias */
   permission_mode: z.never().optional(),
   /** Required minimum permission mode for tool execution in this movement */
   required_permission_mode: PermissionModeSchema.optional(),
@@ -349,6 +349,8 @@ export const PieceConfigRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   piece_config: PieceProviderOptionsSchema,
+  /** Deprecated alias */
+  permission_mode: z.never().optional(),
   /** Piece-level persona definitions — map of name to .md file path or inline content */
   personas: z.record(z.string(), z.string()).optional(),
   /** Piece-level policy definitions — map of name to .md file path or inline content */

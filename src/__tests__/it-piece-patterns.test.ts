@@ -438,3 +438,305 @@ describe('Piece Patterns IT: dual piece (4 parallel reviewers)', () => {
     expect(state.status).toBe('completed');
   });
 });
+
+describe('Piece Patterns IT: review-fix piece', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('happy path: gather → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 5 parallel reviewers: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'testing-reviewer', status: 'done', content: 'approved' },
+      { persona: 'requirements-reviewer', status: 'done', content: 'approved' },
+      // Supervisor: ready to merge
+      { persona: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review PR #1');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 5 parallel reviewers: security needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'testing-reviewer', status: 'done', content: 'approved' },
+      { persona: 'requirements-reviewer', status: 'done', content: 'approved' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'testing-reviewer', status: 'done', content: 'approved' },
+      { persona: 'requirements-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review PR #2');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+
+  it('fix_supervisor path: supervise detects issues → fix_supervisor → supervise → COMPLETE', async () => {
+    const config = loadPiece('review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 5 parallel reviewers: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      { persona: 'testing-reviewer', status: 'done', content: 'approved' },
+      { persona: 'requirements-reviewer', status: 'done', content: 'approved' },
+      // Supervisor: issues detected → fix_supervisor
+      { persona: 'supervisor', status: 'done', content: '[SUPERVISE:2]\n\nIssues detected.' },
+      // fix_supervisor: fixes complete → back to supervise
+      { persona: 'coder', status: 'done', content: '[FIX_SUPERVISOR:1]\n\nFixes for supervisor findings complete.' },
+      // Supervisor: ready to merge
+      { persona: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review PR #3');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});
+
+describe('Piece Patterns IT: frontend-review-fix piece (fix loop)', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('frontend-review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 4 parallel reviewers: frontend needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'dual-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review frontend PR');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});
+
+describe('Piece Patterns IT: backend-review-fix piece (fix loop)', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('backend-review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 3 parallel reviewers: security needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'dual-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review backend PR');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});
+
+describe('Piece Patterns IT: dual-review-fix piece (fix loop)', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('dual-review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 4 parallel reviewers: qa needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'needs_fix' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'dual-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review dual PR');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});
+
+describe('Piece Patterns IT: dual-cqrs-review-fix piece (fix loop)', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('dual-cqrs-review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 5 parallel reviewers: cqrs-es needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'cqrs-es-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'cqrs-es-reviewer', status: 'done', content: 'approved' },
+      { persona: 'frontend-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'dual-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review CQRS dual PR');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});
+
+describe('Piece Patterns IT: backend-cqrs-review-fix piece (fix loop)', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDir = createTestDir();
+  });
+
+  afterEach(() => {
+    resetScenario();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('fix loop: reviewers any("needs_fix") → fix → reviewers (all approved) → supervise → COMPLETE', async () => {
+    const config = loadPiece('backend-cqrs-review-fix', testDir);
+    expect(config).not.toBeNull();
+
+    setMockScenario([
+      { persona: 'planner', status: 'done', content: '[GATHER:1]\n\nReview target gathered.' },
+      // 4 parallel reviewers: cqrs-es needs_fix
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'cqrs-es-reviewer', status: 'done', content: 'needs_fix' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Fix
+      { persona: 'coder', status: 'done', content: '[FIX:1]\n\nFixes complete.' },
+      // Re-review: all approved
+      { persona: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { persona: 'cqrs-es-reviewer', status: 'done', content: 'approved' },
+      { persona: 'security-reviewer', status: 'done', content: 'approved' },
+      { persona: 'qa-reviewer', status: 'done', content: 'approved' },
+      // Supervisor
+      { persona: 'dual-supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll validations complete, ready to merge.' },
+    ]);
+
+    const engine = createEngine(config!, testDir, 'Review backend CQRS PR');
+    const state = await engine.run();
+
+    expect(state.status).toBe('completed');
+  });
+});

@@ -209,24 +209,6 @@ describe('Issue resolution in routing', () => {
     mockExit.mockRestore();
   });
 
-  it('should show migration error and exit when deprecated --create-worktree is used', async () => {
-    mockOpts.createWorktree = 'yes';
-
-    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('process.exit called');
-    });
-
-    await expect(executeDefaultAction()).rejects.toThrow('process.exit called');
-
-    expect(mockError).toHaveBeenCalledWith(
-      '--create-worktree has been removed. execute now always runs in-place. Use "takt add" (save_task) + "takt run" for worktree-based execution.'
-    );
-    expect(mockExit).toHaveBeenCalledWith(1);
-    expect(mockInteractiveMode).not.toHaveBeenCalled();
-    expect(mockSelectAndExecuteTask).not.toHaveBeenCalled();
-
-    mockExit.mockRestore();
-  });
 
   describe('--issue option', () => {
     it('should resolve issue and pass to interactive mode when --issue is specified', async () => {

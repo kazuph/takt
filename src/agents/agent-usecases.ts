@@ -1,10 +1,10 @@
-import type { AgentResponse, PartDefinition, PieceRule, RuleMatchMethod, Language } from '../models/types.js';
-import { runAgent, type RunAgentOptions, type StreamCallback } from '../../agents/runner.js';
-import { detectJudgeIndex, buildJudgePrompt } from '../../agents/judge-utils.js';
-import { parseParts } from './engine/task-decomposer.js';
-import { loadJudgmentSchema, loadEvaluationSchema, loadDecompositionSchema, loadMorePartsSchema } from './schema-loader.js';
-import { detectRuleIndex } from '../../shared/utils/ruleIndex.js';
-import { ensureUniquePartIds, parsePartDefinitionEntry } from './part-definition-validator.js';
+import type { AgentResponse, PartDefinition, PieceRule, RuleMatchMethod, Language } from '../core/models/types.js';
+import { runAgent, type RunAgentOptions, type StreamCallback } from './runner.js';
+import { detectJudgeIndex, buildJudgePrompt } from './judge-utils.js';
+import { parseParts } from '../core/piece/engine/task-decomposer.js';
+import { loadJudgmentSchema, loadEvaluationSchema, loadDecompositionSchema, loadMorePartsSchema } from '../infra/resources/schema-loader.js';
+import { detectRuleIndex } from '../shared/utils/ruleIndex.js';
+import { ensureUniquePartIds, parsePartDefinitionEntry } from '../core/piece/part-definition-validator.js';
 
 export interface JudgeStatusOptions {
   cwd: string;

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { PieceMovement, RuleMatchMethod } from '../models/types.js';
-import { judgeStatus } from './agent-usecases.js';
+import { judgeStatus } from '../../agents/agent-usecases.js';
 import { StatusJudgmentBuilder, type StatusJudgmentContext } from './instruction/StatusJudgmentBuilder.js';
 import { getJudgmentReportFiles } from './evaluation/rule-utils.js';
 import { createLogger } from '../../shared/utils/index.js';

@@ -12,7 +12,7 @@ import type { PhaseName } from './types.js';
 import type { RunAgentOptions } from '../../agents/runner.js';
 import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
 import { hasTagBasedRules, getReportFiles } from './evaluation/rule-utils.js';
-import { executeAgent } from './agent-usecases.js';
+import { executeAgent } from '../../agents/agent-usecases.js';
 import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
 export { runStatusJudgmentPhase, type StatusJudgmentPhaseResult } from './status-judgment-phase.js';
