@@ -53,6 +53,7 @@ piece_categories:
     pieces:
       - takt-default
       - takt-default-team-leader
+      - takt-default-review-fix
   その他:
     pieces:
       - research
