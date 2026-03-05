@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Git Push Policy (CRITICAL)
 
 This repository is a **fork** of `nrslib/takt` (upstream/production).
+Remote `origin` now points to `kazuph/takt` (the fork).
 
-- **NEVER push to `origin` (nrslib/takt)**. This is the production repository.
-- **ALWAYS push to `fork` (kazuph/takt)**. This is our development fork.
-- Push command: `git push fork main` (or `git push fork <branch>`)
-- If you accidentally run `git push` without specifying a remote, it will target `origin` (prod). **Always specify `fork` explicitly.**
+- **NEVER push to `nrslib/takt`** (the production repository). There is no remote configured for it.
+- Push command: `git push origin main` — this goes to `kazuph/takt` (safe).
+- If upstream remote is ever added back, **never push to it**.
 
 ## Project Overview
 
