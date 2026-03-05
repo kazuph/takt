@@ -18,6 +18,7 @@ import { resolveAgentOverrides } from './helpers.js';
 import { repertoireAddCommand } from '../../commands/repertoire/add.js';
 import { repertoireRemoveCommand } from '../../commands/repertoire/remove.js';
 import { repertoireListCommand } from '../../commands/repertoire/list.js';
+import { showStatus } from '../../commands/status/index.js';
 
 program
   .command('run')
@@ -176,6 +177,13 @@ program
     } else {
       success(`Purged ${deleted.length} file(s): ${deleted.join(', ')}`);
     }
+  });
+
+program
+  .command('status')
+  .description('Show progress of the running task')
+  .action(async () => {
+    await showStatus(resolvedCwd);
   });
 
 const repertoire = program

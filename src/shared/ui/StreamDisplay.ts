@@ -20,6 +20,8 @@ export interface ProgressInfo {
   movementIndex: number;
   /** Total number of movements in piece */
   totalMovements: number;
+  /** Current movement name (e.g. "plan_review") */
+  movementName?: string;
 }
 
 /** Stream display manager for real-time Claude output */
@@ -48,15 +50,18 @@ export class StreamDisplay {
 
   /**
    * Build progress prefix string for display.
-   * Format: `(iteration/maxMovements) step movementIndex/totalMovements`
-   * Example: `(3/10) step 2/4`
+   * With movementName: `(3/10) plan_review [2/4]`
+   * Without movementName: `(3/10) step 2/4` (legacy format)
    */
   private buildProgressPrefix(): string {
     if (!this.progressInfo) {
       return '';
     }
-    const { iteration, maxMovements, movementIndex, totalMovements } = this.progressInfo;
+    const { iteration, maxMovements, movementIndex, totalMovements, movementName } = this.progressInfo;
     // movementIndex is 0-indexed, display as 1-indexed
+    if (movementName) {
+      return `(${iteration}/${maxMovements}) ${movementName} [${movementIndex + 1}/${totalMovements}]`;
+    }
     return `(${iteration}/${maxMovements}) step ${movementIndex + 1}/${totalMovements}`;
   }
 

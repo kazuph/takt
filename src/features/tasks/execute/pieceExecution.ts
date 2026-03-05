@@ -224,6 +224,7 @@ export async function executePiece(
           maxMovements: effectivePieceConfig.maxMovements,
           movementIndex: movementIndex >= 0 ? movementIndex : 0,
           totalMovements: pieceConfig.movements.length,
+          movementName: step.name,
         });
       }
       sessionLogger.onMovementStart(step, iteration, instruction);
