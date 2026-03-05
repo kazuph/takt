@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Push Policy (CRITICAL)
+
+This repository is a **fork** of `nrslib/takt` (upstream/production).
+
+- **NEVER push to `origin` (nrslib/takt)**. This is the production repository.
+- **ALWAYS push to `fork` (kazuph/takt)**. This is our development fork.
+- Push command: `git push fork main` (or `git push fork <branch>`)
+- If you accidentally run `git push` without specifying a remote, it will target `origin` (prod). **Always specify `fork` explicitly.**
+
 ## Project Overview
 
 TAKT (TAKT Agent Koordination Topology) is a multi-agent orchestration system for Claude Code. It enables YAML-based piece definitions that coordinate multiple AI agents through state machine transitions with rule-based routing.
