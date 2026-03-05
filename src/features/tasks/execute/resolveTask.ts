@@ -115,14 +115,17 @@ export async function resolveTaskExecution(
 
   if (data.worktree) {
     throwIfAborted(abortSignal);
-    baseBranch = resolveTaskBaseBranch(defaultCwd, data);
 
     if (task.worktreePath && fs.existsSync(task.worktreePath)) {
+      // Reuse existing worktree — skip git validation (only needed for clone creation).
+      // Preserve base_branch from task data for PR creation if needed.
       execCwd = task.worktreePath;
       branch = data.branch;
       worktreePath = task.worktreePath;
+      baseBranch = preferredBaseBranch;
       isWorktree = true;
     } else {
+      baseBranch = resolveTaskBaseBranch(defaultCwd, data);
       const taskSlug = task.slug ?? await withProgress(
         'Generating branch name...',
         (slug) => `Branch name generated: ${slug}`,

@@ -204,7 +204,7 @@ describe('resolveTaskExecution', () => {
     mockResolveBaseBranch.mockRestore();
   });
 
-  it('should preserve base_branch when reusing an existing worktree path', async () => {
+  it('should preserve base_branch when reusing an existing worktree path (no git validation)', async () => {
     const root = createTempProjectDir();
     const worktreePath = path.join(root, 'existing-worktree');
     fs.mkdirSync(worktreePath, { recursive: true });
@@ -220,20 +220,18 @@ describe('resolveTaskExecution', () => {
       status: 'pending',
     });
 
-    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch').mockReturnValue({
-      branch: 'release/main',
-    });
-    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone').mockReturnValue({
-      path: worktreePath,
-      branch: 'feature/base-branch',
-    });
+    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch');
+    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone');
 
     const result = await resolveTaskExecution(task, root, 'default');
 
+    // When worktree exists, resolveBaseBranch is NOT called (skip git validation)
+    expect(mockResolveBaseBranch).not.toHaveBeenCalled();
+    expect(mockCreateSharedClone).not.toHaveBeenCalled();
     expect(result.execCwd).toBe(worktreePath);
     expect(result.isWorktree).toBe(true);
+    // base_branch from task data is preserved directly for PR creation
     expect(result.baseBranch).toBe('release/main');
-    expect(mockCreateSharedClone).not.toHaveBeenCalled();
 
     mockCreateSharedClone.mockRestore();
     mockResolveBaseBranch.mockRestore();
@@ -256,27 +254,24 @@ describe('resolveTaskExecution', () => {
       status: 'pending',
     });
 
-    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch').mockReturnValue({
-      branch: 'release/main',
-    });
-    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone').mockReturnValue({
-      path: worktreePath,
-      branch: 'feature/base-branch',
-    });
+    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch');
+    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone');
 
     const result = await resolveTaskExecution(task, root, 'default');
 
-    expect(mockResolveBaseBranch).toHaveBeenCalledWith(root, 'release/main');
+    // When worktree exists, resolveBaseBranch is NOT called
+    expect(mockResolveBaseBranch).not.toHaveBeenCalled();
     expect(mockCreateSharedClone).not.toHaveBeenCalled();
     expect(result.execCwd).toBe(worktreePath);
     expect(result.isWorktree).toBe(true);
+    // base_branch takes priority over legacy baseBranch (resolved in resolveTaskDataBaseBranch)
     expect(result.baseBranch).toBe('release/main');
 
     mockCreateSharedClone.mockRestore();
     mockResolveBaseBranch.mockRestore();
   });
 
-  it('should ignore legacy baseBranch when reusing an existing worktree path', async () => {
+  it('should have no baseBranch when reusing worktree with only legacy baseBranch', async () => {
     const root = createTempProjectDir();
     const worktreePath = path.join(root, 'existing-worktree');
     fs.mkdirSync(worktreePath, { recursive: true });
@@ -292,21 +287,18 @@ describe('resolveTaskExecution', () => {
       status: 'pending',
     });
 
-    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch').mockReturnValue({
-      branch: 'develop',
-    });
-    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone').mockReturnValue({
-      path: worktreePath,
-      branch: 'feature/base-branch',
-    });
+    const mockResolveBaseBranch = vi.spyOn(infraTask, 'resolveBaseBranch');
+    const mockCreateSharedClone = vi.spyOn(infraTask, 'createSharedClone');
 
     const result = await resolveTaskExecution(task, root, 'default');
 
-    expect(mockResolveBaseBranch).toHaveBeenCalledWith(root, undefined);
+    // When worktree exists, resolveBaseBranch is NOT called
+    expect(mockResolveBaseBranch).not.toHaveBeenCalled();
     expect(mockCreateSharedClone).not.toHaveBeenCalled();
     expect(result.execCwd).toBe(worktreePath);
     expect(result.isWorktree).toBe(true);
-    expect(result.baseBranch).toBe('develop');
+    // Legacy baseBranch is not used by resolveTaskDataBaseBranch (only base_branch)
+    expect(result.baseBranch).toBeUndefined();
 
     mockCreateSharedClone.mockRestore();
     mockResolveBaseBranch.mockRestore();
